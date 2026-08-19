@@ -1,0 +1,90 @@
+name: ytsplayer
+options:
+  bundleIdPrefix: com.ytsplayer
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+  createIntermediateGroups: true
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "6.27.0"
+
+targets:
+  ytsplayer:
+    type: application
+    platform: macOS
+    sources:
+      - path: ytsplayer
+        excludes:
+          - "**/*.md"
+    info:
+      path: ytsplayer/App/Info.plist
+      properties:
+        CFBundleName: ytsplayer
+        CFBundleDisplayName: ytsplayer
+        CFBundleIdentifier: com.ytsplayer.app
+        CFBundleVersion: "1"
+        CFBundleShortVersionString: "1.0.0"
+        NSHumanReadableCopyright: ""
+        NSHighResolutionCapable: true
+        NSSupportsAutomaticTermination: false
+        NSRequiresAquaSystemAppearance: false
+        LSMinimumSystemVersion: "13.0"
+        NSMicrophoneUsageDescription: "ytsplayer requires audio device access for bit-perfect playback."
+    settings:
+      base:
+        SWIFT_OBJC_BRIDGING_HEADER: ytsplayer/App/ytsplayer-Bridging-Header.h
+        HEADER_SEARCH_PATHS:
+          - "$(inherited)"
+          - /opt/homebrew/include
+          - ytsplayer/Engine
+        LIBRARY_SEARCH_PATHS:
+          - "$(inherited)"
+          - /opt/homebrew/lib
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - -lFLAC
+          - -ltag
+        OTHER_CFLAGS:
+          - "$(inherited)"
+          - -I/opt/homebrew/include
+        CLANG_CXX_LANGUAGE_STANDARD: c++17
+        CLANG_CXX_LIBRARY: libc++
+        GCC_C_LANGUAGE_STANDARD: c11
+        SWIFT_VERSION: "5"
+        PRODUCT_BUNDLE_IDENTIFIER: com.ytsplayer.app
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        ENABLE_HARDENED_RUNTIME: NO
+        DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+        SWIFT_OPTIMIZATION_LEVEL: -O
+        GCC_OPTIMIZATION_LEVEL: "3"
+        # Disable App Sandbox for now (Phase 6 will enable)
+        ENABLE_APP_SANDBOX: NO
+        PRODUCT_NAME: ytsplayer
+      debug:
+        SWIFT_OPTIMIZATION_LEVEL: -Onone
+        GCC_OPTIMIZATION_LEVEL: "0"
+        DEBUG_INFORMATION_FORMAT: dwarf
+    dependencies:
+      - package: GRDB
+    scheme:
+      testTargets:
+        - ytsplayerTests
+
+  ytsplayerTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: ytsplayerTests
+    settings:
+      base:
+        HEADER_SEARCH_PATHS:
+          - "$(inherited)"
+          - /opt/homebrew/include
+          - ytsplayer/Engine
+        SWIFT_VERSION: "6.0"
+    dependencies:
+      - target: ytsplayer
