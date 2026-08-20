@@ -64,6 +64,14 @@ struct AlbumViewModel: Identifiable {
     let year: Int?
     let artworkCachePath: String?
     let trackCount: Int
+    let isHiRes: Bool
+}
+
+struct ArtistViewModel: Identifiable {
+    let id: Int64
+    let name: String
+    let artworkCachePath: String?
+    let albumCount: Int
 }
 
 // MARK: - Database Setup
@@ -174,7 +182,8 @@ extension DatabasePool {
             let rows = try Row.fetchAll(db, sql: """
                 SELECT albums.id, albums.title, artists.name AS artistName,
                        albums.year, albums.artworkCachePath,
-                       COUNT(tracks.id) AS trackCount
+                       COUNT(tracks.id) AS trackCount,
+                       MAX(tracks.bitDepth) AS maxBitDepth
                 FROM albums
                 LEFT JOIN artists ON artists.id = albums.artistId
                 LEFT JOIN tracks  ON tracks.albumId = albums.id
@@ -182,13 +191,15 @@ extension DatabasePool {
                 ORDER BY artistName COLLATE NOCASE, albums.year, albums.title COLLATE NOCASE
             """)
             return rows.map {
-                AlbumViewModel(
+                let maxBitDepth: Int = $0["maxBitDepth"] ?? 0
+                return AlbumViewModel(
                     id:              $0["id"],
                     title:           $0["title"],
                     artistName:      $0["artistName"],
                     year:            $0["year"],
                     artworkCachePath: $0["artworkCachePath"],
-                    trackCount:      $0["trackCount"]
+                    trackCount:      $0["trackCount"],
+                    isHiRes:         maxBitDepth >= 24
                 )
             }
         }
@@ -206,6 +217,36 @@ extension DatabasePool {
                 WHERE tracks.albumId = ?
                 ORDER BY tracks.discNumber, tracks.trackNumber, tracks.title COLLATE NOCASE
             """, arguments: [albumId])
+            return rows.map {
+                TrackViewModel(
+                    id:               $0["id"],
+                    filePath:         $0["filePath"],
+                    title:            $0["title"],
+                    trackNumber:      $0["trackNumber"],
+                    duration:         $0["duration"],
+                    sampleRate:       $0["sampleRate"],
+                    bitDepth:         $0["bitDepth"],
+                    artistName:       $0["artistName"],
+                    albumTitle:       $0["albumTitle"],
+                    albumArtworkPath: $0["artworkCachePath"],
+                    lyrics:           $0["lyrics"]
+                )
+            }
+        }
+    }
+
+    // Fetch all tracks for an artist, sorted by album year, then album title, then track number
+    func fetchTracks(forArtistId artistId: Int64) throws -> [TrackViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT tracks.*, artists.name AS artistName,
+                       albums.title AS albumTitle, albums.artworkCachePath
+                FROM tracks
+                LEFT JOIN artists ON artists.id = tracks.artistId
+                LEFT JOIN albums  ON albums.id  = tracks.albumId
+                WHERE tracks.artistId = ?
+                ORDER BY albums.year DESC, albums.title COLLATE NOCASE, tracks.discNumber, tracks.trackNumber
+            """, arguments: [artistId])
             return rows.map {
                 TrackViewModel(
                     id:               $0["id"],
@@ -257,6 +298,139 @@ extension DatabasePool {
                     lyrics:           $0["lyrics"]
                 )
             }
+        }
+    }
+    
+    // MARK: - New Queries (Home & Artists)
+    
+    func fetchRecentTracks(limit: Int = 30) throws -> [TrackViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT tracks.*, artists.name AS artistName,
+                       albums.title AS albumTitle, albums.artworkCachePath
+                FROM tracks
+                LEFT JOIN artists ON artists.id = tracks.artistId
+                LEFT JOIN albums  ON albums.id  = tracks.albumId
+                ORDER BY tracks.id DESC
+                LIMIT ?
+            """, arguments: [limit])
+            return rows.map {
+                TrackViewModel(
+                    id:               $0["id"],
+                    filePath:         $0["filePath"],
+                    title:            $0["title"],
+                    trackNumber:      $0["trackNumber"],
+                    duration:         $0["duration"],
+                    sampleRate:       $0["sampleRate"],
+                    bitDepth:         $0["bitDepth"],
+                    artistName:       $0["artistName"],
+                    albumTitle:       $0["albumTitle"],
+                    albumArtworkPath: $0["artworkCachePath"],
+                    lyrics:           $0["lyrics"]
+                )
+            }
+        }
+    }
+    
+    func fetchRecentAlbums(limit: Int = 15) throws -> [AlbumViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT albums.id, albums.title, artists.name AS artistName,
+                       albums.year, albums.artworkCachePath,
+                       COUNT(tracks.id) AS trackCount,
+                       MAX(tracks.bitDepth) AS maxBitDepth
+                FROM albums
+                LEFT JOIN artists ON artists.id = albums.artistId
+                LEFT JOIN tracks  ON tracks.albumId = albums.id
+                GROUP BY albums.id
+                ORDER BY albums.id DESC
+                LIMIT ?
+            """, arguments: [limit])
+            return rows.map {
+                let maxBitDepth: Int = $0["maxBitDepth"] ?? 0
+                return AlbumViewModel(
+                    id:              $0["id"],
+                    title:           $0["title"],
+                    artistName:      $0["artistName"],
+                    year:            $0["year"],
+                    artworkCachePath: $0["artworkCachePath"],
+                    trackCount:      $0["trackCount"],
+                    isHiRes:         maxBitDepth >= 24
+                )
+            }
+        }
+    }
+    
+    func fetchArtistsWithArtwork() throws -> [ArtistViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT artists.id, artists.name,
+                       (SELECT artworkCachePath FROM albums WHERE albums.artistId = artists.id AND artworkCachePath IS NOT NULL ORDER BY year DESC LIMIT 1) AS artworkCachePath,
+                       COUNT(DISTINCT albums.id) AS albumCount
+                FROM artists
+                LEFT JOIN albums ON albums.artistId = artists.id
+                GROUP BY artists.id
+                ORDER BY artists.name COLLATE NOCASE
+            """)
+            return rows.map {
+                ArtistViewModel(
+                    id:               $0["id"],
+                    name:             $0["name"],
+                    artworkCachePath: $0["artworkCachePath"],
+                    albumCount:       $0["albumCount"]
+                )
+            }
+        }
+    }
+    
+    func fetchRecentArtists(limit: Int = 15) throws -> [ArtistViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT artists.id, artists.name,
+                       (SELECT artworkCachePath FROM albums WHERE albums.artistId = artists.id AND artworkCachePath IS NOT NULL ORDER BY year DESC LIMIT 1) AS artworkCachePath,
+                       COUNT(DISTINCT albums.id) AS albumCount
+                FROM artists
+                LEFT JOIN albums ON albums.artistId = artists.id
+                GROUP BY artists.id
+                ORDER BY artists.id DESC
+                LIMIT ?
+            """, arguments: [limit])
+            return rows.map {
+                ArtistViewModel(
+                    id:               $0["id"],
+                    name:             $0["name"],
+                    artworkCachePath: $0["artworkCachePath"],
+                    albumCount:       $0["albumCount"]
+                )
+            }
+        }
+    }
+    
+    func fetchTrack(byPath path: String) throws -> TrackViewModel? {
+        try read { db in
+            let row = try Row.fetchOne(db, sql: """
+                SELECT tracks.*, artists.name AS artistName,
+                       albums.title AS albumTitle, albums.artworkCachePath
+                FROM tracks
+                LEFT JOIN artists ON artists.id = tracks.artistId
+                LEFT JOIN albums  ON albums.id  = tracks.albumId
+                WHERE tracks.filePath = ?
+            """, arguments: [path])
+            
+            guard let r = row else { return nil }
+            return TrackViewModel(
+                id:               r["id"],
+                filePath:         r["filePath"],
+                title:            r["title"],
+                trackNumber:      r["trackNumber"],
+                duration:         r["duration"],
+                sampleRate:       r["sampleRate"],
+                bitDepth:         r["bitDepth"],
+                artistName:       r["artistName"],
+                albumTitle:       r["albumTitle"],
+                albumArtworkPath: r["artworkCachePath"],
+                lyrics:           r["lyrics"]
+            )
         }
     }
 

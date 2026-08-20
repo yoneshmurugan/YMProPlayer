@@ -8,6 +8,7 @@ struct LibraryView: View {
     @ObservedObject var playbackVM: PlaybackViewModel
     @State private var selectedAlbum: AlbumViewModel?
     @State private var showFolderPicker = false
+    var onProfileTapped: (() -> Void)? = nil
 
     private let columns = [GridItem(.adaptive(minimum: 170, maximum: 220), spacing: 16)]
 
@@ -49,20 +50,23 @@ struct LibraryView: View {
                 Spacer().frame(width: 16)
                 
                 // Avatar
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.purple, .indigo],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                Button(action: { onProfileTapped?() }) {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.purple, .indigo],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .frame(width: 32, height: 32)
-                    .overlay(
-                        Text("Y")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white)
-                    )
+                        .frame(width: 32, height: 32)
+                        .overlay(
+                            Text("Y")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(.white)
+                        )
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)

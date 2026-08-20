@@ -13,37 +13,59 @@ struct AlbumDetailView: View {
         VStack(spacing: 0) {
 
             // ── Header ─────────────────────────────────────────────────────
-            ZStack(alignment: .bottomLeading) {
-                // Blurred artwork background
-                if let path = album.artworkCachePath,
-                   let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-                    AsyncImage(url: cacheDir.appendingPathComponent(path)) { img in
-                        img.resizable().scaledToFill()
-                    } placeholder: { Color.clear }
-                    .frame(height: 220)
-                    .clipped()
-                    .blur(radius: 40)
-                    .overlay(Color.black.opacity(0.55))
-                } else {
-                    LinearGradient(
-                        colors: [.purple.opacity(0.4), .black],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                    .frame(height: 220)
-                }
+            ZStack(alignment: .topTrailing) {
+                ZStack(alignment: .bottomLeading) {
+                    // Blurred artwork background
+                    if let path = album.artworkCachePath,
+                       let cacheDir = ImageDownsampler.artworkCacheDirectory() {
+                        AsyncImage(url: cacheDir.appendingPathComponent(path)) { img in
+                            img.resizable().scaledToFill()
+                        } placeholder: { Color.clear }
+                        .frame(height: 220)
+                        .clipped()
+                        .blur(radius: 40)
+                        .overlay(Color.black.opacity(0.55))
+                    } else {
+                        LinearGradient(
+                            colors: [.purple.opacity(0.4), .black],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                        .frame(height: 220)
+                    }
 
-                HStack(alignment: .bottom, spacing: 20) {
-                    // Album art
-                    artworkView
-                        .frame(width: 130, height: 130)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .shadow(color: .black.opacity(0.5), radius: 16)
+                    HStack(alignment: .bottom, spacing: 20) {
+                        // Album art
+                        ZStack(alignment: .bottomTrailing) {
+                            artworkView
+                                .frame(width: 130, height: 130)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .shadow(color: .black.opacity(0.5), radius: 16)
+                            
+                            if album.isHiRes {
+                                if let url = Bundle.main.url(forResource: "hires", withExtension: "png"),
+                                   let nsImage = NSImage(contentsOf: url) {
+                                    Image(nsImage: nsImage)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(height: 18)
+                                        .padding(6)
+                                } else {
+                                    Text("Hi-Res")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .padding(.horizontal, 4).padding(.vertical, 2)
+                                        .background(Color.black.opacity(0.7))
+                                        .foregroundStyle(.white)
+                                        .cornerRadius(4)
+                                        .padding(6)
+                                }
+                            }
+                        }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(album.title)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundStyle(.white)
-                            .lineLimit(2)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(album.title)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundStyle(.white)
+                                .lineLimit(2)
                         if let artist = album.artistName {
                             Text(artist)
                                 .font(.system(size: 15))
@@ -75,6 +97,17 @@ struct AlbumDetailView: View {
                     }
                     Spacer()
                 }
+                .padding(20)
+                }
+                
+                // Close button
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .background(Circle().fill(Color.black.opacity(0.4)))
+                }
+                .buttonStyle(.plain)
                 .padding(20)
             }
             .frame(height: 220)

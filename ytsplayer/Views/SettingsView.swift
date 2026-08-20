@@ -11,9 +11,11 @@ struct SettingsView: View {
     @State private var showFolderPicker = false
     @State private var hogModeEnabled   = false
     @State private var availableRates: [Double] = []
+    @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        Form {
+        NavigationStack {
+            Form {
             Section("Library") {
                 LabeledContent("Music Folder") {
                     HStack {
@@ -75,6 +77,15 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .navigationTitle("Settings")
+        .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
         .onAppear {
             hogModeEnabled  = halEngine.isHogMode
             availableRates  = halEngine.availableSampleRates()

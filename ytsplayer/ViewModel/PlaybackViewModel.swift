@@ -21,7 +21,10 @@ final class PlaybackViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     @Published var isBitPerfect: Bool = true {
-        didSet { halEngine.isBitPerfect = isBitPerfect }
+        didSet {
+            halEngine.isBitPerfect = isBitPerfect
+            _ = halEngine.setHogModeSafe(isBitPerfect)
+        }
     }
     @Published var volume: Double = 1.0 {
         didSet { halEngine.softwareVolume = Float(volume) }
@@ -35,6 +38,10 @@ final class PlaybackViewModel: ObservableObject {
         self.halEngine = halEngine
         startPoller()
         observeDeviceChanges()
+        
+        // Sync initial Bit-Perfect state to hardware Hog Mode
+        self.halEngine.isBitPerfect = self.isBitPerfect
+        _ = self.halEngine.setHogModeSafe(self.isBitPerfect)
     }
 
     // MARK: - Transport

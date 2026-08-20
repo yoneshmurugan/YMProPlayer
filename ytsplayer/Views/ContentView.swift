@@ -5,8 +5,10 @@ import SwiftUI
 import GRDB
 
 enum AppTab: Hashable {
+    case home
     case albums
-    case settings
+    case artists
+    case hierarchy
     case search
     case mock(String)
 }
@@ -19,9 +21,10 @@ struct ContentView: View {
     private let halEngine: CoreAudioHALEngine
     private let db: DatabasePool
 
-    @State private var selectedTab: AppTab? = .albums
+    @State private var selectedTab: AppTab? = .home
     @State private var searchText = ""
     @State private var showFullScreenPlayer = false
+    @State private var showSettings = false
 
     init(halEngine: CoreAudioHALEngine, db: DatabasePool) {
         self.halEngine = halEngine
@@ -74,23 +77,14 @@ struct ContentView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .padding(.bottom, 8)
                     
-                    Section {
-                        Label("Listen Now", systemImage: "play.circle").tag(AppTab.mock("Listen Now"))
-                        Label("Browse", systemImage: "square.grid.2x2").tag(AppTab.mock("Browse"))
-                        Label("Radio", systemImage: "dot.radiowaves.left.and.right").tag(AppTab.mock("Radio"))
+                    Section("Listen Now") {
+                        Label("Home", systemImage: "play.circle").tag(AppTab.home)
                     }
                     
                     Section("Library") {
                         Label("Albums", systemImage: "rectangle.stack").tag(AppTab.albums)
-                        Label("Artists", systemImage: "music.mic").tag(AppTab.mock("Artists"))
-                        Label("Songs", systemImage: "music.note").tag(AppTab.mock("Songs"))
-                        Label("Settings", systemImage: "gear").tag(AppTab.settings)
-                    }
-                    
-                    Section("Playlists") {
-                        Label("Chill Vibe", systemImage: "music.note.list").tag(AppTab.mock("Chill Vibe"))
-                        Label("New Discoveries", systemImage: "safari").tag(AppTab.mock("New Discoveries"))
-                        Label("Focus Flow", systemImage: "play.circle.fill").tag(AppTab.mock("Focus Flow"))
+                        Label("Artists", systemImage: "music.mic").tag(AppTab.artists)
+                        Label("Hierarchy", systemImage: "folder.tree").tag(AppTab.hierarchy)
                     }
                 }
                 .listStyle(.sidebar)
@@ -104,12 +98,18 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     Group {
                         switch selectedTab {
-                        case .albums, nil:
-                            LibraryView(libraryVM: libraryVM, playbackVM: playbackVM)
+                        case .home, nil:
+                            HomeView(libraryVM: libraryVM, playbackVM: playbackVM)
+                        case .albums:
+                            LibraryView(libraryVM: libraryVM, playbackVM: playbackVM) {
+                                showSettings = true
+                            }
+                        case .artists:
+                            ArtistsView(libraryVM: libraryVM, playbackVM: playbackVM)
+                        case .hierarchy:
+                            HierarchyView(libraryVM: libraryVM, playbackVM: playbackVM)
                         case .search:
                             SearchView(searchVM: searchVM, playbackVM: playbackVM)
-                        case .settings:
-                            SettingsView(libraryVM: libraryVM, halEngine: halEngine)
                         case .mock(let title):
                             mockView(title)
                         }
@@ -128,6 +128,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showFullScreenPlayer) {
             FullScreenPlayerView(vm: playbackVM, database: db)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(libraryVM: libraryVM, halEngine: halEngine)
+                .frame(width: 500, height: 400)
         }
         .navigationTitle("ytsplayer")
         .frame(minWidth: 1000, minHeight: 650)

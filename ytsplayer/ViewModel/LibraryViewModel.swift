@@ -8,6 +8,10 @@ import Combine
 @MainActor
 final class LibraryViewModel: ObservableObject {
     @Published var albums: [AlbumViewModel] = []
+    @Published var artists: [ArtistViewModel] = []
+    @Published var recentTracks: [TrackViewModel] = []
+    @Published var recentAlbums: [AlbumViewModel] = []
+    @Published var recentArtists: [ArtistViewModel] = []
     @Published var isLoading: Bool          = true
     @Published var scanProgress: Double     = 0.0
     @Published var isScanning: Bool         = false
@@ -51,6 +55,10 @@ final class LibraryViewModel: ObservableObject {
             }
             
             albums = loaded
+            artists = (try? db.fetchArtistsWithArtwork()) ?? []
+            recentTracks = (try? db.fetchRecentTracks(limit: 30)) ?? []
+            recentAlbums = (try? db.fetchRecentAlbums(limit: 15)) ?? []
+            recentArtists = (try? db.fetchRecentArtists(limit: 15)) ?? []
             isLoading = false
         }
     }
@@ -63,6 +71,14 @@ final class LibraryViewModel: ObservableObject {
 
     func fetchTracks(for album: AlbumViewModel) -> [TrackViewModel] {
         (try? db.fetchTracks(forAlbumId: album.id)) ?? []
+    }
+    
+    func fetchTracks(for artist: ArtistViewModel) -> [TrackViewModel] {
+        (try? db.fetchTracks(forArtistId: artist.id)) ?? []
+    }
+    
+    func fetchTrack(byPath path: String) -> TrackViewModel? {
+        try? db.fetchTrack(byPath: path)
     }
 
     func clearLibraryAndCache() {
