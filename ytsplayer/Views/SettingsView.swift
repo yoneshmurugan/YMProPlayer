@@ -6,6 +6,7 @@ import CoreAudio
 
 struct SettingsView: View {
     @ObservedObject var libraryVM: LibraryViewModel
+    @ObservedObject var playbackVM: PlaybackViewModel
     let halEngine: CoreAudioHALEngine
 
     @State private var showFolderPicker = false
@@ -38,6 +39,7 @@ struct SettingsView: View {
 
                     Button(role: .destructive) {
                         libraryVM.clearLibraryAndCache()
+                        playbackVM.clearQueueAndStop()
                     } label: {
                         Text("Remove Folder & Clear Cache")
                             .foregroundStyle(.red)

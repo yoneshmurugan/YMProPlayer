@@ -37,22 +37,34 @@ struct FullScreenPlayerView: View {
                 
                 // Left: Artwork and Track Info
                 VStack(alignment: .leading, spacing: 20) {
-                    if let path = vm.currentTrack?.albumArtworkPath,
-                       let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-                        let url = cacheDir.appendingPathComponent(path)
-                        AsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                .shadow(color: .black.opacity(0.5), radius: 20, y: 10)
-                        } placeholder: {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white.opacity(0.1))
+                    ZStack(alignment: .bottomTrailing) {
+                        if let path = vm.currentTrack?.albumArtworkPath,
+                           let cacheDir = ImageDownsampler.artworkCacheDirectory() {
+                            let url = cacheDir.appendingPathComponent(path)
+                            AsyncImage(url: url) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                    .shadow(color: .black.opacity(0.5), radius: 20, y: 10)
+                            } placeholder: {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white.opacity(0.1))
+                            }
+                        } else {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(Color.white.opacity(0.1))
+                                .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.3)))
                         }
-                    } else {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(Color.white.opacity(0.1))
-                            .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.3)))
+                        
+                        if (vm.currentTrack?.bitDepth ?? 0) >= 24 {
+                            if let nsImage = NSImage(named: "hires.png") {
+                                Image(nsImage: nsImage)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 36)
+                                    .padding(16)
+                            }
+                        }
                     }
                     
                     VStack(alignment: .leading, spacing: 8) {

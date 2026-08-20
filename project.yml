@@ -9,8 +9,7 @@ options:
 
 packages:
   GRDB:
-    url: https://github.com/groue/GRDB.swift
-    from: "6.27.0"
+    path: GRDB
 
 targets:
   ytsplayer:

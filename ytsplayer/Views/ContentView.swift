@@ -9,6 +9,7 @@ enum AppTab: Hashable {
     case albums
     case artists
     case hierarchy
+    case playlists
     case search
     case mock(String)
 }
@@ -66,25 +67,20 @@ struct ContentView: View {
             NavigationSplitView {
                 // ── Sidebar ────────────────────────────────────────────────────
                 List(selection: $selectedTab) {
-                    // Search Bar Mock
-                    HStack {
-                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                        TextField("Search", text: $searchText)
-                            .textFieldStyle(.plain)
-                    }
-                    .padding(8)
-                    .background(Color.white.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .padding(.bottom, 8)
+
                     
                     Section("Listen Now") {
-                        Label("Home", systemImage: "play.circle").tag(AppTab.home)
+                        Label("Listen Now", systemImage: "play.circle").tag(AppTab.home)
                     }
                     
                     Section("Library") {
                         Label("Albums", systemImage: "rectangle.stack").tag(AppTab.albums)
                         Label("Artists", systemImage: "music.mic").tag(AppTab.artists)
-                        Label("Hierarchy", systemImage: "folder.tree").tag(AppTab.hierarchy)
+                        Label("Hierarchy", systemImage: "folder").tag(AppTab.hierarchy)
+                    }
+                    
+                    Section("Playlists") {
+                        Label("My Playlists", systemImage: "music.note.list").tag(AppTab.playlists)
                     }
                 }
                 .listStyle(.sidebar)
@@ -99,7 +95,12 @@ struct ContentView: View {
                     Group {
                         switch selectedTab {
                         case .home, nil:
-                            HomeView(libraryVM: libraryVM, playbackVM: playbackVM)
+                            HomeView(
+                                libraryVM: libraryVM,
+                                playbackVM: playbackVM,
+                                onSearchTapped: { selectedTab = .search },
+                                onProfileTapped: { showSettings = true }
+                            )
                         case .albums:
                             LibraryView(libraryVM: libraryVM, playbackVM: playbackVM) {
                                 showSettings = true
@@ -108,6 +109,8 @@ struct ContentView: View {
                             ArtistsView(libraryVM: libraryVM, playbackVM: playbackVM)
                         case .hierarchy:
                             HierarchyView(libraryVM: libraryVM, playbackVM: playbackVM)
+                        case .playlists:
+                            mockView("Playlists")
                         case .search:
                             SearchView(searchVM: searchVM, playbackVM: playbackVM)
                         case .mock(let title):
@@ -130,7 +133,7 @@ struct ContentView: View {
             FullScreenPlayerView(vm: playbackVM, database: db)
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(libraryVM: libraryVM, halEngine: halEngine)
+            SettingsView(libraryVM: libraryVM, playbackVM: playbackVM, halEngine: halEngine)
                 .frame(width: 500, height: 400)
         }
         .navigationTitle("ytsplayer")

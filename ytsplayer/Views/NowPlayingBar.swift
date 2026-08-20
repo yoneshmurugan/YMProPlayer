@@ -16,10 +16,22 @@ struct NowPlayingBar: View {
             // ── LEFT: Artwork + Track Info ────────────────────────────────
             HStack(spacing: 12) {
                 Button(action: { onArtworkTap?() }) {
-                    artworkView
-                        .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .shadow(color: .black.opacity(0.3), radius: 5, y: 2)
+                    ZStack(alignment: .bottomTrailing) {
+                        artworkView
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .shadow(color: .black.opacity(0.3), radius: 5, y: 2)
+                        
+                        if (vm.currentTrack?.bitDepth ?? 0) >= 24 {
+                            if let nsImage = NSImage(named: "hires.png") {
+                                Image(nsImage: nsImage)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 16)
+                                    .padding(4)
+                            }
+                        }
+                    }
                 }
                 .buttonStyle(.plain)
 

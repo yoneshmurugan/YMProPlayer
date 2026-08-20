@@ -107,11 +107,20 @@ final class LibraryViewModel: ObservableObject {
 
 // MARK: -
 
+enum SearchFilter: String, CaseIterable {
+    case all = "All"
+    case artist = "Artist"
+    case album = "Album"
+    case playlist = "Playlist"
+    case songs = "Songs"
+}
+
 @MainActor
 final class SearchViewModel: ObservableObject {
     @Published var query: String             = ""
     @Published var results: [TrackViewModel] = []
     @Published var isSearching: Bool         = false
+    @Published var selectedFilter: SearchFilter = .all
 
     private let db: DatabasePool
     private var cancellables = Set<AnyCancellable>()

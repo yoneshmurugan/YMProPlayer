@@ -62,6 +62,18 @@ final class PlaybackViewModel: ObservableObject {
             isPlaying = true
         }
     }
+    
+    func clearQueueAndStop() {
+        let ctx = halEngine.context
+        AEC_SetIsPlaying(ctx, false)
+        isPlaying = false
+        playbackProgress = 0.0
+        currentTimeString = "0:00"
+        totalTimeString = "0:00"
+        currentTrack = nil
+        queue = []
+        queueIndex = 0
+    }
 
     func skipNext() {
         guard queueIndex + 1 < queue.count else { return }
@@ -95,12 +107,16 @@ final class PlaybackViewModel: ObservableObject {
         currentSampleRate = track.sampleRate
         currentBitDepth   = track.bitDepth
 
-        if !halEngine.isHogMode { halEngine.acquireHogMode() }
+        if isBitPerfect {
+            if !halEngine.isHogMode { halEngine.acquireHogMode() }
+        } else {
+            if halEngine.isHogMode { halEngine.releaseHogMode() }
+        }
 
         let ok = await halEngine.loadTrack(filePath: track.filePath)
         isBuffering = false
         isPlaying   = ok
-        if !ok { errorMessage = "Failed to load: \(track.title)" }
+        if !ok { errorMessage = "Audio format not supported by DAC (\(track.sampleRate) Hz)" }
     }
 
     // MARK: - 30Hz Poller

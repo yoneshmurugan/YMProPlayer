@@ -192,6 +192,18 @@ struct AlbumCard: View {
                 .frame(maxWidth: .infinity)
                 .aspectRatio(1, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(alignment: .topTrailing) {
+                    if album.isHiRes {
+                        if let nsImage = NSImage(named: "hires.png") {
+                            Image(nsImage: nsImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 18)
+                                .padding(10)
+                                .shadow(color: .black.opacity(0.8), radius: 6, y: 2)
+                        }
+                    }
+                }
                 .shadow(
                     color: .black.opacity(isHovered ? 0.6 : 0.25),
                     radius: isHovered ? 16 : 8,

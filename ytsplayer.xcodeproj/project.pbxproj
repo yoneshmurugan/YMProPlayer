@@ -72,6 +72,7 @@
 		BE80FA0CEEFA037ECEBE7385 /* FolderNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderNode.swift; sourceTree = "<group>"; };
 		C01AE27A29CCAAA882FCDCDF /* ytsplayer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ytsplayer-Bridging-Header.h"; sourceTree = "<group>"; };
 		C6FF53A910D35FD57AFDB3D7 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
+		CA3D3C23097CDDF04E5EB7DA /* GRDB */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GRDB; path = GRDB; sourceTree = SOURCE_ROOT; };
 		CBC4492A86F2AFB5D107E401 /* ImageDownsampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDownsampler.swift; sourceTree = "<group>"; };
 		D90ADA5235BD2A35DDBB4662 /* HierarchyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HierarchyView.swift; sourceTree = "<group>"; };
 		D941C3496AC017D406F4480D /* AudioDeviceRenderCallback.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = AudioDeviceRenderCallback.c; sourceTree = "<group>"; };
@@ -203,9 +204,18 @@
 			path = ytsplayer;
 			sourceTree = "<group>";
 		};
+		C24783940208D7D4DA4A5C16 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				CA3D3C23097CDDF04E5EB7DA /* GRDB */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
 		C433D8228FAD8A59D3783E70 = {
 			isa = PBXGroup;
 			children = (
+				C24783940208D7D4DA4A5C16 /* Packages */,
 				C035698335E29A753D69D003 /* ytsplayer */,
 				9807EC883003D638BF77C589 /* ytsplayerTests */,
 				6181035CCA4DA0B0B686D8A8 /* Products */,
@@ -284,7 +294,7 @@
 			mainGroup = C433D8228FAD8A59D3783E70;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				36FFD0CEED161DD0F380B4D8 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				442FC86CAB6EFB8CBC8E7A3F /* XCLocalSwiftPackageReference "GRDB" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6181035CCA4DA0B0B686D8A8 /* Products */;
@@ -643,21 +653,16 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		36FFD0CEED161DD0F380B4D8 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/groue/GRDB.swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 6.27.0;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		442FC86CAB6EFB8CBC8E7A3F /* XCLocalSwiftPackageReference "GRDB" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = GRDB;
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		C30C2EF2378B32F27AEE1D68 /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 36FFD0CEED161DD0F380B4D8 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
 			productName = GRDB;
 		};
 /* End XCSwiftPackageProductDependency section */

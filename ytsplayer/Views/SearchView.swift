@@ -30,7 +30,30 @@ struct SearchView: View {
             .padding(10)
             .background(.thinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .padding(12)
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            
+            // Filter Pills
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(SearchFilter.allCases, id: \.self) { filter in
+                        Button(action: {
+                            searchVM.selectedFilter = filter
+                        }) {
+                            Text(filter.rawValue)
+                                .font(.system(size: 13, weight: .medium))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(searchVM.selectedFilter == filter ? Color.purple : Color.white.opacity(0.1))
+                                .foregroundStyle(searchVM.selectedFilter == filter ? .white : .primary)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            }
 
             Divider()
 

@@ -42,21 +42,12 @@ struct AlbumDetailView: View {
                                 .shadow(color: .black.opacity(0.5), radius: 16)
                             
                             if album.isHiRes {
-                                if let url = Bundle.main.url(forResource: "hires", withExtension: "png"),
-                                   let nsImage = NSImage(contentsOf: url) {
+                                if let nsImage = NSImage(named: "hires.png") {
                                     Image(nsImage: nsImage)
                                         .resizable()
                                         .scaledToFit()
-                                        .frame(height: 18)
-                                        .padding(6)
-                                } else {
-                                    Text("Hi-Res")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .padding(.horizontal, 4).padding(.vertical, 2)
-                                        .background(Color.black.opacity(0.7))
-                                        .foregroundStyle(.white)
-                                        .cornerRadius(4)
-                                        .padding(6)
+                                        .frame(height: 26)
+                                        .padding(8)
                                 }
                             }
                         }

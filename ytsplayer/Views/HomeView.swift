@@ -7,6 +7,9 @@ struct HomeView: View {
     @ObservedObject var libraryVM: LibraryViewModel
     @ObservedObject var playbackVM: PlaybackViewModel
     
+    var onSearchTapped: () -> Void
+    var onProfileTapped: () -> Void
+    
     // For navigating directly to album/artist from home
     @State private var selectedAlbum: AlbumViewModel?
     @State private var selectedArtist: ArtistViewModel?
@@ -15,13 +18,59 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 // Header
-                Text("Home")
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 24)
+                HStack {
+                    Text("Listen Now")
+                        .font(.system(size: 34, weight: .bold))
+                        .foregroundStyle(.white)
+                    
+                    Spacer()
+                    
+                    Button(action: onSearchTapped) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 16)
+                    
+                    Button(action: onProfileTapped) {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundStyle(.purple)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
                 
-                // 1. Recently added tracks (3-row horizontal grid)
+                if libraryVM.recentTracks.isEmpty && libraryVM.recentAlbums.isEmpty && libraryVM.recentArtists.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "music.note.house")
+                            .font(.system(size: 64))
+                            .foregroundStyle(.purple.opacity(0.8))
+                        Text("No Music Library")
+                            .font(.title2.bold())
+                            .foregroundStyle(.white)
+                        Text("Click the folder icon in the toolbar to select\nyour FLAC music directory.")
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.white.opacity(0.6))
+                            .font(.system(size: 14))
+                        
+                        Button(action: onProfileTapped) {
+                            Text("Select Music Folder")
+                                .font(.system(size: 14, weight: .semibold))
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 10)
+                                .background(Color.purple)
+                                .foregroundStyle(.white)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 8)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 400)
+                } else {
+                    // 1. Recently added tracks (3-row horizontal grid)
                 if !libraryVM.recentTracks.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
                         sectionHeader(title: "Recently added tracks")
@@ -82,6 +131,8 @@ struct HomeView: View {
                         }
                     }
                 }
+                
+                } // Close else block
                 
                 Spacer(minLength: 40)
             }

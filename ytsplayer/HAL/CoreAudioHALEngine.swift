@@ -291,7 +291,13 @@ final class CoreAudioHALEngine {
         decoderWorker = worker
 
         let rate = Double(context.pointee.sampleRate)
-        if rate > 0 { await setHardwareSampleRate(rate) }
+        if rate > 0 { 
+            let ok = await setHardwareSampleRate(rate)
+            if !ok {
+                NSLog("[ytsplayer] Hardware rejected sample rate \(rate)")
+                return false
+            }
+        }
 
         guard registerIOProc(), startPlayback() else { return false }
 
