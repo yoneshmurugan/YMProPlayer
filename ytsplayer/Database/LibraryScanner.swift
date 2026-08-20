@@ -85,6 +85,12 @@ final class LibraryScanner: ObservableObject {
                             $0.withMemoryRebound(to: CChar.self, capacity: 512) { String(cString: $0) }
                         }.trimmingCharacters(in: .whitespacesAndNewlines)
 
+                        var finalLyrics: String? = nil
+                        if let lyricsC = meta.lyricsData {
+                            let lyricsStr = String(cString: lyricsC).trimmingCharacters(in: .whitespacesAndNewlines)
+                            finalLyrics = lyricsStr.isEmpty ? nil : lyricsStr
+                        }
+
                         // Downsample artwork
                         var artworkFilename: String? = nil
                         if let cacheDir, meta.artworkData != nil, meta.artworkSize > 0 {
@@ -114,7 +120,8 @@ final class LibraryScanner: ObservableObject {
                             duration:    meta.duration,
                             sampleRate:  Int(meta.sampleRate),
                             bitDepth:    Int(meta.bitDepth),
-                            channels:    Int(meta.channels)
+                            channels:    Int(meta.channels),
+                            lyrics:      finalLyrics
                         )
                         return (artistRecord, albumRecord, trackRecord, artworkFilename)
                     }

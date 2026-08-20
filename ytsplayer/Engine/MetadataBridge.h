@@ -32,6 +32,9 @@ typedef struct {
     uint8_t *artworkData;
     size_t   artworkSize;
     char     artworkMimeType[64]; ///< e.g. "image/jpeg"
+
+    /// Extracted lyrics, if available (owned by caller — must free with ExtractedMetadata_FreeArtwork)
+    char    *lyricsData;
 } ExtractedTrackMetadata;
 
 /// Extract all metadata from a FLAC file at filePath.
@@ -40,6 +43,10 @@ bool ExtractFLACMetadata(const char *filePath, ExtractedTrackMetadata *outMetada
 
 /// Free the artwork buffer allocated by ExtractFLACMetadata.
 void ExtractedMetadata_FreeArtwork(ExtractedTrackMetadata *metadata);
+
+/// Embeds lyrics directly into the FLAC file's Vorbis Comment block.
+/// Returns true if successful.
+bool EmbedLyricsToFLAC(const char *filePath, const char *lyricsText);
 
 #ifdef __cplusplus
 }

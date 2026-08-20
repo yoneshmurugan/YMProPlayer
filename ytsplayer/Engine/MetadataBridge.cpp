@@ -60,6 +60,18 @@ extern "C" bool ExtractFLACMetadata(const char *filePath, ExtractedTrackMetadata
     out->year        = tagUInt(pm, "DATE"); // TagLib exposes Year as DATE in PropertyMap
     if (out->year == 0) out->year = tagUInt(pm, "YEAR");
 
+    if (pm.contains("LYRICS")) {
+        std::string lyricsStr = pm["LYRICS"].front().to8Bit(true);
+        if (!lyricsStr.empty()) {
+            out->lyricsData = strdup(lyricsStr.c_str());
+        }
+    } else if (pm.contains("UNSYNCEDLYRICS")) {
+        std::string lyricsStr = pm["UNSYNCEDLYRICS"].front().to8Bit(true);
+        if (!lyricsStr.empty()) {
+            out->lyricsData = strdup(lyricsStr.c_str());
+        }
+    }
+
     // ── Fallback to basic tag() if properties failed ───────────────────────
     auto *tag = file.tag();
     if (tag) {
@@ -95,4 +107,31 @@ extern "C" void ExtractedMetadata_FreeArtwork(ExtractedTrackMetadata *metadata) 
     free(metadata->artworkData);
     metadata->artworkData = nullptr;
     metadata->artworkSize = 0;
+    
+    if (metadata->lyricsData) {
+        free(metadata->lyricsData);
+        metadata->lyricsData = nullptr;
+    }
+}
+
+extern "C" bool EmbedLyricsToFLAC(const char *filePath, const char *lyricsText) {
+    if (!filePath || !lyricsText) return false;
+    
+    TagLib::FLAC::File file(filePath, false, TagLib::AudioProperties::Average);
+    if (!file.isValid()) return false;
+    
+    // Use XiphComment for FLAC
+    TagLib::Ogg::XiphComment *comment = file.xiphComment(true);
+    if (!comment) return false;
+    
+    TagLib::String lyricsString(lyricsText, TagLib::String::UTF8);
+    
+    // First remove any old lyrics
+    comment->removeFields("LYRICS");
+    comment->removeFields("UNSYNCEDLYRICS");
+    
+    // Add new lyrics
+    comment->addField("LYRICS", lyricsString);
+    
+    return file.save();
 }

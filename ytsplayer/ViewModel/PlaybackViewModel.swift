@@ -20,6 +20,13 @@ final class PlaybackViewModel: ObservableObject {
     @Published var isScrubbing: Bool        = false
     @Published var errorMessage: String?
 
+    @Published var isBitPerfect: Bool = true {
+        didSet { halEngine.isBitPerfect = isBitPerfect }
+    }
+    @Published var volume: Double = 1.0 {
+        didSet { halEngine.softwareVolume = Float(volume) }
+    }
+
     let halEngine: CoreAudioHALEngine
     private var pollerCancellable: AnyCancellable?
     private var deviceCancellable: AnyCancellable?
@@ -130,8 +137,8 @@ final class PlaybackViewModel: ObservableObject {
             .publisher(for: .audioDeviceDidChange)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.isPlaying    = false
-                self?.errorMessage = "Audio device changed — press play to continue."
+                // Engine handles device fallback automatically — no user-facing error needed
+                self?.isPlaying = false
             }
     }
 

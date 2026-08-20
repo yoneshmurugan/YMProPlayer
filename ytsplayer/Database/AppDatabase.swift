@@ -38,6 +38,7 @@ struct TrackRecord: Codable, FetchableRecord, PersistableRecord {
     var sampleRate: Int
     var bitDepth: Int
     var channels: Int
+    var lyrics: String?
 }
 
 // MARK: - Rich DTO for UI display
@@ -53,6 +54,7 @@ struct TrackViewModel: Identifiable {
     let artistName: String?
     let albumTitle: String?
     let albumArtworkPath: String?
+    var lyrics: String?
 }
 
 struct AlbumViewModel: Identifiable {
@@ -104,31 +106,33 @@ enum AppDatabase {
                 t.autoIncrementedPrimaryKey("id")
                 t.column("name", .text).notNull().unique(onConflict: .ignore)
             }
-
             try db.create(table: "albums") { t in
                 t.autoIncrementedPrimaryKey("id")
-                t.column("title",           .text).notNull()
-                t.column("artistId",        .integer).references("artists", onDelete: .setNull)
-                t.column("albumArtist",     .text)
-                t.column("year",            .integer)
-                t.column("artworkCachePath",.text)
-                t.uniqueKey(["title", "artistId"], onConflict: .ignore)
+                t.column("title", .text).notNull()
+                t.column("artistId", .integer).references("artists", onDelete: .cascade)
+                t.column("albumArtist", .text)
+                t.column("year", .integer)
+                t.column("artworkCachePath", .text)
+                t.uniqueKey(["title", "artistId", "year"], onConflict: .ignore)
             }
-
             try db.create(table: "tracks") { t in
                 t.autoIncrementedPrimaryKey("id")
-                t.column("filePath",    .text).notNull().unique(onConflict: .replace)
-                t.column("title",       .text).notNull()
-                t.column("albumId",     .integer).references("albums",  onDelete: .cascade)
-                t.column("artistId",    .integer).references("artists", onDelete: .setNull)
+                t.column("filePath", .text).notNull().unique(onConflict: .replace)
+                t.column("title", .text).notNull()
+                t.column("albumId", .integer).references("albums", onDelete: .cascade)
+                t.column("artistId", .integer).references("artists", onDelete: .cascade)
                 t.column("trackNumber", .integer)
-                t.column("discNumber",  .integer)
-                t.column("duration",    .double).notNull()
-                t.column("sampleRate",  .integer).notNull()
-                t.column("bitDepth",    .integer).notNull()
-                t.column("channels",    .integer).notNull()
+                t.column("discNumber", .integer)
+                t.column("duration", .double).notNull()
+                t.column("sampleRate", .integer).notNull()
+                t.column("bitDepth", .integer).notNull()
+                t.column("channels", .integer).notNull()
             }
+        }
+        
 
+
+        m.registerMigration("v1_fts_setup") { db in
             // FTS5 virtual table for sub-millisecond full-text search
             try db.execute(sql: """
                 CREATE VIRTUAL TABLE tracks_fts USING fts5(
@@ -148,6 +152,12 @@ enum AppDatabase {
                     INSERT INTO tracks_fts(tracks_fts, rowid, title) VALUES ('delete', old.id, old.title);
                 END;
             """)
+        }
+
+        m.registerMigration("v2") { db in
+            try db.alter(table: "tracks") { t in
+                t.add(column: "lyrics", .text)
+            }
         }
 
         return m
@@ -207,7 +217,8 @@ extension DatabasePool {
                     bitDepth:         $0["bitDepth"],
                     artistName:       $0["artistName"],
                     albumTitle:       $0["albumTitle"],
-                    albumArtworkPath: $0["artworkCachePath"]
+                    albumArtworkPath: $0["artworkCachePath"],
+                    lyrics:           $0["lyrics"]
                 )
             }
         }
@@ -242,7 +253,8 @@ extension DatabasePool {
                     bitDepth:         $0["bitDepth"],
                     artistName:       $0["artistName"],
                     albumTitle:       $0["albumTitle"],
-                    albumArtworkPath: $0["artworkCachePath"]
+                    albumArtworkPath: $0["albumArtworkPath"],
+                    lyrics:           $0["lyrics"]
                 )
             }
         }

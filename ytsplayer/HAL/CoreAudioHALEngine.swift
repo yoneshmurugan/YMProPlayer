@@ -18,7 +18,19 @@ extension Notification.Name {
 @MainActor
 final class CoreAudioHALEngine {
 
-    // ── Public state ───────────────────────────────────────────────────────
+    // ── Volume & Bit-Perfect Mode ──────────────────────────────────────────
+
+    var isBitPerfect: Bool {
+        get { AEC_GetIsBitPerfect(context) }
+        set { AEC_SetIsBitPerfect(context, newValue) }
+    }
+
+    var softwareVolume: Float {
+        get { AEC_GetSoftwareVolume(context) }
+        set { AEC_SetSoftwareVolume(context, max(0.0, min(1.0, newValue))) }
+    }
+
+    // ── Device Discovery ───────────────────────────────────────────────────────
     private(set) var currentDeviceID: AudioObjectID = AudioObjectID(kAudioObjectUnknown)
     private(set) var isHogMode: Bool = false
     private(set) var ioProcID: AudioDeviceIOProcID?

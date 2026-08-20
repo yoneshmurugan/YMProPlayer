@@ -46,6 +46,10 @@ OSStatus AudioDevice_RenderCallback(
     // ── Apply gain scalar (used for 50ms ramp suppression during SR switch) ─
     float gain = atomic_load_explicit(&ctx->outputGain, memory_order_relaxed);
 
+    // ── Apply software volume if NOT in bit-perfect mode ────────────────────
+    bool isBitPerfect = atomic_load_explicit(&ctx->isBitPerfect, memory_order_relaxed);
+    float softwareVolume = isBitPerfect ? 1.0f : atomic_load_explicit(&ctx->softwareVolume, memory_order_relaxed);
+
     // ── Pull frames from the lock-free ring buffer ───────────────────────────
     UInt32 framesRead = (UInt32)RingBuffer_Read(ctx->ringBuffer, outputBuffer, (size_t)frameCount);
 
@@ -55,11 +59,12 @@ OSStatus AudioDevice_RenderCallback(
         memset(outputBuffer + (framesRead * 2), 0, silenceFrames * 2 * sizeof(float));
     }
 
-    // ── Apply gain in-place (used during ramp suppression) ──────────────────
-    if (gain < 1.0f) {
+    // ── Apply gain in-place ─────────────────────────────────────────────────
+    float finalGain = gain * softwareVolume;
+    if (finalGain < 1.0f) {
         UInt32 samples = frameCount * 2; // stereo
         for (UInt32 i = 0; i < samples; i++) {
-            outputBuffer[i] *= gain;
+            outputBuffer[i] *= finalGain;
         }
     }
 

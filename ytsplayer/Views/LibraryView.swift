@@ -14,6 +14,60 @@ struct LibraryView: View {
     var body: some View {
         VStack(spacing: 0) {
 
+            // ── Top Header: Library > Albums ───────────────────────────────
+            HStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    Text("Library")
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.3))
+                    Text("Albums")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                
+                Spacer()
+                
+                // Search pill
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.white.opacity(0.5))
+                        .font(.system(size: 13))
+                    Text("Search Music, Playlists, Artists…")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.white.opacity(0.4))
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .frame(width: 280)
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                
+                Spacer().frame(width: 16)
+                
+                // Avatar
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.purple, .indigo],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Text("Y")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                    )
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Color.black.opacity(0.15))
+
             // ── Scan Progress Bar ──────────────────────────────────────────
             if libraryVM.isScanning {
                 VStack(spacing: 4) {
@@ -128,42 +182,52 @@ struct AlbumCard: View {
     @State private var isHovered = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             // Artwork
             artworkImage
-                .frame(width: .infinity, height: nil)
+                .frame(maxWidth: .infinity)
                 .aspectRatio(1, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .shadow(
-                    color: .black.opacity(isHovered ? 0.4 : 0.2),
-                    radius: isHovered ? 12 : 6
+                    color: .black.opacity(isHovered ? 0.6 : 0.25),
+                    radius: isHovered ? 16 : 8,
+                    y: isHovered ? 8 : 4
                 )
-                .scaleEffect(isHovered ? 1.03 : 1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.65), value: isHovered)
+                .scaleEffect(isHovered ? 1.04 : 1.0)
+                .animation(.spring(response: 0.35, dampingFraction: 0.65), value: isHovered)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [.purple.opacity(isSelected ? 0.8 : 0), .blue.opacity(isSelected ? 0.8 : 0)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isSelected ? 3 : 0
+                        )
+                )
 
             // Text
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(album.title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
                     .lineLimit(1)
                 if let artist = album.artistName {
                     Text(artist)
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.7))
                         .lineLimit(1)
                 }
                 if let year = album.year {
                     Text(String(year))
                         .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.white.opacity(0.5))
                 }
             }
+            .padding(.horizontal, 4)
         }
         .onHover { isHovered = $0 }
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Color.purple.opacity(isSelected ? 0.7 : 0), lineWidth: 2)
-        )
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
