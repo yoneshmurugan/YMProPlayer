@@ -59,8 +59,10 @@ static FLAC__StreamDecoderWriteStatus flac_write_callback(
 
     size_t outFrames = blocksize / ratio;
 
-    // Stack-allocate the interleaved float buffer
-    float interleavedBuffer[outFrames * 2];
+    // Allocate the interleaved float buffer on the heap to prevent stack overflow
+    // (A FLAC blocksize can be up to 65535 frames, which would be ~524KB, blowing up GCD threads)
+    float *interleavedBuffer = (float *)malloc(outFrames * 2 * sizeof(float));
+    if (!interleavedBuffer) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
 
     for (size_t i = 0; i < outFrames; i++) {
         size_t inIndex = i * ratio;
@@ -79,6 +81,7 @@ static FLAC__StreamDecoderWriteStatus flac_write_callback(
     size_t written = 0;
     while (written < outFrames) {
         if (atomic_load_explicit(&worker->shouldStop, memory_order_relaxed)) {
+            free(interleavedBuffer);
             return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
         }
         size_t w = RingBuffer_Write(ctx->ringBuffer,
@@ -89,6 +92,8 @@ static FLAC__StreamDecoderWriteStatus flac_write_callback(
             usleep(1000); // 1ms yield — background thread only, never in IOProc
         }
     }
+    
+    free(interleavedBuffer);
 
     // Once ring buffer is half full, signal that playback may begin
     if (!atomic_load_explicit(&worker->isReady, memory_order_relaxed)) {

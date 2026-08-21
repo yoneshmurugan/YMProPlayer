@@ -45,7 +45,7 @@ struct HomeView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 24)
                 
-                if libraryVM.recentTracks.isEmpty && libraryVM.recentAlbums.isEmpty && libraryVM.recentArtists.isEmpty {
+                if libraryVM.quickPicks.isEmpty && libraryVM.mostPlayedAlbums.isEmpty && libraryVM.mostPlayedArtists.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "music.note.house")
                             .font(.system(size: 64))
@@ -73,68 +73,86 @@ struct HomeView: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 400)
                 } else {
-                    // 1. Recently added tracks (3-row horizontal grid)
-                if !libraryVM.recentTracks.isEmpty {
-                    VStack(alignment: .leading, spacing: 16) {
-                        sectionHeader(title: "Recently added tracks")
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            LazyHGrid(rows: Array(repeating: GridItem(.fixed(60), spacing: 8), count: 3), spacing: 16) {
-                                ForEach(0..<libraryVM.recentTracks.count, id: \.self) { index in
-                                    let track = libraryVM.recentTracks[index]
+                    // 1. Quick Picks (3-row horizontal grid)
+                    if !libraryVM.quickPicks.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            sectionHeader(title: "Quick Picks")
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHGrid(rows: Array(repeating: GridItem(.fixed(60), spacing: 8), count: 3), spacing: 16) {
+                                    ForEach(0..<libraryVM.quickPicks.count, id: \.self) { index in
+                                        let track = libraryVM.quickPicks[index]
+                                        RecentTrackCell(track: track)
+                                            .frame(width: 320)
+                                            .onTapGesture {
+                                                playbackVM.play(track: track, queue: libraryVM.quickPicks, startIndex: index)
+                                            }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                            .frame(height: 200)
+                        }
+                    }
+                    
+                    // 2. Most Listened Albums
+                    if !libraryVM.mostPlayedAlbums.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            sectionHeader(title: "Most Listened Albums")
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(spacing: 20) {
+                                    ForEach(libraryVM.mostPlayedAlbums) { album in
+                                        AlbumCard(album: album, isSelected: false)
+                                            .frame(width: 180)
+                                            .onTapGesture {
+                                                selectedAlbum = album
+                                            }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                        }
+                    }
+                    
+                    // 3. Most Listened Artists
+                    if !libraryVM.mostPlayedArtists.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            sectionHeader(title: "Most Listened Artists")
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(spacing: 24) {
+                                    ForEach(libraryVM.mostPlayedArtists) { artist in
+                                        ArtistCard(artist: artist)
+                                            .frame(width: 140)
+                                            .onTapGesture {
+                                                selectedArtist = artist
+                                            }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                        }
+                    }
+                    
+                    // 4. Heavy Rotation (Songs)
+                    if !libraryVM.mostPlayedTracks.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            sectionHeader(title: "Heavy Rotation")
+                            
+                            VStack(spacing: 8) {
+                                ForEach(0..<libraryVM.mostPlayedTracks.count, id: \.self) { index in
+                                    let track = libraryVM.mostPlayedTracks[index]
                                     RecentTrackCell(track: track)
-                                        .frame(width: 320)
+                                        .padding(.horizontal, 14)
                                         .onTapGesture {
-                                            playbackVM.play(track: track, queue: libraryVM.recentTracks, startIndex: index)
+                                            playbackVM.play(track: track, queue: libraryVM.mostPlayedTracks, startIndex: index)
                                         }
                                 }
                             }
-                            .padding(.horizontal, 20)
-                        }
-                        .frame(height: 200) // 3 rows of 60 + spacing
-                    }
-                }
-                
-                // 2. Recently added albums (horizontal squares)
-                if !libraryVM.recentAlbums.isEmpty {
-                    VStack(alignment: .leading, spacing: 16) {
-                        sectionHeader(title: "Recently added albums")
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            LazyHStack(spacing: 20) {
-                                ForEach(libraryVM.recentAlbums) { album in
-                                    AlbumCard(album: album, isSelected: false)
-                                        .frame(width: 180)
-                                        .onTapGesture {
-                                            selectedAlbum = album
-                                        }
-                                }
-                            }
-                            .padding(.horizontal, 20)
                         }
                     }
-                }
-                
-                // 3. Recently added artists (horizontal circles)
-                if !libraryVM.recentArtists.isEmpty {
-                    VStack(alignment: .leading, spacing: 16) {
-                        sectionHeader(title: "Recently added artists")
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            LazyHStack(spacing: 24) {
-                                ForEach(libraryVM.recentArtists) { artist in
-                                    ArtistCard(artist: artist)
-                                        .frame(width: 140)
-                                        .onTapGesture {
-                                            selectedArtist = artist
-                                        }
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                }
-                
+                    
                 } // Close else block
                 
                 Spacer(minLength: 40)
@@ -155,8 +173,8 @@ struct HomeView: View {
             )
         }
         .onAppear {
-            if libraryVM.recentTracks.isEmpty {
-                libraryVM.loadAlbums() // which also loads recent items now
+            if libraryVM.quickPicks.isEmpty {
+                libraryVM.loadAlbums() // Loads quick picks and most played
             }
         }
     }

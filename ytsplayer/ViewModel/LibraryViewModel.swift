@@ -9,13 +9,14 @@ import Combine
 final class LibraryViewModel: ObservableObject {
     @Published var albums: [AlbumViewModel] = []
     @Published var artists: [ArtistViewModel] = []
-    @Published var recentTracks: [TrackViewModel] = []
-    @Published var recentAlbums: [AlbumViewModel] = []
-    @Published var recentArtists: [ArtistViewModel] = []
+    @Published var quickPicks: [TrackViewModel] = []
+    @Published var mostPlayedTracks: [TrackViewModel] = []
+    @Published var mostPlayedAlbums: [AlbumViewModel] = []
+    @Published var mostPlayedArtists: [ArtistViewModel] = []
     @Published var isLoading: Bool          = true
     @Published var scanProgress: Double     = 0.0
     @Published var isScanning: Bool         = false
-    @Published var libraryRootURL: URL?
+    @Published var libraryFolders: [URL]    = []
 
     let scanner: LibraryScanner
     private let db: DatabasePool
@@ -29,44 +30,89 @@ final class LibraryViewModel: ObservableObject {
     }
 
     enum SortOrder: String, CaseIterable {
-        case titleAsc = "Title (A-Z)"
-        case titleDesc = "Title (Z-A)"
-        case yearDesc = "Year (Newest)"
-        case yearAsc = "Year (Oldest)"
+        case alphaAsc = "Alphabetical A-Z"
+        case alphaDesc = "Alphabetical Z-A"
+        case artistsAsc = "Artists A-Z"
+        case artistsDesc = "Artists Z-A"
+        case recentlyPlayed = "Recently played"
+        case recentlyAdded = "Recently added"
+        case mostPlayed = "Most played"
     }
-    @Published var sortOrder: SortOrder = .titleAsc {
+    @Published var sortOrder: SortOrder = .alphaAsc {
         didSet { loadAlbums() }
     }
 
     func loadAlbums() {
         Task {
             isLoading = true
-            var loaded = (try? db.fetchAlbumViewModels()) ?? []
-            
+            var loaded: [AlbumViewModel] = []
             switch sortOrder {
-            case .titleAsc:
-                loaded.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-            case .titleDesc:
-                loaded.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedDescending }
-            case .yearDesc:
-                loaded.sort { ($0.year ?? 0) > ($1.year ?? 0) }
-            case .yearAsc:
-                loaded.sort { ($0.year ?? Int.max) < ($1.year ?? Int.max) }
+            case .mostPlayed:
+                loaded = (try? db.fetchTracksForAlbumSortMostPlayed()) ?? []
+            default:
+                loaded = (try? db.fetchAlbumViewModels()) ?? []
+                switch sortOrder {
+                case .alphaAsc:
+                    loaded.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+                case .alphaDesc:
+                    loaded.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedDescending }
+                case .artistsAsc:
+                    loaded.sort { ($0.artistName ?? "").localizedCaseInsensitiveCompare($1.artistName ?? "") == .orderedAscending }
+                case .artistsDesc:
+                    loaded.sort { ($0.artistName ?? "").localizedCaseInsensitiveCompare($1.artistName ?? "") == .orderedDescending }
+                case .recentlyAdded:
+                    loaded.sort { $0.id > $1.id }
+                case .recentlyPlayed, .mostPlayed:
+                    break
+                }
             }
             
             albums = loaded
             artists = (try? db.fetchArtistsWithArtwork()) ?? []
-            recentTracks = (try? db.fetchRecentTracks(limit: 30)) ?? []
-            recentAlbums = (try? db.fetchRecentAlbums(limit: 15)) ?? []
-            recentArtists = (try? db.fetchRecentArtists(limit: 15)) ?? []
+            quickPicks = (try? db.fetchQuickPicks(limitPerFolder: 10, fromFolders: libraryFolders)) ?? []
+            mostPlayedTracks = (try? db.fetchMostPlayedTracks(limit: 10)) ?? []
+            mostPlayedAlbums = (try? db.fetchMostPlayedAlbums(limit: 15)) ?? []
+            mostPlayedArtists = (try? db.fetchMostPlayedArtists(limit: 15)) ?? []
             isLoading = false
         }
     }
 
-    func startScan(rootURL: URL) {
-        libraryRootURL = rootURL
-        UserDefaults.standard.set(rootURL.path, forKey: "libraryRootPath")
-        scanner.startScan(rootURL: rootURL)
+    func addFolder(url: URL) {
+        if !libraryFolders.contains(url) {
+            libraryFolders.append(url)
+            saveFoldersToUserDefaults()
+        }
+    }
+    
+    func removeFolder(url: URL) {
+        libraryFolders.removeAll { $0 == url }
+        saveFoldersToUserDefaults()
+        
+        Task {
+            try? db.deleteTracks(inFolder: url.path)
+            loadAlbums()
+        }
+    }
+    
+    func startScan() {
+        guard !libraryFolders.isEmpty else { return }
+        scanner.startScan(folders: libraryFolders)
+    }
+    
+    func loadFoldersFromUserDefaults() {
+        if let paths = UserDefaults.standard.stringArray(forKey: "libraryRootPaths") {
+            libraryFolders = paths.map { URL(fileURLWithPath: $0) }
+        } else if let legacyPath = UserDefaults.standard.string(forKey: "libraryRootPath") {
+            let url = URL(fileURLWithPath: legacyPath)
+            libraryFolders = [url]
+            saveFoldersToUserDefaults()
+            UserDefaults.standard.removeObject(forKey: "libraryRootPath")
+        }
+    }
+    
+    private func saveFoldersToUserDefaults() {
+        let paths = libraryFolders.map { $0.path }
+        UserDefaults.standard.set(paths, forKey: "libraryRootPaths")
     }
 
     func fetchTracks(for album: AlbumViewModel) -> [TrackViewModel] {
@@ -80,13 +126,25 @@ final class LibraryViewModel: ObservableObject {
     func fetchTrack(byPath path: String) -> TrackViewModel? {
         try? db.fetchTrack(byPath: path)
     }
+    
+    func fetchFirstTrackInFolder(path: String) -> TrackViewModel? {
+        try? db.fetchFirstTrackInFolder(path: path)
+    }
 
     func clearLibraryAndCache() {
         Task {
             await scanner.clearLibraryAndCache()
-            libraryRootURL = nil
-            UserDefaults.standard.removeObject(forKey: "libraryRootPath")
-            loadAlbums()
+            
+            await MainActor.run {
+                libraryFolders.removeAll()
+                UserDefaults.standard.removeObject(forKey: "libraryRootPaths")
+                albums.removeAll()
+                artists.removeAll()
+                quickPicks.removeAll()
+                mostPlayedTracks.removeAll()
+                mostPlayedAlbums.removeAll()
+                mostPlayedArtists.removeAll()
+            }
         }
     }
 

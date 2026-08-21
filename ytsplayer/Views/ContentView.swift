@@ -31,7 +31,11 @@ struct ContentView: View {
     init(halEngine: CoreAudioHALEngine, db: DatabasePool) {
         self.halEngine = halEngine
         self.db = db
-        _playbackVM = StateObject(wrappedValue: PlaybackViewModel(halEngine: halEngine))
+        let pvm = PlaybackViewModel(halEngine: halEngine)
+        pvm.onTrackPlayed = { id in
+            try? db.incrementPlayCount(forTrackId: id)
+        }
+        _playbackVM = StateObject(wrappedValue: pvm)
         _libraryVM  = StateObject(wrappedValue: LibraryViewModel(db: db))
         _searchVM   = StateObject(wrappedValue: SearchViewModel(db: db))
     }

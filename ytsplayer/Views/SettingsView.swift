@@ -18,31 +18,43 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-            Section("Library") {
-                LabeledContent("Music Folder") {
-                    HStack {
-                        Text(libraryVM.libraryRootURL?.path ?? "Not set")
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Button("Choose…") { showFolderPicker = true }
-                            .controlSize(.small)
-                    }
-                }
-
-                HStack {
-                    Button("Re-scan Library") {
-                        if let url = libraryVM.libraryRootURL {
-                            libraryVM.startScan(rootURL: url)
+            Section("Library Folders") {
+                if libraryVM.libraryFolders.isEmpty {
+                    Text("No folders selected")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(libraryVM.libraryFolders, id: \.self) { url in
+                        HStack {
+                            Text(url.path)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer()
+                            Button {
+                                libraryVM.removeFolder(url: url)
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .disabled(libraryVM.libraryRootURL == nil || libraryVM.isScanning)
-
+                }
+                
+                Button("Add Folder…") { showFolderPicker = true }
+                
+                HStack {
+                    Button("Re-scan All") {
+                        libraryVM.startScan()
+                    }
+                    .disabled(libraryVM.libraryFolders.isEmpty || libraryVM.isScanning)
+                    
+                    Spacer()
+                    
                     Button(role: .destructive) {
                         libraryVM.clearLibraryAndCache()
                         playbackVM.clearQueueAndStop()
                     } label: {
-                        Text("Remove Folder & Clear Cache")
+                        Text("Clear Library Database")
                             .foregroundStyle(.red)
                     }
                 }
@@ -96,10 +108,8 @@ struct SettingsView: View {
             hogModeEnabled  = halEngine.isHogMode
             availableRates  = halEngine.availableSampleRates()
 
-            // Restore saved library path
-            if let path = UserDefaults.standard.string(forKey: "libraryRootPath") {
-                libraryVM.libraryRootURL = URL(fileURLWithPath: path)
-            }
+            // Restore saved library paths
+            libraryVM.loadFoldersFromUserDefaults()
         }
         .fileImporter(
             isPresented: $showFolderPicker,
@@ -107,7 +117,8 @@ struct SettingsView: View {
         ) { result in
             if case .success(let url) = result {
                 _ = url.startAccessingSecurityScopedResource()
-                libraryVM.startScan(rootURL: url)
+                libraryVM.addFolder(url: url)
+                libraryVM.startScan()
             }
         }
     }

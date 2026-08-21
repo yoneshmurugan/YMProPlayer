@@ -82,7 +82,7 @@ struct ArtistCard: View {
                 .foregroundStyle(.white)
                 .lineLimit(1)
             
-            Text("\(artist.albumCount) Album\(artist.albumCount == 1 ? "" : "s")")
+            Text("\(artist.albumCount) Album\(artist.albumCount == 1 ? "" : "s") • \(artist.trackCount) Song\(artist.trackCount == 1 ? "" : "s")")
                 .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(.white.opacity(0.5))
         }

@@ -27,10 +27,10 @@ final class LibraryScanner: ObservableObject {
 
     // MARK: - Public API
 
-    func startScan(rootURL: URL) {
+    func startScan(folders: [URL]) {
         scanTask?.cancel()
         scanTask = Task { [weak self] in
-            await self?.scan(rootURL: rootURL)
+            await self?.scan(folders: folders)
         }
     }
 
@@ -41,13 +41,13 @@ final class LibraryScanner: ObservableObject {
 
     // MARK: - Core Scan Logic
 
-    private func scan(rootURL: URL) async {
+    private func scan(folders: [URL]) async {
         isScanning    = true
         scannedCount  = 0
         progress      = 0.0
         lastError     = nil
 
-        let files = await discoverFLACFiles(in: rootURL)
+        let files = await discoverFLACFiles(in: folders)
         totalCount = files.count
         guard totalCount > 0 else {
             isScanning = false
@@ -112,6 +112,18 @@ final class LibraryScanner: ObservableObject {
                             year:            meta.year > 0 ? Int(meta.year) : nil,
                             artworkCachePath: artworkFilename
                         )
+                        
+                        // Extract file size and calculate average bitrate
+                        var fileSize: Int64? = nil
+                        var bitrate: Int? = nil
+                        if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                           let size = attrs[.size] as? Int64 {
+                            fileSize = size
+                            if meta.duration > 0 {
+                                bitrate = Int(Double(size * 8) / meta.duration)
+                            }
+                        }
+
                         let trackRecord  = TrackRecord(
                             filePath:    url.path,
                             title:       title.isEmpty ? url.deletingPathExtension().lastPathComponent : title,
@@ -121,7 +133,9 @@ final class LibraryScanner: ObservableObject {
                             sampleRate:  Int(meta.sampleRate),
                             bitDepth:    Int(meta.bitDepth),
                             channels:    Int(meta.channels),
-                            lyrics:      finalLyrics
+                            lyrics:      finalLyrics,
+                            fileSize:    fileSize,
+                            bitrate:     bitrate
                         )
                         return (artistRecord, albumRecord, trackRecord, artworkFilename)
                     }
@@ -166,19 +180,28 @@ final class LibraryScanner: ObservableObject {
 
     // MARK: - File Discovery
 
-    private func discoverFLACFiles(in rootURL: URL) async -> [URL] {
+    private func discoverFLACFiles(in folders: [URL]) async -> [URL] {
         await Task.detached(priority: .utility) {
             var results: [URL] = []
             let fm = FileManager.default
-            guard let enumerator = fm.enumerator(
-                at: rootURL,
-                includingPropertiesForKeys: [.isRegularFileKey],
-                options: [.skipsHiddenFiles, .skipsPackageDescendants]
-            ) else { return [] }
-
-            while let next = enumerator.nextObject() as? URL {
-                if next.pathExtension.lowercased() == "flac" {
-                    results.append(next)
+            
+            for folder in folders {
+                let accessing = folder.startAccessingSecurityScopedResource()
+                
+                if let enumerator = fm.enumerator(
+                    at: folder,
+                    includingPropertiesForKeys: [.isRegularFileKey],
+                    options: [.skipsHiddenFiles, .skipsPackageDescendants]
+                ) {
+                    while let next = enumerator.nextObject() as? URL {
+                        if next.pathExtension.lowercased() == "flac" {
+                            results.append(next)
+                        }
+                    }
+                }
+                
+                if accessing {
+                    folder.stopAccessingSecurityScopedResource()
                 }
             }
             return results

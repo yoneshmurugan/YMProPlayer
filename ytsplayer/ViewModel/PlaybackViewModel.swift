@@ -19,6 +19,8 @@ final class PlaybackViewModel: ObservableObject {
     @Published var isBuffering: Bool        = false
     @Published var isScrubbing: Bool        = false
     @Published var errorMessage: String?
+    
+    var onTrackPlayed: ((Int64) -> Void)?
 
     @Published var isBitPerfect: Bool = true {
         didSet {
@@ -114,6 +116,8 @@ final class PlaybackViewModel: ObservableObject {
         isPlaying   = ok
         if ok {
             AEC_SetIsPlaying(halEngine.context, true)
+            // Track play count
+            onTrackPlayed?(track.id)
         } else {
             errorMessage = "Audio format not supported. Enable Downsampling in Settings."
         }
