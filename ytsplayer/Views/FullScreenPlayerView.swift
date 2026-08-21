@@ -8,186 +8,276 @@ struct FullScreenPlayerView: View {
     @ObservedObject var vm: PlaybackViewModel
     let database: DatabasePool
     @Environment(\.dismiss) var dismiss
-    
+
     @State private var isFetchingLyrics = false
     @State private var lyricsError: String?
-    
+
     var body: some View {
-        ZStack {
-            // Background Blur based on current artwork
-            if let path = vm.currentTrack?.albumArtworkPath,
-               let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-                let url = cacheDir.appendingPathComponent(path)
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .blur(radius: 60)
-                        .overlay(Color.black.opacity(0.4))
-                } placeholder: {
-                    Color.black
-                }
-                .ignoresSafeArea()
-            } else {
-                Color.black.ignoresSafeArea()
-            }
+        HStack(alignment: .top, spacing: 50) {
             
-            // Content
-            HStack(spacing: 40) {
+            // LEFT: Artwork + Info
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer().frame(height: 20)
                 
-                // Left: Artwork and Track Info
-                VStack(alignment: .leading, spacing: 20) {
-                    ZStack(alignment: .bottomTrailing) {
-                        if let path = vm.currentTrack?.albumArtworkPath,
-                           let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-                            let url = cacheDir.appendingPathComponent(path)
-                            AsyncImage(url: url) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFit()
-                                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                    .shadow(color: .black.opacity(0.5), radius: 20, y: 10)
-                            } placeholder: {
-                                RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white.opacity(0.1))
-                            }
-                        } else {
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(Color.white.opacity(0.1))
-                                .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.3)))
-                        }
-                        
-                        if (vm.currentTrack?.bitDepth ?? 0) >= 24 {
-                            if let nsImage = NSImage(named: "hires.png") {
-                                Image(nsImage: nsImage)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(height: 36)
-                                    .padding(16)
-                            }
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(vm.currentTrack?.title ?? "Nothing Playing")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(.white)
-                            .lineLimit(2)
-                        
-                        Text(vm.currentTrack?.artistName ?? "Unknown Artist")
-                            .font(.title2)
-                            .foregroundColor(.white.opacity(0.7))
-                        
-                        Text(vm.currentTrack?.albumTitle ?? "Unknown Album")
-                            .font(.title3)
-                            .foregroundColor(.white.opacity(0.5))
-                        
-                        // Audio Specs
-                        if vm.currentSampleRate > 0 {
-                            HStack(spacing: 8) {
-                                let kHz = vm.currentSampleRate / 1000
-                                let rem = vm.currentSampleRate % 1000
-                                let rateStr = rem == 0 ? "\(kHz)kHz" : "\(kHz).\(rem/100)kHz"
-                                
-                                Text("\(vm.currentBitDepth)-bit / \(rateStr)")
-                                    .font(.caption.bold())
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Capsule().fill(Color.white.opacity(0.2)))
-                                    .foregroundColor(.white)
-                            }
-                            .padding(.top, 8)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                
-                // Right: Lyrics
-                VStack(alignment: .leading) {
-                    Text("Lyrics")
-                        .font(.title2.bold())
+                // Artwork
+                artworkView
+                    .frame(maxWidth: 220, maxHeight: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .shadow(color: .black.opacity(0.6), radius: 40, y: 20)
+
+                Spacer().frame(height: 24)
+
+                // Track info
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(vm.currentTrack?.title ?? "Nothing Playing")
+                        .font(.system(size: 28, weight: .bold))
                         .foregroundColor(.white)
-                        .padding(.bottom, 10)
-                    
-                    if let lyrics = vm.currentTrack?.lyrics {
-                        ScrollView(showsIndicators: false) {
-                            Text(lyrics)
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(.white.opacity(0.9))
-                                .lineSpacing(10)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.bottom, 60)
-                        }
-                    } else {
-                        VStack(spacing: 20) {
-                            Image(systemName: "text.alignleft")
-                                .font(.system(size: 50))
-                                .foregroundColor(.white.opacity(0.3))
-                            
-                            Text("No Lyrics Found")
-                                .font(.title3)
-                                .foregroundColor(.white.opacity(0.6))
-                            
-                            if isFetchingLyrics {
-                                ProgressView()
-                                    .controlSize(.regular)
-                                    .tint(.white)
-                            } else {
-                                Button(action: fetchLyrics) {
-                                    HStack {
-                                        Image(systemName: "globe")
-                                        Text("Search Online")
-                                    }
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 10)
-                                    .background(Color.purple)
-                                    .foregroundColor(.white)
-                                    .clipShape(Capsule())
-                                }
-                                .buttonStyle(.plain)
-                                
-                                if let err = lyricsError {
-                                    Text(err)
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                        .multilineTextAlignment(.center)
-                                }
-                            }
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
+                        .lineLimit(2)
+
+                    Text(vm.currentTrack?.artistName ?? "Unknown Artist")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+
+                    Text(vm.currentTrack?.albumTitle ?? "Unknown Album")
+                        .font(.system(size: 15))
+                        .foregroundColor(.white.opacity(0.45))
                 }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                Spacer().frame(height: 20)
+
+                // Audio format badges
+                audioSpecBadges
+                
+                Spacer().frame(height: 32)
+                
+                // Metadata grid
+                metadataGrid
+                    .padding(.bottom, 20)
             }
-            .padding(60)
-            
-            // Close Button
-            VStack {
+            .frame(width: 320)
+
+            // RIGHT: Lyrics & Close Button
+            VStack(alignment: .leading, spacing: 0) {
                 HStack {
+                    Text("Lyrics")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                    Spacer()
                     Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.down.circle.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(.white.opacity(0.6))
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(.white.opacity(0.8))
+                            .background(Color.black.opacity(0.4))
+                            .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    Spacer()
+                    .focusable(false)
                 }
-                Spacer()
+                .padding(.bottom, 16)
+                .padding(.top, 20)
+
+                lyricsPanel
             }
-            .padding(30)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .padding(.horizontal, 40)
+        .padding(.vertical, 30)
+        .frame(width: 850, height: 550)
+        .background(backgroundLayer)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    // MARK: - Subviews
+
+    @ViewBuilder
+    private var backgroundLayer: some View {
+        if let path = vm.currentTrack?.albumArtworkPath,
+           let cacheDir = ImageDownsampler.artworkCacheDirectory() {
+            AsyncImage(url: cacheDir.appendingPathComponent(path)) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+                    .blur(radius: 80)
+                    .overlay(Color.black.opacity(0.55))
+            } placeholder: {
+                Color(red: 0.08, green: 0.05, blue: 0.18)
+            }
+            .ignoresSafeArea()
+        } else {
+            LinearGradient(
+                colors: [Color(red: 0.12, green: 0.05, blue: 0.25), Color(red: 0.04, green: 0.04, blue: 0.12)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
         }
     }
-    
+
+    @ViewBuilder
+    private var artworkView: some View {
+        ZStack(alignment: .bottomTrailing) {
+            if let path = vm.currentTrack?.albumArtworkPath,
+               let cacheDir = ImageDownsampler.artworkCacheDirectory() {
+                AsyncImage(url: cacheDir.appendingPathComponent(path)) { image in
+                    image.resizable().scaledToFit()
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: 24).fill(Color.white.opacity(0.1))
+                        .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.25)))
+                }
+            } else {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.1))
+                    .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.25)))
+            }
+
+            if (vm.currentTrack?.bitDepth ?? 0) >= 24,
+               let nsImage = NSImage(named: "hires.png") {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 32)
+                    .padding(12)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var audioSpecBadges: some View {
+        if let err = vm.errorMessage {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.white)
+                Text(err)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color.red.opacity(0.85))
+            .clipShape(Capsule())
+        } else if vm.currentSampleRate > 0 {
+            HStack(spacing: 8) {
+                let kHz = vm.currentSampleRate / 1000
+                let rem = vm.currentSampleRate % 1000
+                let rateStr = rem == 0 ? "\(kHz)kHz" : "\(kHz).\(rem / 100)kHz"
+
+                specBadge("FLAC", color: .white.opacity(0.25))
+                specBadge("\(vm.currentBitDepth)-bit", color: .cyan.opacity(0.3))
+                specBadge(rateStr, color: .purple.opacity(0.5))
+                if vm.currentBitDepth >= 24 {
+                    specBadge("Hi-Res", color: .orange.opacity(0.5))
+                }
+            }
+        }
+    }
+
+    private func specBadge(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(color)
+            .clipShape(Capsule())
+    }
+
+    @ViewBuilder
+    private var lyricsPanel: some View {
+        if let lyrics = vm.currentTrack?.lyrics {
+            ScrollView(showsIndicators: false) {
+                Text(lyrics)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.white.opacity(0.85))
+                    .lineSpacing(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 20)
+            }
+        } else {
+            VStack(spacing: 16) {
+                Image(systemName: "text.alignleft")
+                    .font(.system(size: 44))
+                    .foregroundColor(.white.opacity(0.25))
+
+                Text("No Lyrics Found")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.5))
+
+                if isFetchingLyrics {
+                    ProgressView().tint(.white)
+                } else {
+                    Button(action: fetchLyrics) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "globe")
+                            Text("Search Online")
+                        }
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 9)
+                        .background(Color.purple.opacity(0.8))
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    if let err = lyricsError {
+                        Text(err)
+                            .font(.caption)
+                            .foregroundColor(.red.opacity(0.8))
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 120)
+        }
+    }
+
+    @ViewBuilder
+    private var metadataGrid: some View {
+        if let track = vm.currentTrack {
+            Divider().background(Color.white.opacity(0.15)).padding(.bottom, 12)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("TRACK INFO")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white.opacity(0.35))
+                    .padding(.bottom, 4)
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
+                    metaItem("File", value: URL(fileURLWithPath: track.filePath).lastPathComponent)
+                    metaItem("Format", value: URL(fileURLWithPath: track.filePath).pathExtension.uppercased())
+                    metaItem("Sample Rate", value: {
+                        let kHz = track.sampleRate / 1000
+                        let rem = track.sampleRate % 1000
+                        return rem == 0 ? "\(kHz) kHz" : "\(kHz).\(rem / 100) kHz"
+                    }())
+                    metaItem("Bit Depth", value: "\(track.bitDepth)-bit")
+                    if let num = track.trackNumber { metaItem("Track #", value: "\(num)") }
+                }
+            }
+        }
+    }
+
+    private func metaItem(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.white.opacity(0.35))
+            Text(value)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.white.opacity(0.75))
+                .lineLimit(1)
+        }
+    }
+
+    // MARK: - Lyrics Fetch
+
     private func fetchLyrics() {
         guard let track = vm.currentTrack else { return }
         isFetchingLyrics = true
         lyricsError = nil
-        
+
         Task {
             do {
                 let fetchedLyrics = try await LyricsService.shared.fetchAndEmbedLyrics(for: track, database: database)
-                
                 await MainActor.run {
-                    // Update the view model's current track to trigger UI refresh
                     var updatedTrack = track
                     updatedTrack.lyrics = fetchedLyrics
                     vm.currentTrack = updatedTrack

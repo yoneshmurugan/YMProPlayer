@@ -132,7 +132,7 @@ struct ArtistTrackRowWrapper: View {
                     .padding(.horizontal, 24)
             }
             
-            TrackRow(track: tracks[index], isPlaying: playbackVM.currentTrack?.id == tracks[index].id)
+            TrackRow(index: index + 1, track: tracks[index], isPlaying: playbackVM.currentTrack?.id == tracks[index].id)
                 .onTapGesture {
                     playbackVM.play(track: tracks[index], queue: tracks, startIndex: index)
                 }

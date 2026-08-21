@@ -107,16 +107,16 @@ final class PlaybackViewModel: ObservableObject {
         currentSampleRate = track.sampleRate
         currentBitDepth   = track.bitDepth
 
-        if isBitPerfect {
-            if !halEngine.isHogMode { halEngine.acquireHogMode() }
-        } else {
-            if halEngine.isHogMode { halEngine.releaseHogMode() }
-        }
+        // Let CoreAudioHALEngine re-assert Hog Mode internally after stream setup
 
         let ok = await halEngine.loadTrack(filePath: track.filePath)
         isBuffering = false
         isPlaying   = ok
-        if !ok { errorMessage = "Audio format not supported by DAC (\(track.sampleRate) Hz)" }
+        if ok {
+            AEC_SetIsPlaying(halEngine.context, true)
+        } else {
+            errorMessage = "Audio format not supported. Enable Downsampling in Settings."
+        }
     }
 
     // MARK: - 30Hz Poller

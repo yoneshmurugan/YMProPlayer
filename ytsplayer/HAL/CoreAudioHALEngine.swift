@@ -117,6 +117,18 @@ final class CoreAudioHALEngine {
 
     // MARK: - Hog Mode
 
+    func checkHogMode() -> Bool {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyHogMode,
+            mScope:    kAudioObjectPropertyScopeGlobal,
+            mElement:  kAudioObjectPropertyElementMain
+        )
+        var hogPID = pid_t(-1)
+        var size = UInt32(MemoryLayout<pid_t>.size)
+        let status = AudioObjectGetPropertyData(currentDeviceID, &addr, 0, nil, &size, &hogPID)
+        return status == noErr && hogPID == pid_t(ProcessInfo.processInfo.processIdentifier)
+    }
+
     @discardableResult
     func acquireHogMode() -> Bool {
         var addr = AudioObjectPropertyAddress(
@@ -124,6 +136,12 @@ final class CoreAudioHALEngine {
             mScope:    kAudioObjectPropertyScopeGlobal,
             mElement:  kAudioObjectPropertyElementMain
         )
+        
+        if checkHogMode() {
+            isHogMode = true
+            return true
+        }
+
         var pid = pid_t(ProcessInfo.processInfo.processIdentifier)
         let size = UInt32(MemoryLayout<pid_t>.size)
         let status = AudioObjectSetPropertyData(currentDeviceID, &addr, 0, nil, size, &pid)
@@ -133,7 +151,10 @@ final class CoreAudioHALEngine {
 
     @discardableResult
     func releaseHogMode() -> Bool {
-        guard isHogMode else { return true }
+        if !checkHogMode() {
+            isHogMode = false
+            return true
+        }
         var addr = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyHogMode,
             mScope:    kAudioObjectPropertyScopeGlobal,
@@ -143,7 +164,7 @@ final class CoreAudioHALEngine {
         let size = UInt32(MemoryLayout<pid_t>.size)
         let status = AudioObjectSetPropertyData(currentDeviceID, &addr, 0, nil, size, &pid)
         if status == noErr { isHogMode = false }
-        return !isHogMode
+        return status == noErr
     }
 
     @discardableResult
@@ -151,9 +172,22 @@ final class CoreAudioHALEngine {
         let wasPlaying = isPlayingValue
         if wasPlaying { stopPlayback() }
         
-        let result = enable ? acquireHogMode() : releaseHogMode()
+        // We MUST destroy the IOProc before changing Hog Mode. 
+        // Core Audio caches device exclusivity on the IOProc itself.
+        if let id = ioProcID {
+            AudioEngine_DestroyIOProc(currentDeviceID, id)
+            ioProcID = nil
+        }
         
-        if wasPlaying { _ = startPlayback() }
+        let result = enable ? acquireHogMode() : releaseHogMode()
+        usleep(100_000) // 100ms for Core Audio to settle route changes
+        
+        if wasPlaying {
+            _ = registerIOProc()
+            usleep(50_000)
+            _ = startPlayback()
+            AEC_SetIsPlaying(context, true)
+        }
         return result
     }
 
@@ -175,7 +209,20 @@ final class CoreAudioHALEngine {
 
     @discardableResult
     func setHardwareSampleRate(_ rate: Double) async -> Bool {
-        // Verify support
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyNominalSampleRate,
+            mScope:    kAudioObjectPropertyScopeGlobal,
+            mElement:  kAudioObjectPropertyElementMain
+        )
+        var current = Float64(0)
+        var size = UInt32(MemoryLayout<Float64>.size)
+        AudioObjectGetPropertyData(currentDeviceID, &addr, 0, nil, &size, &current)
+        if abs(current - rate) < 1.0 { return true }
+        
+        // Release Hog Mode safely before changing the sample rate route
+        let hadHogMode = isHogMode
+        if hadHogMode { _ = releaseHogMode() }
+
         var availAddr = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyAvailableNominalSampleRates,
             mScope:    kAudioObjectPropertyScopeGlobal,
@@ -290,16 +337,68 @@ final class CoreAudioHALEngine {
         }
         decoderWorker = worker
 
-        let rate = Double(context.pointee.sampleRate)
-        if rate > 0 { 
-            let ok = await setHardwareSampleRate(rate)
+        let originalRate = Double(context.pointee.sampleRate)
+        var hardwareRate = originalRate
+        var ratio: UInt32 = 1
+
+        if originalRate > 0 { 
+            let ok = await setHardwareSampleRate(originalRate)
             if !ok {
-                NSLog("[ytsplayer] Hardware rejected sample rate \(rate)")
-                return false
+                let allowDownsampling = UserDefaults.standard.bool(forKey: "allowDownsampling")
+                
+                if !allowDownsampling {
+                    NSLog("[ytsplayer] Hardware rejected sample rate \(originalRate) and downsampling is disabled.")
+                    return false
+                }
+                
+                // Integer downsampling fallback
+                if originalRate >= 176400 {
+                    let ok2x = await setHardwareSampleRate(originalRate / 2.0)
+                    if ok2x {
+                        ratio = 2
+                        hardwareRate = originalRate / 2.0
+                        NSLog("[ytsplayer] Hardware rejected \(originalRate)Hz, downsampling to \(hardwareRate)Hz (2x)")
+                    }
+                }
+                
+                if ratio == 1 && originalRate >= 352800 {
+                    let ok4x = await setHardwareSampleRate(originalRate / 4.0)
+                    if ok4x {
+                        ratio = 4
+                        hardwareRate = originalRate / 4.0
+                        NSLog("[ytsplayer] Hardware rejected \(originalRate)Hz, downsampling to \(hardwareRate)Hz (4x)")
+                    }
+                }
+                
+                if ratio == 1 {
+                    NSLog("[ytsplayer] Hardware rejected sample rate \(originalRate)")
+                    return false
+                }
             }
         }
 
-        guard registerIOProc(), startPlayback() else { return false }
+        context.pointee.downsampleRatio = ratio
+        context.pointee.sampleRate = UInt32(hardwareRate)
+        let total = AEC_GetTotalFrames(context)
+        AEC_SetTotalFrames(context, total / UInt64(ratio))
+
+        // Wait for Core Audio hardware route changes to fully settle
+        // before attempting to acquire Hog Mode, otherwise it drops it silently.
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        let bp = AEC_GetIsBitPerfect(context)
+        if bp {
+            if !checkHogMode() {
+                _ = acquireHogMode()
+                try? await Task.sleep(nanoseconds: 200_000_000) // generous sleep
+            }
+        } else {
+            _ = releaseHogMode()
+        }
+
+        guard registerIOProc() else { return false }
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        guard startPlayback() else { return false }
 
         FLACDecoder_Start(worker)
         return true

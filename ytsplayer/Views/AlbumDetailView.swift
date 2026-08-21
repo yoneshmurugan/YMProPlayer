@@ -105,7 +105,7 @@ struct AlbumDetailView: View {
 
             // ── Track List ─────────────────────────────────────────────────
             List(Array(tracks.enumerated()), id: \.element.id) { index, track in
-                TrackRow(
+                AlbumTrackRow(
                     track: track,
                     isPlaying: playbackVM.currentTrack?.id == track.id && playbackVM.isPlaying
                 )
@@ -161,7 +161,7 @@ struct AlbumDetailView: View {
 
 // MARK: - Track Row
 
-struct TrackRow: View {
+struct AlbumTrackRow: View {
     let track: TrackViewModel
     let isPlaying: Bool
 

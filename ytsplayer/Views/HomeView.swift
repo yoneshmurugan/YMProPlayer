@@ -31,6 +31,7 @@ struct HomeView: View {
                             .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
                     .padding(.trailing, 16)
                     
                     Button(action: onProfileTapped) {
@@ -39,6 +40,7 @@ struct HomeView: View {
                             .foregroundStyle(.purple)
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 24)
@@ -66,6 +68,7 @@ struct HomeView: View {
                                 .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
+                        .focusable(false)
                         .padding(.top, 8)
                     }
                     .frame(maxWidth: .infinity, minHeight: 400)

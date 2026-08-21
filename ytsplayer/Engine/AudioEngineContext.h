@@ -45,6 +45,9 @@ typedef struct {
 
     /// Channel count
     uint32_t channels;
+
+    /// Ratio for integer downsampling (e.g. 2 for 192kHz -> 96kHz, 1 for no downsampling)
+    uint32_t downsampleRatio;
 } AudioEngineContext;
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -58,6 +61,7 @@ static inline AudioEngineContext *AudioEngineContext_Create(size_t ringBufferCap
     atomic_store_explicit(&ctx->outputGain,           1.0f,  memory_order_relaxed);
     atomic_store_explicit(&ctx->isBitPerfect,         true,  memory_order_relaxed);
     atomic_store_explicit(&ctx->softwareVolume,       1.0f,  memory_order_relaxed);
+    ctx->downsampleRatio = 1;
     return ctx;
 }
 

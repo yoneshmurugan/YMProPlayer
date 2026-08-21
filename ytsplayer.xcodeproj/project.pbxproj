@@ -25,6 +25,7 @@
 		603EE521588F7948785F9DC0 /* HierarchyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90ADA5235BD2A35DDBB4662 /* HierarchyView.swift */; };
 		6B760D06A29DC5C2C16812AF /* FolderNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE80FA0CEEFA037ECEBE7385 /* FolderNode.swift */; };
 		6E851FFB90315E93101D4410 /* CoreAudioHALEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F1155DA1E301FF77DB784C /* CoreAudioHALEngine.swift */; };
+		92E1C41CB5DA707AACD12F2C /* TracksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E002A96C6FFFC7BDF671D9FD /* TracksView.swift */; };
 		978CD177DAE466779A5FB506 /* LibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ABC85193E2804E9A629B591 /* LibraryScanner.swift */; };
 		98916068DC5E4B019F45D895 /* NowPlayingBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1147DEC082D3111CC2ABABD8 /* NowPlayingBar.swift */; };
 		9FA1B535FCCEE764601DB390 /* AudioDeviceRenderCallback.c in Sources */ = {isa = PBXBuildFile; fileRef = D941C3496AC017D406F4480D /* AudioDeviceRenderCallback.c */; };
@@ -77,6 +78,7 @@
 		D90ADA5235BD2A35DDBB4662 /* HierarchyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HierarchyView.swift; sourceTree = "<group>"; };
 		D941C3496AC017D406F4480D /* AudioDeviceRenderCallback.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = AudioDeviceRenderCallback.c; sourceTree = "<group>"; };
 		DE9EC3AD8797BC3AD0A870C0 /* ytsplayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ytsplayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E002A96C6FFFC7BDF671D9FD /* TracksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TracksView.swift; sourceTree = "<group>"; };
 		E2F1155DA1E301FF77DB784C /* CoreAudioHALEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAudioHALEngine.swift; sourceTree = "<group>"; };
 		F420043204A3993D585D9541 /* MetadataBridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MetadataBridge.cpp; sourceTree = "<group>"; };
 		F9ADDDDD9B7864789E1B3A86 /* AudioEngineContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioEngineContext.h; sourceTree = "<group>"; };
@@ -153,6 +155,7 @@
 				1147DEC082D3111CC2ABABD8 /* NowPlayingBar.swift */,
 				07932C7179A2CD4FACF9C7F8 /* SearchView.swift */,
 				594BCFC6B443FF6D10D7F971 /* SettingsView.swift */,
+				E002A96C6FFFC7BDF671D9FD /* TracksView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -353,6 +356,7 @@
 				4C15488D305BC897306DA82E /* PlaybackViewModel.swift in Sources */,
 				EADB4EBC9DE7263D234E7D8C /* SearchView.swift in Sources */,
 				3613163C224A5CA10450D7B4 /* SettingsView.swift in Sources */,
+				92E1C41CB5DA707AACD12F2C /* TracksView.swift in Sources */,
 				5604BE1A491284B1668E33A4 /* ytsplayerApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var showFolderPicker = false
     @State private var hogModeEnabled   = false
     @State private var availableRates: [Double] = []
+    @AppStorage("allowDownsampling") private var allowDownsampling = false
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
@@ -71,6 +72,9 @@ struct SettingsView: View {
                         hogModeEnabled = halEngine.setHogModeSafe(enabled)
                     }
                     .help("Grants the app exclusive access to the audio device, preventing the macOS mixer from intercepting the signal.")
+
+                Toggle("Auto-Downsample Unsupported Hi-Res Tracks", isOn: $allowDownsampling)
+                    .help("If your DAC does not support 192kHz or 176.4kHz, this seamlessly drops half the samples to play perfectly at 96kHz/88.2kHz instead of failing.")
             }
 
             Section("About") {

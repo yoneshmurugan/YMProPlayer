@@ -34,6 +34,7 @@ struct NowPlayingBar: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .focusable(false)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(vm.currentTrack?.title ?? "Nothing Playing")
@@ -122,21 +123,39 @@ struct NowPlayingBar: View {
                 }
                 
                 // 3. Badges — only show audio info, never device-change noise
-                HStack(spacing: 6) {
-                    if vm.currentSampleRate > 0 {
-                        if vm.currentBitDepth >= 24 {
-                            badge(text: "Hi-Res", gradient: [.orange, .pink])
-                        }
-                        let ext = (vm.currentTrack?.filePath as NSString?)?.pathExtension.uppercased() ?? ""
-                        if !ext.isEmpty {
-                            badge(text: ext, gradient: [Color.white.opacity(0.4), Color.white.opacity(0.2)])
-                        }
-                        let kHz = vm.currentSampleRate / 1000
-                        let remainder = vm.currentSampleRate % 1000
-                        let rateStr = remainder == 0 ? "\(kHz)kHz" : "\(kHz).\(remainder / 100)kHz"
-                        badge(text: rateStr, gradient: [.purple.opacity(0.8), .indigo.opacity(0.8)])
-                        if vm.currentBitDepth > 0 {
-                            badge(text: "\(vm.currentBitDepth)-bit", gradient: [.cyan.opacity(0.6), .blue.opacity(0.6)])
+                if let err = vm.errorMessage {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.white)
+                        Text(err)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.red.opacity(0.85))
+                    .clipShape(Capsule())
+                    .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    HStack(spacing: 6) {
+                        if vm.currentSampleRate > 0 {
+                            if vm.currentBitDepth >= 24 {
+                                badge(text: "Hi-Res", gradient: [.orange, .pink])
+                            }
+                            let ext = (vm.currentTrack?.filePath as NSString?)?.pathExtension.uppercased() ?? ""
+                            if !ext.isEmpty {
+                                badge(text: ext, gradient: [Color.white.opacity(0.4), Color.white.opacity(0.2)])
+                            }
+                            let kHz = vm.currentSampleRate / 1000
+                            let remainder = vm.currentSampleRate % 1000
+                            let rateStr = remainder == 0 ? "\(kHz)kHz" : "\(kHz).\(remainder / 100)kHz"
+                            badge(text: rateStr, gradient: [.purple.opacity(0.8), .indigo.opacity(0.8)])
+                            if vm.currentBitDepth > 0 {
+                                badge(text: "\(vm.currentBitDepth)-bit", gradient: [.cyan.opacity(0.6), .blue.opacity(0.6)])
+                            }
                         }
                     }
                 }
@@ -237,6 +256,7 @@ struct NowPlayingBar: View {
                 .animation(.spring(response: 0.25, dampingFraction: 0.6), value: vm.isPlaying)
         }
         .buttonStyle(.plain)
+        .focusable(false)
         .disabled(vm.currentTrack == nil)
     }
 
@@ -247,6 +267,7 @@ struct NowPlayingBar: View {
                 .foregroundStyle(.white.opacity(0.7))
         }
         .buttonStyle(.plain)
+        .focusable(false)
         .disabled(vm.currentTrack == nil)
     }
 

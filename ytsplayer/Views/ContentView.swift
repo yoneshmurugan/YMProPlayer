@@ -8,6 +8,7 @@ enum AppTab: Hashable {
     case home
     case albums
     case artists
+    case tracks
     case hierarchy
     case playlists
     case search
@@ -76,6 +77,7 @@ struct ContentView: View {
                     Section("Library") {
                         Label("Albums", systemImage: "rectangle.stack").tag(AppTab.albums)
                         Label("Artists", systemImage: "music.mic").tag(AppTab.artists)
+                        Label("Tracks", systemImage: "music.note.list").tag(AppTab.tracks)
                         Label("Hierarchy", systemImage: "folder").tag(AppTab.hierarchy)
                     }
                     
@@ -107,6 +109,8 @@ struct ContentView: View {
                             }
                         case .artists:
                             ArtistsView(libraryVM: libraryVM, playbackVM: playbackVM)
+                        case .tracks:
+                            TracksView(libraryVM: libraryVM, playbackVM: playbackVM)
                         case .hierarchy:
                             HierarchyView(libraryVM: libraryVM, playbackVM: playbackVM)
                         case .playlists:
@@ -131,6 +135,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showFullScreenPlayer) {
             FullScreenPlayerView(vm: playbackVM, database: db)
+                .frame(minWidth: 800, idealWidth: 900, idealHeight: 650)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView(libraryVM: libraryVM, playbackVM: playbackVM, halEngine: halEngine)

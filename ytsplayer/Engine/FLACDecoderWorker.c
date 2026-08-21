@@ -54,16 +54,22 @@ static FLAC__StreamDecoderWriteStatus flac_write_callback(
     // Convert integer samples → float32
     float scale = 1.0f / (float)(1 << (bitsPerSample - 1));
 
-    // Stack-allocate the interleaved float buffer (max 65536 frames × 2 channels)
-    float interleavedBuffer[blocksize * 2];
+    uint32_t ratio = ctx->downsampleRatio;
+    if (ratio < 1) ratio = 1;
 
-    for (size_t i = 0; i < blocksize; i++) {
+    size_t outFrames = blocksize / ratio;
+
+    // Stack-allocate the interleaved float buffer
+    float interleavedBuffer[outFrames * 2];
+
+    for (size_t i = 0; i < outFrames; i++) {
+        size_t inIndex = i * ratio;
         if (channels >= 2) {
-            interleavedBuffer[i * 2]     = (float)buffer[0][i] * scale;
-            interleavedBuffer[i * 2 + 1] = (float)buffer[1][i] * scale;
+            interleavedBuffer[i * 2]     = (float)buffer[0][inIndex] * scale;
+            interleavedBuffer[i * 2 + 1] = (float)buffer[1][inIndex] * scale;
         } else {
             // Mono → duplicate to both channels
-            float sample = (float)buffer[0][i] * scale;
+            float sample = (float)buffer[0][inIndex] * scale;
             interleavedBuffer[i * 2]     = sample;
             interleavedBuffer[i * 2 + 1] = sample;
         }
@@ -71,15 +77,15 @@ static FLAC__StreamDecoderWriteStatus flac_write_callback(
 
     // Write to ring buffer, spin-wait if full (1ms sleep, background thread only)
     size_t written = 0;
-    while (written < blocksize) {
+    while (written < outFrames) {
         if (atomic_load_explicit(&worker->shouldStop, memory_order_relaxed)) {
             return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
         }
         size_t w = RingBuffer_Write(ctx->ringBuffer,
                                     interleavedBuffer + written * 2,
-                                    blocksize - written);
+                                    outFrames - written);
         written += w;
-        if (written < blocksize) {
+        if (written < outFrames) {
             usleep(1000); // 1ms yield — background thread only, never in IOProc
         }
     }
