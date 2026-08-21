@@ -32,5 +32,18 @@
 	<false/>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.ytsplayer.track.id</string>
+			<key>UTTypeDescription</key>
+			<string>YTS Player Track ID</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

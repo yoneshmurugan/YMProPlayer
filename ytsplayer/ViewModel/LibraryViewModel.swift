@@ -13,6 +13,8 @@ final class LibraryViewModel: ObservableObject {
     @Published var mostPlayedTracks: [TrackViewModel] = []
     @Published var mostPlayedAlbums: [AlbumViewModel] = []
     @Published var mostPlayedArtists: [ArtistViewModel] = []
+    @Published var recentAlbums: [AlbumViewModel] = []
+    @Published var recentArtists: [ArtistViewModel] = []
     @Published var isLoading: Bool          = true
     @Published var scanProgress: Double     = 0.0
     @Published var isScanning: Bool         = false
@@ -25,6 +27,7 @@ final class LibraryViewModel: ObservableObject {
     init(db: DatabasePool) {
         self.db      = db
         self.scanner = LibraryScanner(db: db)
+        loadFoldersFromUserDefaults()
         loadAlbums()
         observeScanner()
     }
@@ -73,7 +76,33 @@ final class LibraryViewModel: ObservableObject {
             mostPlayedTracks = (try? db.fetchMostPlayedTracks(limit: 10)) ?? []
             mostPlayedAlbums = (try? db.fetchMostPlayedAlbums(limit: 15)) ?? []
             mostPlayedArtists = (try? db.fetchMostPlayedArtists(limit: 15)) ?? []
+            recentAlbums = (try? db.fetchRecentAlbums(limit: 15)) ?? []
+            recentArtists = (try? db.fetchRecentArtists(limit: 15)) ?? []
             isLoading = false
+        }
+    }
+    
+    func refreshMostPlayed() {
+        Task {
+            let tracks = (try? db.fetchMostPlayedTracks(limit: 10)) ?? []
+            let albums = (try? db.fetchMostPlayedAlbums(limit: 15)) ?? []
+            let artists = (try? db.fetchMostPlayedArtists(limit: 15)) ?? []
+            
+            
+            await MainActor.run {
+                self.mostPlayedTracks = tracks
+                self.mostPlayedAlbums = albums
+                self.mostPlayedArtists = artists
+            }
+        }
+    }
+    
+    func refreshQuickPicks() {
+        Task {
+            let picks = (try? db.fetchQuickPicks(limitPerFolder: 10, fromFolders: libraryFolders)) ?? []
+            await MainActor.run {
+                self.quickPicks = picks
+            }
         }
     }
 
@@ -144,6 +173,8 @@ final class LibraryViewModel: ObservableObject {
                 mostPlayedTracks.removeAll()
                 mostPlayedAlbums.removeAll()
                 mostPlayedArtists.removeAll()
+                recentAlbums.removeAll()
+                recentArtists.removeAll()
             }
         }
     }

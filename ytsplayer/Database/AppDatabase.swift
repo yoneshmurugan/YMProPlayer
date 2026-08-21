@@ -43,6 +43,7 @@ struct TrackRecord: Codable, FetchableRecord, PersistableRecord {
     var bitrate: Int?
     var playCount: Int = 0
     var lastPlayedAt: Double?
+    var isFavorite: Bool = false
 }
 
 // MARK: - Rich DTO for UI display
@@ -63,6 +64,13 @@ struct TrackViewModel: Identifiable {
     let bitrate: Int?
     let channels: Int
     var playCount: Int
+    var isFavorite: Bool
+    
+    // Computed properties for Table sorting (Optionals are not Comparable in Swift)
+    var sortArtist: String { artistName ?? "" }
+    var sortAlbum: String { albumTitle ?? "" }
+    var sortBitrate: Int { bitrate ?? 0 }
+    var sortSize: Int64 { fileSize ?? 0 }
 }
 
 struct AlbumViewModel: Identifiable {
@@ -81,6 +89,16 @@ struct ArtistViewModel: Identifiable {
     let artworkCachePath: String?
     let albumCount: Int
     let trackCount: Int
+}
+
+// MARK: - Playlist DTOs
+
+struct PlaylistViewModel: Identifiable, Hashable {
+    let id: Int64
+    let name: String
+    let createdAt: Date
+    let trackCount: Int
+    let firstArtworkCachePath: String?
 }
 
 // MARK: - Database Setup
@@ -191,6 +209,27 @@ enum AppDatabase {
             }
         }
 
+        m.registerMigration("v5_playlists") { db in
+            try db.create(table: "playlists") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("name", .text).notNull()
+                t.column("createdAt", .datetime).notNull().defaults(to: Date())
+            }
+            try db.create(table: "playlist_tracks") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("playlistId", .integer).notNull().references("playlists", onDelete: .cascade)
+                t.column("trackId", .integer).notNull().references("tracks", onDelete: .cascade)
+                t.column("orderIndex", .integer).notNull()
+                t.column("addedAt", .datetime).notNull().defaults(to: Date())
+            }
+        }
+
+        m.registerMigration("v6_favorites") { db in
+            try db.alter(table: "tracks") { t in
+                t.add(column: "isFavorite", .boolean).notNull().defaults(to: false)
+            }
+        }
+
         return m
     }
 }
@@ -256,7 +295,8 @@ extension DatabasePool {
                     fileSize:         $0["fileSize"],
                     bitrate:          $0["bitrate"],
                     channels:         $0["channels"],
-                    playCount:        $0["playCount"] ?? 0
+                    playCount:        $0["playCount"] ?? 0,
+                    isFavorite:       $0["isFavorite"] ?? false
                 )
             }
         }
@@ -290,7 +330,8 @@ extension DatabasePool {
                     fileSize:         $0["fileSize"],
                     bitrate:          $0["bitrate"],
                     channels:         $0["channels"],
-                    playCount:        $0["playCount"] ?? 0
+                    playCount:        $0["playCount"] ?? 0,
+                    isFavorite:       $0["isFavorite"] ?? false
                 )
             }
         }
@@ -330,7 +371,8 @@ extension DatabasePool {
                     fileSize:         $0["fileSize"],
                     bitrate:          $0["bitrate"],
                     channels:         $0["channels"],
-                    playCount:        $0["playCount"] ?? 0
+                    playCount:        $0["playCount"] ?? 0,
+                    isFavorite:       $0["isFavorite"] ?? false
                 )
             }
         }
@@ -367,6 +409,8 @@ extension DatabasePool {
                     bitrate:          r["bitrate"],
                     channels:         r["channels"],
                     playCount:        r["playCount"]
+                ,
+                    isFavorite: r["isFavorite"] ?? false
                 )
             }
         }
@@ -402,6 +446,8 @@ extension DatabasePool {
                     bitrate:          r["bitrate"],
                     channels:         r["channels"],
                     playCount:        r["playCount"]
+                ,
+                    isFavorite: r["isFavorite"] ?? false
                 )
             }
         }
@@ -542,7 +588,7 @@ extension DatabasePool {
     }
     
     func fetchTrack(byPath path: String) throws -> TrackViewModel? {
-        try read { db in
+        try read { db -> TrackViewModel? in
             let row = try Row.fetchOne(db, sql: """
                 SELECT tracks.*, artists.name AS artistName,
                        albums.title AS albumTitle, albums.artworkCachePath
@@ -569,6 +615,38 @@ extension DatabasePool {
                 bitrate:          r["bitrate"],
                 channels:         r["channels"],
                 playCount:        r["playCount"]
+            ,
+                    isFavorite: r["isFavorite"] ?? false
+                )
+        }
+    }
+    
+    func fetchTrack(byId id: Int64) throws -> TrackViewModel? {
+        try read { db in
+            guard let track = try TrackRecord.filter(Column("id") == id).fetchOne(db) else {
+                return nil
+            }
+            
+            let album = try AlbumRecord.filter(Column("id") == track.albumId).fetchOne(db)
+            let artist = try ArtistRecord.filter(Column("id") == track.artistId).fetchOne(db)
+            
+            return TrackViewModel(
+                id: track.id ?? 0,
+                filePath: track.filePath,
+                title: track.title,
+                trackNumber: track.trackNumber,
+                duration: track.duration,
+                sampleRate: track.sampleRate,
+                bitDepth: track.bitDepth,
+                artistName: artist?.name ?? "Unknown Artist",
+                albumTitle: album?.title ?? "Unknown Album",
+                albumArtworkPath: album?.artworkCachePath,
+                lyrics: track.lyrics,
+                fileSize: track.fileSize,
+                bitrate: track.bitrate,
+                channels: track.channels,
+                playCount: track.playCount,
+                isFavorite: track.isFavorite
             )
         }
     }
@@ -634,13 +712,15 @@ extension DatabasePool {
                         bitrate:          r["bitrate"],
                         channels:         r["channels"],
                         playCount:        r["playCount"]
-                    )
+                    ,
+                    isFavorite: r["isFavorite"] ?? false
+                )
                 }
                 allPicks.append(contentsOf: tracks)
             }
             
             allPicks.shuffle()
-            return Array(allPicks.prefix(limit))
+            return allPicks
         }
     }
     
@@ -674,7 +754,9 @@ extension DatabasePool {
                 bitrate:          r["bitrate"],
                 channels:         r["channels"],
                 playCount:        r["playCount"]
-            )
+            ,
+                    isFavorite: r["isFavorite"] ?? false
+                )
         }
     }
 
@@ -715,6 +797,202 @@ extension DatabasePool {
             try db.execute(sql: "DELETE FROM tracks")
             try db.execute(sql: "DELETE FROM albums")
             try db.execute(sql: "DELETE FROM artists")
+        }
+    }
+}
+
+// MARK: - Playlist Queries & Mutations
+
+extension DatabasePool {
+    func createPlaylist(name: String) throws -> Int64 {
+        try write { db in
+            try db.execute(sql: "INSERT INTO playlists (name, createdAt) VALUES (?, ?)", arguments: [name, Date()])
+            return db.lastInsertedRowID
+        }
+    }
+    
+    func renamePlaylist(id: Int64, newName: String) throws {
+        try write { db in
+            try db.execute(sql: "UPDATE playlists SET name = ? WHERE id = ?", arguments: [newName, id])
+        }
+    }
+    
+    func deletePlaylist(id: Int64) throws {
+        try write { db in
+            try db.execute(sql: "DELETE FROM playlists WHERE id = ?", arguments: [id])
+        }
+    }
+    
+    func fetchPlaylists() throws -> [PlaylistViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT p.id, p.name, p.createdAt,
+                       COUNT(pt.id) AS trackCount,
+                       (SELECT a.artworkCachePath FROM playlist_tracks pt2
+                        JOIN tracks t ON pt2.trackId = t.id
+                        JOIN albums a ON t.albumId = a.id
+                        WHERE pt2.playlistId = p.id AND a.artworkCachePath IS NOT NULL
+                        ORDER BY pt2.orderIndex ASC LIMIT 1) AS firstArtworkCachePath
+                FROM playlists p
+                LEFT JOIN playlist_tracks pt ON p.id = pt.playlistId
+                GROUP BY p.id
+                ORDER BY p.createdAt DESC
+            """)
+            
+            return rows.map { r in
+                PlaylistViewModel(
+                    id: r["id"],
+                    name: r["name"],
+                    createdAt: r["createdAt"],
+                    trackCount: r["trackCount"],
+                    firstArtworkCachePath: r["firstArtworkCachePath"]
+                )
+            }
+        }
+    }
+    
+    func fetchTracksForPlaylist(playlistId: Int64) throws -> [TrackViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT tracks.*, artists.name AS artistName,
+                       albums.title AS albumTitle, albums.artworkCachePath,
+                       playlist_tracks.id AS playlistTrackId
+                FROM playlist_tracks
+                JOIN tracks ON playlist_tracks.trackId = tracks.id
+                LEFT JOIN artists ON artists.id = tracks.artistId
+                LEFT JOIN albums  ON albums.id  = tracks.albumId
+                WHERE playlist_tracks.playlistId = ?
+                ORDER BY playlist_tracks.orderIndex ASC
+            """, arguments: [playlistId])
+            
+            return rows.map { r in
+                TrackViewModel(
+                    id:               r["id"],
+                    filePath:         r["filePath"],
+                    title:            r["title"],
+                    trackNumber:      r["trackNumber"],
+                    duration:         r["duration"],
+                    sampleRate:       r["sampleRate"],
+                    bitDepth:         r["bitDepth"],
+                    artistName:       r["artistName"],
+                    albumTitle:       r["albumTitle"],
+                    albumArtworkPath: r["artworkCachePath"],
+                    lyrics:           r["lyrics"],
+                    fileSize:         r["fileSize"],
+                    bitrate:          r["bitrate"],
+                    channels:         r["channels"],
+                    playCount:        r["playCount"]
+                ,
+                    isFavorite: r["isFavorite"] ?? false
+                )
+            }
+        }
+    }
+    
+    func addTracksToPlaylist(playlistId: Int64, trackIds: [Int64]) throws {
+        try write { db in
+            // Get max order index
+            let maxIndexRow = try Row.fetchOne(db, sql: "SELECT MAX(orderIndex) AS maxIdx FROM playlist_tracks WHERE playlistId = ?", arguments: [playlistId])
+            var nextIndex = (maxIndexRow?["maxIdx"] as Int? ?? -1) + 1
+            
+            for trackId in trackIds {
+                // Duplicate track protection
+                let exists = try Int.fetchOne(db, sql: "SELECT 1 FROM playlist_tracks WHERE playlistId = ? AND trackId = ?", arguments: [playlistId, trackId]) != nil
+                if !exists {
+                    try db.execute(sql: """
+                        INSERT INTO playlist_tracks (playlistId, trackId, orderIndex, addedAt)
+                        VALUES (?, ?, ?, ?)
+                    """, arguments: [playlistId, trackId, nextIndex, Date()])
+                    nextIndex += 1
+                }
+            }
+        }
+    }
+    
+    func removeTrackFromPlaylist(playlistId: Int64, trackId: Int64) throws {
+        try write { db in
+            try db.execute(sql: "DELETE FROM playlist_tracks WHERE playlistId = ? AND trackId = ?", arguments: [playlistId, trackId])
+        }
+    }
+    
+    // MARK: - Smart Playlists & Favorites
+    
+    func toggleFavorite(forTrackId id: Int64) throws -> Bool {
+        try write { db in
+            let row = try Row.fetchOne(db, sql: "SELECT isFavorite FROM tracks WHERE id = ?", arguments: [id])
+            let current = row?["isFavorite"] as Bool? ?? false
+            let next = !current
+            try db.execute(sql: "UPDATE tracks SET isFavorite = ? WHERE id = ?", arguments: [next, id])
+            return next
+        }
+    }
+    
+    func fetchFavorites() throws -> [TrackViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT tracks.*, artists.name AS artistName,
+                       albums.title AS albumTitle, albums.artworkCachePath
+                FROM tracks
+                LEFT JOIN artists ON artists.id = tracks.artistId
+                LEFT JOIN albums  ON albums.id  = tracks.albumId
+                WHERE tracks.isFavorite = 1
+                ORDER BY tracks.title COLLATE NOCASE
+            """)
+            return mapTrackRows(rows)
+        }
+    }
+    
+    func fetchTop50() throws -> [TrackViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT tracks.*, artists.name AS artistName,
+                       albums.title AS albumTitle, albums.artworkCachePath
+                FROM tracks
+                LEFT JOIN artists ON artists.id = tracks.artistId
+                LEFT JOIN albums  ON albums.id  = tracks.albumId
+                WHERE tracks.playCount > 0
+                ORDER BY tracks.playCount DESC, tracks.lastPlayedAt DESC
+                LIMIT 50
+            """)
+            return mapTrackRows(rows)
+        }
+    }
+    
+    func fetchHiRes() throws -> [TrackViewModel] {
+        try read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT tracks.*, artists.name AS artistName,
+                       albums.title AS albumTitle, albums.artworkCachePath
+                FROM tracks
+                LEFT JOIN artists ON artists.id = tracks.artistId
+                LEFT JOIN albums  ON albums.id  = tracks.albumId
+                WHERE tracks.bitDepth >= 24
+                ORDER BY tracks.title COLLATE NOCASE
+            """)
+            return mapTrackRows(rows)
+        }
+    }
+    
+    private func mapTrackRows(_ rows: [Row]) -> [TrackViewModel] {
+        return rows.map { r in
+            TrackViewModel(
+                id:               r["id"],
+                filePath:         r["filePath"],
+                title:            r["title"],
+                trackNumber:      r["trackNumber"],
+                duration:         r["duration"],
+                sampleRate:       r["sampleRate"],
+                bitDepth:         r["bitDepth"],
+                artistName:       r["artistName"],
+                albumTitle:       r["albumTitle"],
+                albumArtworkPath: r["artworkCachePath"],
+                lyrics:           r["lyrics"],
+                fileSize:         r["fileSize"],
+                bitrate:          r["bitrate"],
+                channels:         r["channels"],
+                playCount:        r["playCount"],
+                isFavorite:       r["isFavorite"] ?? false
+            )
         }
     }
 }

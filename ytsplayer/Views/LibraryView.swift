@@ -10,6 +10,9 @@ struct LibraryView: View {
     @State private var showFolderPicker = false
     @AppStorage("albumsIsGridView") private var isGridView = true
     var onProfileTapped: (() -> Void)? = nil
+    
+    @EnvironmentObject var playlistManager: PlaylistManager
+    @Environment(\.openWindow) var openWindow
 
     private let columns = [GridItem(.adaptive(minimum: 170, maximum: 220), spacing: 16)]
 
@@ -44,6 +47,11 @@ struct LibraryView: View {
                 .foregroundStyle(.white.opacity(0.8))
                 
                 Spacer()
+                
+                Text("\(libraryVM.albums.count) albums")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .padding(.trailing, 8)
                 
                 HStack(spacing: 24) {
                     // Sort Dropdown
@@ -128,6 +136,13 @@ struct LibraryView: View {
                                         selectedAlbum = album
                                     }
                                 }
+                                .contextMenu {
+                                    AlbumContextMenu(
+                                        album: album,
+                                        libraryVM: libraryVM,
+                                        playbackVM: playbackVM
+                                    )
+                                }
                             }
                         }
                         .padding(16)
@@ -142,6 +157,13 @@ struct LibraryView: View {
                                     withAnimation(.spring(response: 0.3)) {
                                         selectedAlbum = album
                                     }
+                                }
+                                .contextMenu {
+                                    AlbumContextMenu(
+                                        album: album,
+                                        libraryVM: libraryVM,
+                                        playbackVM: playbackVM
+                                    )
                                 }
                             }
                         }
@@ -171,7 +193,7 @@ struct LibraryView: View {
             }
         }
     }
-
+    
     private var emptyState: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -298,6 +320,52 @@ struct AlbumCard: View {
                     .font(.system(size: 36))
                     .foregroundStyle(.white.opacity(0.2))
             )
+    }
+}
+
+// MARK: - Album Context Menu
+
+struct AlbumContextMenu: View {
+    let album: AlbumViewModel
+    @ObservedObject var libraryVM: LibraryViewModel
+    @ObservedObject var playbackVM: PlaybackViewModel
+    
+    @EnvironmentObject var playlistManager: PlaylistManager
+    @Environment(\.openWindow) var openWindow
+    
+    var body: some View {
+        Button("Play Next") {
+            let tracks = libraryVM.fetchTracks(for: album)
+            for track in tracks.reversed() {
+                playbackVM.playNext(track)
+            }
+        }
+        Button("Add to Queue") {
+            let tracks = libraryVM.fetchTracks(for: album)
+            for track in tracks {
+                playbackVM.enqueue(track)
+            }
+        }
+        Divider()
+        Menu("Add to Playlist") {
+            Button("New Playlist...") {
+                if let id = playlistManager.createPlaylist(name: "New Playlist") {
+                    let tracks = libraryVM.fetchTracks(for: album)
+                    playlistManager.addTracks(to: id, trackIds: tracks.map { $0.id })
+                    openWindow(id: "PlaylistEditor", value: id)
+                }
+            }
+            if !playlistManager.playlists.isEmpty {
+                Divider()
+                ForEach(playlistManager.playlists) { playlist in
+                    Button(playlist.name) {
+                        let tracks = libraryVM.fetchTracks(for: album)
+                        playlistManager.addTracks(to: playlist.id, trackIds: tracks.map { $0.id })
+                        openWindow(id: "PlaylistEditor", value: playlist.id)
+                    }
+                }
+            }
+        }
     }
 }
 

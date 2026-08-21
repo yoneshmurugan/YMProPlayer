@@ -34,6 +34,13 @@
 		DC5BD90A0C3968FF9959BB00 /* ImageDownsampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBC4492A86F2AFB5D107E401 /* ImageDownsampler.swift */; };
 		EADB4EBC9DE7263D234E7D8C /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07932C7179A2CD4FACF9C7F8 /* SearchView.swift */; };
 		F5E4954FCF95262CB36D5D30 /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 333D898CD2EDD23B918EB74F /* AlbumDetailView.swift */; };
+		E2EBCA9F86E3479C838974F9 /* TrackDropPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = A02256B7D92C45108C9FC979 /* TrackDropPayload.swift */; };
+		3D4AF2C993D34C7B8E736152 /* PlaylistManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19295CB304E34897A10E7FBE /* PlaylistManager.swift */; };
+		74FE1CFB36B44442A692AF41 /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 241BB58309AE4FE289416F97 /* PlaylistsView.swift */; };
+		C3804F49F09D4FE18620B00C /* PlaylistEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496C122A359D4B54BDF2ACCC /* PlaylistEditorView.swift */; };
+		1CDB5810EBE64EA1AD6B6D84 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C49B28E6308A4638A5C4FF9C /* QueueView.swift */; };
+		C0986F4D2B8F4473967C7724 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66081607ADB64AF2A9497B76 /* MiniPlayerView.swift */; };
+		8BC66A9CC50D4A4E985D2D44 /* LyricsOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F08FFD32F7BC4F8A9C3987B3 /* LyricsOverlayView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -83,6 +90,13 @@
 		F420043204A3993D585D9541 /* MetadataBridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MetadataBridge.cpp; sourceTree = "<group>"; };
 		F9ADDDDD9B7864789E1B3A86 /* AudioEngineContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioEngineContext.h; sourceTree = "<group>"; };
 		FA60A77DB10C373F209ED858 /* FullScreenPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenPlayerView.swift; sourceTree = "<group>"; };
+		A02256B7D92C45108C9FC979 /* TrackDropPayload.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TrackDropPayload.swift; sourceTree = "<group>"; };
+		19295CB304E34897A10E7FBE /* PlaylistManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaylistManager.swift; sourceTree = "<group>"; };
+		241BB58309AE4FE289416F97 /* PlaylistsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
+		496C122A359D4B54BDF2ACCC /* PlaylistEditorView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaylistEditorView.swift; sourceTree = "<group>"; };
+		C49B28E6308A4638A5C4FF9C /* QueueView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
+		66081607ADB64AF2A9497B76 /* MiniPlayerView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
+		F08FFD32F7BC4F8A9C3987B3 /* LyricsOverlayView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LyricsOverlayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,7 +170,12 @@
 				07932C7179A2CD4FACF9C7F8 /* SearchView.swift */,
 				594BCFC6B443FF6D10D7F971 /* SettingsView.swift */,
 				E002A96C6FFFC7BDF671D9FD /* TracksView.swift */,
-			);
+							241BB58309AE4FE289416F97 /* PlaylistsView.swift */,
+				496C122A359D4B54BDF2ACCC /* PlaylistEditorView.swift */,
+				C49B28E6308A4638A5C4FF9C /* QueueView.swift */,
+				66081607ADB64AF2A9497B76 /* MiniPlayerView.swift */,
+				F08FFD32F7BC4F8A9C3987B3 /* LyricsOverlayView.swift */,
+);
 			path = Views;
 			sourceTree = "<group>";
 		};
@@ -231,7 +250,9 @@
 				BE80FA0CEEFA037ECEBE7385 /* FolderNode.swift */,
 				40C07046B590A160741C3A83 /* LibraryViewModel.swift */,
 				9B9749C79C88305DE442A66F /* PlaybackViewModel.swift */,
-			);
+							A02256B7D92C45108C9FC979 /* TrackDropPayload.swift */,
+				19295CB304E34897A10E7FBE /* PlaylistManager.swift */,
+);
 			path = ViewModel;
 			sourceTree = "<group>";
 		};
@@ -358,7 +379,14 @@
 				3613163C224A5CA10450D7B4 /* SettingsView.swift in Sources */,
 				92E1C41CB5DA707AACD12F2C /* TracksView.swift in Sources */,
 				5604BE1A491284B1668E33A4 /* ytsplayerApp.swift in Sources */,
-			);
+							E2EBCA9F86E3479C838974F9 /* TrackDropPayload.swift in Sources */,
+				3D4AF2C993D34C7B8E736152 /* PlaylistManager.swift in Sources */,
+				74FE1CFB36B44442A692AF41 /* PlaylistsView.swift in Sources */,
+				C3804F49F09D4FE18620B00C /* PlaylistEditorView.swift in Sources */,
+				1CDB5810EBE64EA1AD6B6D84 /* QueueView.swift in Sources */,
+				C0986F4D2B8F4473967C7724 /* MiniPlayerView.swift in Sources */,
+				8BC66A9CC50D4A4E985D2D44 /* LyricsOverlayView.swift in Sources */,
+);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
@@ -423,7 +451,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -483,7 +511,7 @@
 					"$(inherited)",
 					/opt/homebrew/lib,
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-I/opt/homebrew/include",
@@ -550,7 +578,7 @@
 					"$(inherited)",
 					/opt/homebrew/lib,
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-I/opt/homebrew/include",
@@ -614,7 +642,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

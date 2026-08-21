@@ -13,6 +13,37 @@ struct FullScreenPlayerView: View {
     @State private var lyricsError: String?
 
     var body: some View {
+        FullScreenPlayerContent(
+            track: vm.currentTrack,
+            sampleRate: vm.currentSampleRate,
+            bitDepth: vm.currentBitDepth,
+            errorMessage: vm.errorMessage,
+            database: database,
+            dismiss: dismiss,
+            onLyricsFetched: { newLyrics in
+                if var updated = vm.currentTrack {
+                    updated.lyrics = newLyrics
+                    vm.currentTrack = updated
+                }
+            }
+        )
+        .environmentObject(vm)
+    }
+}
+
+struct FullScreenPlayerContent: View {
+    let track: TrackViewModel?
+    let sampleRate: Int
+    let bitDepth: Int
+    let errorMessage: String?
+    let database: DatabasePool
+    let dismiss: DismissAction
+    let onLyricsFetched: (String) -> Void
+    
+    @State private var isFetchingLyrics = false
+    @State private var lyricsError: String?
+
+    var body: some View {
         HStack(alignment: .top, spacing: 50) {
             
             // LEFT: Artwork + Info
@@ -29,16 +60,16 @@ struct FullScreenPlayerView: View {
 
                 // Track info
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(vm.currentTrack?.title ?? "Nothing Playing")
+                    Text(track?.title ?? "Nothing Playing")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(2)
 
-                    Text(vm.currentTrack?.artistName ?? "Unknown Artist")
+                    Text(track?.artistName ?? "Unknown Artist")
                         .font(.system(size: 18, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
 
-                    Text(vm.currentTrack?.albumTitle ?? "Unknown Album")
+                    Text(track?.albumTitle ?? "Unknown Album")
                         .font(.system(size: 15))
                         .foregroundColor(.white.opacity(0.45))
                 }
@@ -91,7 +122,7 @@ struct FullScreenPlayerView: View {
 
     @ViewBuilder
     private var backgroundLayer: some View {
-        if let path = vm.currentTrack?.albumArtworkPath,
+        if let path = track?.albumArtworkPath,
            let cacheDir = ImageDownsampler.artworkCacheDirectory() {
             AsyncImage(url: cacheDir.appendingPathComponent(path)) { image in
                 image
@@ -115,7 +146,7 @@ struct FullScreenPlayerView: View {
     @ViewBuilder
     private var artworkView: some View {
         ZStack(alignment: .bottomTrailing) {
-            if let path = vm.currentTrack?.albumArtworkPath,
+            if let path = track?.albumArtworkPath,
                let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                 AsyncImage(url: cacheDir.appendingPathComponent(path)) { image in
                     image.resizable().scaledToFit()
@@ -129,7 +160,7 @@ struct FullScreenPlayerView: View {
                     .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.25)))
             }
 
-            if (vm.currentTrack?.bitDepth ?? 0) >= 24,
+            if (track?.bitDepth ?? 0) >= 24,
                let nsImage = NSImage(named: "hires.png") {
                 Image(nsImage: nsImage)
                     .resizable()
@@ -142,7 +173,7 @@ struct FullScreenPlayerView: View {
 
     @ViewBuilder
     private var audioSpecBadges: some View {
-        if let err = vm.errorMessage {
+        if let err = errorMessage {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(.white)
@@ -154,16 +185,16 @@ struct FullScreenPlayerView: View {
             .padding(.vertical, 8)
             .background(Color.red.opacity(0.85))
             .clipShape(Capsule())
-        } else if vm.currentSampleRate > 0 {
+        } else if sampleRate > 0 {
             HStack(spacing: 8) {
-                let kHz = vm.currentSampleRate / 1000
-                let rem = vm.currentSampleRate % 1000
+                let kHz = sampleRate / 1000
+                let rem = sampleRate % 1000
                 let rateStr = rem == 0 ? "\(kHz)kHz" : "\(kHz).\(rem / 100)kHz"
 
                 specBadge("FLAC", color: .white.opacity(0.25))
-                specBadge("\(vm.currentBitDepth)-bit", color: .cyan.opacity(0.3))
+                specBadge("\(bitDepth)-bit", color: .cyan.opacity(0.3))
                 specBadge(rateStr, color: .purple.opacity(0.5))
-                if vm.currentBitDepth >= 24 {
+                if bitDepth >= 24 {
                     specBadge("Hi-Res", color: .orange.opacity(0.5))
                 }
             }
@@ -182,56 +213,14 @@ struct FullScreenPlayerView: View {
 
     @ViewBuilder
     private var lyricsPanel: some View {
-        if let lyrics = vm.currentTrack?.lyrics {
-            ScrollView(showsIndicators: false) {
-                Text(lyrics)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.white.opacity(0.85))
-                    .lineSpacing(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.bottom, 20)
-            }
-        } else {
-            VStack(spacing: 16) {
-                Image(systemName: "text.alignleft")
-                    .font(.system(size: 44))
-                    .foregroundColor(.white.opacity(0.25))
-
-                Text("No Lyrics Found")
-                    .font(.system(size: 16))
-                    .foregroundColor(.white.opacity(0.5))
-
-                if isFetchingLyrics {
-                    ProgressView().tint(.white)
-                } else {
-                    Button(action: fetchLyrics) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "globe")
-                            Text("Search Online")
-                        }
-                        .font(.system(size: 13, weight: .semibold))
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 9)
-                        .background(Color.purple.opacity(0.8))
-                        .foregroundColor(.white)
-                        .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-
-                    if let err = lyricsError {
-                        Text(err)
-                            .font(.caption)
-                            .foregroundColor(.red.opacity(0.8))
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: 120)
-        }
+        LyricsOverlayView(database: database)
+            // It uses @EnvironmentObject var playbackVM internally
+            .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     @ViewBuilder
     private var metadataGrid: some View {
-        if let track = vm.currentTrack {
+        if let t = track {
             Divider().background(Color.white.opacity(0.15)).padding(.bottom, 12)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -241,15 +230,15 @@ struct FullScreenPlayerView: View {
                     .padding(.bottom, 4)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
-                    metaItem("File", value: URL(fileURLWithPath: track.filePath).lastPathComponent)
-                    metaItem("Format", value: URL(fileURLWithPath: track.filePath).pathExtension.uppercased())
+                    metaItem("File", value: URL(fileURLWithPath: t.filePath).lastPathComponent)
+                    metaItem("Format", value: URL(fileURLWithPath: t.filePath).pathExtension.uppercased())
                     metaItem("Sample Rate", value: {
-                        let kHz = track.sampleRate / 1000
-                        let rem = track.sampleRate % 1000
+                        let kHz = t.sampleRate / 1000
+                        let rem = t.sampleRate % 1000
                         return rem == 0 ? "\(kHz) kHz" : "\(kHz).\(rem / 100) kHz"
                     }())
-                    metaItem("Bit Depth", value: "\(track.bitDepth)-bit")
-                    if let num = track.trackNumber { metaItem("Track #", value: "\(num)") }
+                    metaItem("Bit Depth", value: "\(t.bitDepth)-bit")
+                    if let num = t.trackNumber { metaItem("Track #", value: "\(num)") }
                 }
             }
         }
@@ -270,17 +259,15 @@ struct FullScreenPlayerView: View {
     // MARK: - Lyrics Fetch
 
     private func fetchLyrics() {
-        guard let track = vm.currentTrack else { return }
+        guard let t = track else { return }
         isFetchingLyrics = true
         lyricsError = nil
 
         Task {
             do {
-                let fetchedLyrics = try await LyricsService.shared.fetchAndEmbedLyrics(for: track, database: database)
+                let fetchedLyrics = try await LyricsService.shared.fetchAndEmbedLyrics(for: t, database: database)
                 await MainActor.run {
-                    var updatedTrack = track
-                    updatedTrack.lyrics = fetchedLyrics
-                    vm.currentTrack = updatedTrack
+                    onLyricsFetched(fetchedLyrics)
                     isFetchingLyrics = false
                 }
             } catch {

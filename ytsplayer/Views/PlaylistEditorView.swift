@@ -1,0 +1,274 @@
+import SwiftUI
+import GRDB
+
+struct PlaylistEditorView: View {
+    let playlistId: Int64
+    let db: DatabasePool
+    @EnvironmentObject var playlistManager: PlaylistManager
+    @EnvironmentObject var playbackVM: PlaybackViewModel
+    
+    @Environment(\.dismiss) var dismiss
+    
+    @State private var playlistName: String = ""
+    @State private var originalPlaylistName: String = ""
+    @State private var tracks: [TrackViewModel] = []
+    @State private var isHoveringDropZone = false
+    @State private var showSavedCheckmark = false
+    @State private var showDeleteConfirmation = false
+    @State private var draggedItem: TrackViewModel?
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: 20) {
+                Group {
+                    if let firstTrack = tracks.first,
+                       let path = firstTrack.albumArtworkPath,
+                       let cacheDir = ImageDownsampler.artworkCacheDirectory() {
+                        let url = cacheDir.appendingPathComponent(path)
+                        AsyncImage(url: url) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } placeholder: {
+                            fallbackIcon
+                        }
+                    } else {
+                        fallbackIcon
+                    }
+                }
+                .frame(width: 100, height: 100)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("PLAYLIST")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.secondary)
+                    
+                    HStack {
+                        TextField("Playlist Name", text: $playlistName, onCommit: savePlaylistName)
+                        .font(.system(size: 36, weight: .bold))
+                        .textFieldStyle(.plain)
+                        .disabled(playlistId < 0)
+                        
+                        if playlistId >= 0 {
+                            Button(action: savePlaylistName) {
+                                HStack {
+                                    if showSavedCheckmark {
+                                        Image(systemName: "checkmark")
+                                    }
+                                    Text(showSavedCheckmark ? "Saved" : "Save")
+                                }
+                                .animation(.default, value: showSavedCheckmark)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(showSavedCheckmark ? .green : .accentColor)
+                            .disabled(playlistName == originalPlaylistName || playlistName.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .grayscale(playlistName == originalPlaylistName || playlistName.trimmingCharacters(in: .whitespaces).isEmpty ? 1.0 : 0.0)
+                            .padding(.leading, 8)
+                            
+                            Button(action: { showDeleteConfirmation = true }) {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.red.opacity(0.8))
+                            .padding(.leading, 4)
+                        }
+                    }
+                    
+                    Text("\(tracks.count) track\(tracks.count == 1 ? "" : "s")")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding(32)
+            .background(Color(nsColor: .windowBackgroundColor))
+            
+            Divider()
+            
+            // Tracks List with Drop Destination
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(0..<tracks.count, id: \.self) { index in
+                        let track = tracks[index]
+                        TrackRow(
+                            index: index + 1, 
+                            track: track, 
+                            isPlaying: playbackVM.currentTrack?.id == track.id,
+                            onPlayNext: { playbackVM.playNext(track) },
+                            onEnqueue: { playbackVM.enqueue(track) },
+                            showDragHandle: true,
+                            enableExportDrag: false,
+                            onDragStarted: {
+                                self.draggedItem = track
+                                return NSItemProvider(object: track.id.description as NSString)
+                            }
+                        )
+                            .onTapGesture {
+                                playbackVM.play(track: track, queue: tracks, startIndex: index)
+                            }
+                            .onDrop(of: [.plainText], delegate: PlaylistDropDelegate(item: track, items: $tracks, playlistId: playlistId, draggedItem: $draggedItem))
+                            .contextMenu {
+                                if playlistId >= 0 {
+                                    Button("Remove from Playlist", role: .destructive) {
+                                        removeTrack(track)
+                                    }
+                                }
+                            }
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            .overlay(
+                Group {
+                    if tracks.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "square.and.arrow.down")
+                                .font(.system(size: 40))
+                            Text("Drag and drop songs here")
+                                .font(.title3)
+                        }
+                        .foregroundColor(isHoveringDropZone ? .accentColor : .secondary)
+                    }
+                }
+            )
+            .dropDestination(for: TrackDropPayload.self) { items, location in
+                if playlistId < 0 { return false }
+                return handleDrop(items: items)
+            } isTargeted: { targeted in
+                if playlistId >= 0 { isHoveringDropZone = targeted }
+            }
+        }
+        .frame(minWidth: 500, minHeight: 600)
+        .onAppear {
+            loadPlaylist()
+        }
+        .onChange(of: playlistManager.playlists) { _ in
+            // Refresh if playlist was deleted or changed externally
+            loadPlaylist()
+        }
+        .confirmationDialog("Delete Playlist", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                playlistManager.deletePlaylist(id: playlistId)
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to delete '\(originalPlaylistName)'? This cannot be undone.")
+        }
+    }
+    
+    private func loadPlaylist() {
+        if playlistId == -1 {
+            playlistName = "Favorites"
+            tracks = (try? db.fetchFavorites()) ?? []
+            return
+        } else if playlistId == -2 {
+            playlistName = "Top 50 Heavy Rotation"
+            tracks = (try? db.fetchTop50()) ?? []
+            return
+        } else if playlistId == -3 {
+            playlistName = "Hi-Res Audio"
+            tracks = (try? db.fetchHiRes()) ?? []
+            return
+        }
+        
+        guard let pl = playlistManager.playlists.first(where: { $0.id == playlistId }) else { return }
+        
+        // Only update if it's different to prevent resetting while typing (if an external refresh happens)
+        if originalPlaylistName != pl.name || playlistName.isEmpty {
+            playlistName = pl.name
+            originalPlaylistName = pl.name
+        }
+        
+        tracks = (try? db.fetchTracksForPlaylist(playlistId: playlistId)) ?? []
+    }
+    
+    private func handleDrop(items: [TrackDropPayload]) -> Bool {
+        let allTrackIds = items.flatMap { $0.trackIds }
+        guard !allTrackIds.isEmpty else { return false }
+        
+        do {
+            try db.addTracksToPlaylist(playlistId: playlistId, trackIds: allTrackIds)
+            playlistManager.refreshPlaylists()
+            loadPlaylist()
+            return true
+        } catch {
+            print("Failed to add tracks to playlist: \(error)")
+            return false
+        }
+    }
+    
+    private func removeTrack(_ track: TrackViewModel) {
+        do {
+            try db.removeTrackFromPlaylist(playlistId: playlistId, trackId: track.id)
+            playlistManager.refreshPlaylists()
+            loadPlaylist()
+        } catch {
+            print("Failed to remove track: \(error)")
+        }
+    }
+    
+
+    
+    private func savePlaylistName() {
+        guard playlistId >= 0, playlistName != originalPlaylistName, !playlistName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        
+        playlistManager.renamePlaylist(id: playlistId, newName: playlistName)
+        originalPlaylistName = playlistName
+        
+        withAnimation {
+            showSavedCheckmark = true
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation {
+                showSavedCheckmark = false
+            }
+        }
+    }
+    
+    private var fallbackIcon: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.accentColor.opacity(0.2))
+            Image(systemName: "music.note.list")
+                .font(.system(size: 40))
+                .foregroundColor(.accentColor)
+        }
+    }
+}
+
+struct PlaylistDropDelegate: DropDelegate {
+    let item: TrackViewModel
+    @Binding var items: [TrackViewModel]
+    let playlistId: Int64
+    @Binding var draggedItem: TrackViewModel?
+
+    func dropEntered(info: DropInfo) {
+        guard playlistId >= 0,
+              let draggedItem,
+              draggedItem.id != item.id,
+              let from = items.firstIndex(where: { $0.id == draggedItem.id }),
+              let to = items.firstIndex(where: { $0.id == item.id }) else { return }
+
+        if from != to {
+            withAnimation(.default) {
+                let toOffset = to > from ? to + 1 : to
+                items.move(fromOffsets: IndexSet(integer: from), toOffset: toOffset)
+            }
+        }
+    }
+    
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        return DropProposal(operation: .move)
+    }
+    
+    func performDrop(info: DropInfo) -> Bool {
+        self.draggedItem = nil
+        return true
+    }
+}

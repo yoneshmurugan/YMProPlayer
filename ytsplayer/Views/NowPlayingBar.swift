@@ -8,6 +8,10 @@ import SwiftUI
 
 struct NowPlayingBar: View {
     @ObservedObject var vm: PlaybackViewModel
+    @EnvironmentObject var playlistManager: PlaylistManager
+    @Environment(\.openWindow) var openWindow
+    @State private var isFavoriteLocal = false
+    @State private var isQueuePresented = false
     var onArtworkTap: (() -> Void)? = nil
 
     var body: some View {
@@ -55,21 +59,39 @@ struct NowPlayingBar: View {
                     }
                 }
                 .frame(minWidth: 160, alignment: .leading)
+                
+                // Favorite Button
+                if let track = vm.currentTrack {
+                    Button(action: {
+                        if let _ = try? playlistManager.toggleFavorite(forTrackId: track.id) {
+                            isFavoriteLocal.toggle()
+                            // Update the in-memory track so it persists if we pause/play
+                            // But vm.currentTrack is a struct, we can just let UI refresh
+                        }
+                    }) {
+                        Image(systemName: isFavoriteLocal ? "heart.fill" : "heart")
+                            .font(.system(size: 16))
+                            .foregroundColor(isFavoriteLocal ? .red : .white.opacity(0.5))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 8)
+                }
             }
             .frame(width: 280, alignment: .leading)
             .padding(.leading, 20)
+            .onChange(of: vm.currentTrack?.id) { _ in
+                isFavoriteLocal = vm.currentTrack?.isFavorite ?? false
+            }
 
             Spacer()
 
             // ── CENTER: Transport, Progress, Badges ─────────────────────────
             VStack(spacing: 8) {
                 // 1. Controls
-                HStack(spacing: 24) {
-                    transportButton(systemImage: "shuffle", size: 14) {} // Mock
+                HStack(spacing: 32) {
                     transportButton(systemImage: "backward.fill", size: 16) { vm.skipPrevious() }
                     playPauseButton
                     transportButton(systemImage: "forward.fill", size: 16) { vm.skipNext() }
-                    transportButton(systemImage: "repeat", size: 14) {} // Mock
                 }
                 
                 // 2. Progress Scrubber
@@ -165,7 +187,7 @@ struct NowPlayingBar: View {
 
             // ── RIGHT: Volume & Aux ───────────────────────────────────────
             VStack(alignment: .trailing, spacing: 6) {
-                HStack(spacing: 12) {
+                HStack(spacing: 20) {
                     // Bit-Perfect Toggle
                     Toggle("Bit-Perfect", isOn: $vm.isBitPerfect)
                         .toggleStyle(.switch)
@@ -174,31 +196,51 @@ struct NowPlayingBar: View {
                         .help("Bit-Perfect Mode: Bypasses software volume for pure, unaltered audio.")
                         .tint(.purple)
 
-                    // Volume Slider
+                    // Mini-Player Toggle
+                    Button(action: { openWindow(id: "MiniPlayer") }) {
+                        Image(systemName: "pip.enter")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Color.white.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open Mini-Player")
+                    
+                    // Queue Button
+                    Button(action: { isQueuePresented.toggle() }) {
+                        Image(systemName: "list.bullet")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(isQueuePresented ? Color.accentColor : Color.white.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $isQueuePresented, arrowEdge: .top) {
+                        QueueView()
+                            .environmentObject(vm)
+                    }
+                    
                     HStack(spacing: 8) {
                         Image(systemName: "speaker.fill")
                             .font(.system(size: 10))
-                            .foregroundStyle(vm.isBitPerfect ? .white.opacity(0.2) : .white.opacity(0.5))
+                            .foregroundColor(.white.opacity(0.5))
                         
                         Slider(value: $vm.volume, in: 0...1)
-                            .frame(width: 70)
-                            .tint(.purple)
-                            .disabled(vm.isBitPerfect)
+                            .tint(Color.white)
+                            .frame(width: 80)
                         
                         Image(systemName: "speaker.wave.3.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(vm.isBitPerfect ? .white.opacity(0.2) : .white.opacity(0.5))
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.8))
                     }
-                    
-                    Button(action: {}) { Image(systemName: "music.note.list").foregroundStyle(.white.opacity(0.7)) }.buttonStyle(.plain)
-                    Button(action: {}) { Image(systemName: "airplayaudio").foregroundStyle(.white.opacity(0.7)) }.buttonStyle(.plain)
+                    .frame(width: 130)
+                    .disabled(vm.isBitPerfect)
+                    .opacity(vm.isBitPerfect ? 0.3 : 1.0)
+                    .grayscale(vm.isBitPerfect ? 1.0 : 0.0)
                 }
                 
                 if vm.isBitPerfect {
-                    Text("Volume disabled (Bit-Perfect Mode)")
+                    Text("Volume disabled (Bit-Perfect)")
                         .font(.system(size: 9))
                         .foregroundStyle(.purple.opacity(0.8))
-                        .padding(.trailing, 46) // Align under slider
+                        .padding(.trailing, 16)
                 }
             }
             .frame(width: 280, alignment: .trailing)

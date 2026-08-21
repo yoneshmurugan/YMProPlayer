@@ -25,6 +25,9 @@ struct ArtistsView: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(.white)
                 Spacer()
+                Text("\(libraryVM.artists.count) artists")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.4))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)

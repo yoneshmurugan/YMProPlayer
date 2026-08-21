@@ -40,6 +40,13 @@ struct AlbumDetailView: View {
                                 .frame(width: 130, height: 130)
                                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 .shadow(color: .black.opacity(0.5), radius: 16)
+                                .contextMenu {
+                                    AlbumDetailContextMenu(
+                                        album: album,
+                                        tracks: tracks,
+                                        playbackVM: playbackVM
+                                    )
+                                }
                             
                             if album.isHiRes {
                                 if let nsImage = NSImage(named: "hires.png") {
@@ -107,7 +114,11 @@ struct AlbumDetailView: View {
             List(Array(tracks.enumerated()), id: \.element.id) { index, track in
                 AlbumTrackRow(
                     track: track,
-                    isPlaying: playbackVM.currentTrack?.id == track.id && playbackVM.isPlaying
+                    isPlaying: playbackVM.currentTrack?.id == track.id && playbackVM.isPlaying,
+                    onPlayNext: { playbackVM.playNext(track) },
+                    onEnqueue: { playbackVM.enqueue(track) },
+                    allTracks: tracks,
+                    index: index
                 )
                 .listRowBackground(
                     playbackVM.currentTrack?.id == track.id
@@ -115,7 +126,7 @@ struct AlbumDetailView: View {
                         : Color.clear
                 )
                 .onTapGesture {
-                    playbackVM.play(track: track, queue: tracks, startIndex: index)
+                    playbackVM.play(track: track, queue: tracks, startIndex: index, context: .album(albumId: album.id))
                     dismiss()
                 }
             }
@@ -159,11 +170,63 @@ struct AlbumDetailView: View {
     }
 }
 
+// MARK: - Album Detail Context Menu
+
+struct AlbumDetailContextMenu: View {
+    let album: AlbumViewModel
+    let tracks: [TrackViewModel]
+    @ObservedObject var playbackVM: PlaybackViewModel
+    
+    @EnvironmentObject var playlistManager: PlaylistManager
+    @Environment(\.openWindow) var openWindow
+    
+    var body: some View {
+        Button("Play Next") {
+            for track in tracks.reversed() {
+                playbackVM.playNext(track)
+            }
+        }
+        Button("Add to Queue") {
+            for track in tracks {
+                playbackVM.enqueue(track)
+            }
+        }
+        Divider()
+        Menu("Add to Playlist") {
+            Button("New Playlist...") {
+                if let id = playlistManager.createPlaylist(name: "New Playlist") {
+                    playlistManager.addTracks(to: id, trackIds: tracks.map { $0.id })
+                    openWindow(id: "PlaylistEditor", value: id)
+                }
+            }
+            if !playlistManager.playlists.isEmpty {
+                Divider()
+                ForEach(playlistManager.playlists) { playlist in
+                    Button(playlist.name) {
+                        playlistManager.addTracks(to: playlist.id, trackIds: tracks.map { $0.id })
+                        openWindow(id: "PlaylistEditor", value: playlist.id)
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Track Row
 
 struct AlbumTrackRow: View {
     let track: TrackViewModel
     let isPlaying: Bool
+    
+    var onPlayNext: (() -> Void)? = nil
+    var onEnqueue: (() -> Void)? = nil
+    let allTracks: [TrackViewModel]
+    let index: Int
+    
+    @State private var isFavoriteLocal = false
+    @State private var isHovered = false
+    @EnvironmentObject var playlistManager: PlaylistManager
+    @Environment(\.openWindow) var openWindow
 
     var body: some View {
         HStack(spacing: 12) {
@@ -219,6 +282,18 @@ struct AlbumTrackRow: View {
                     .foregroundStyle(badgeColor(for: track))
                     .clipShape(RoundedRectangle(cornerRadius: 4))
 
+                // Favorite Button
+                Button(action: {
+                    if let _ = try? playlistManager.toggleFavorite(forTrackId: track.id) {
+                        isFavoriteLocal.toggle()
+                    }
+                }) {
+                    Image(systemName: isFavoriteLocal ? "heart.fill" : "heart")
+                        .foregroundColor(isFavoriteLocal ? .red : .white.opacity(isHovered ? 0.4 : 0))
+                }
+                .buttonStyle(.plain)
+                .frame(width: 24)
+
                 Text(formatDuration(track.duration))
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -226,7 +301,39 @@ struct AlbumTrackRow: View {
             }
         }
         .padding(.vertical, 4)
+        .background(isHovered ? Color.white.opacity(0.05) : Color.clear)
         .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+        .onAppear {
+            isFavoriteLocal = track.isFavorite
+        }
+        .contextMenu {
+            Button("Play Next") {
+                onPlayNext?()
+            }
+            Button("Add to Queue") {
+                onEnqueue?()
+            }
+            Divider()
+            Menu("Add to Playlist") {
+                Button("New Playlist...") {
+                    if let id = playlistManager.createPlaylist(name: "New Playlist") {
+                        playlistManager.addTracks(to: id, trackIds: [track.id])
+                        openWindow(id: "PlaylistEditor", value: id)
+                    }
+                }
+                
+                if !playlistManager.playlists.isEmpty {
+                    Divider()
+                    ForEach(playlistManager.playlists) { playlist in
+                        Button(playlist.name) {
+                            playlistManager.addTracks(to: playlist.id, trackIds: [track.id])
+                            openWindow(id: "PlaylistEditor", value: playlist.id)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private func formatDuration(_ seconds: Double) -> String {
