@@ -72,7 +72,7 @@ final class LibraryViewModel: ObservableObject {
             
             albums = loaded
             artists = (try? db.fetchArtistsWithArtwork()) ?? []
-            quickPicks = (try? db.fetchQuickPicks(limitPerFolder: 10, fromFolders: libraryFolders)) ?? []
+            quickPicks = (try? db.fetchQuickPicks(limit: 15)) ?? []
             mostPlayedTracks = (try? db.fetchMostPlayedTracks(limit: 10)) ?? []
             mostPlayedAlbums = (try? db.fetchMostPlayedAlbums(limit: 15)) ?? []
             mostPlayedArtists = (try? db.fetchMostPlayedArtists(limit: 15)) ?? []
@@ -99,7 +99,7 @@ final class LibraryViewModel: ObservableObject {
     
     func refreshQuickPicks() {
         Task {
-            let picks = (try? db.fetchQuickPicks(limitPerFolder: 10, fromFolders: libraryFolders)) ?? []
+            let picks = (try? db.fetchQuickPicks(limit: 15)) ?? []
             await MainActor.run {
                 self.quickPicks = picks
             }

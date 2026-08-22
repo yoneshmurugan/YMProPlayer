@@ -770,50 +770,38 @@ extension DatabasePool {
         }
     }
     
-    func fetchQuickPicks(limitPerFolder: Int = 10, fromFolders folders: [URL]) throws -> [TrackViewModel] {
-        guard !folders.isEmpty else { return [] }
-        
+    func fetchQuickPicks(limit: Int = 15) throws -> [TrackViewModel] {
         return try read { db in
-            var allPicks: [TrackViewModel] = []
-            for folder in folders {
-                let folderPrefix = folder.path.hasSuffix("/") ? folder.path : folder.path + "/"
-                let rows = try Row.fetchAll(db, sql: """
-                    SELECT tracks.*, artists.name AS artistName,
-                           albums.title AS albumTitle, albums.artworkCachePath
-                    FROM tracks
-                    LEFT JOIN artists ON artists.id = tracks.artistId
-                    LEFT JOIN albums  ON albums.id  = tracks.albumId
-                    WHERE tracks.filePath LIKE ?
-                    ORDER BY RANDOM()
-                    LIMIT ?
-                """, arguments: ["\(folderPrefix)%", limitPerFolder])
-                
-                let tracks = rows.map { r in
-                    TrackViewModel(
-                        id:               r["id"],
-                        filePath:         r["filePath"],
-                        title:            r["title"],
-                        trackNumber:      r["trackNumber"],
-                        duration:         r["duration"],
-                        sampleRate:       r["sampleRate"],
-                        bitDepth:         r["bitDepth"],
-                        artistName:       r["artistName"],
-                        albumTitle:       r["albumTitle"],
-                        albumArtworkPath: r["artworkCachePath"],
-                        lyrics:           r["lyrics"],
-                        fileSize:         r["fileSize"],
-                        bitrate:          r["bitrate"],
-                        channels:         r["channels"],
-                        playCount:        r["playCount"]
-                    ,
-                    isFavorite: r["isFavorite"] ?? false
-                )
-                }
-                allPicks.append(contentsOf: tracks)
-            }
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT tracks.*, artists.name AS artistName,
+                       albums.title AS albumTitle, albums.artworkCachePath
+                FROM tracks
+                LEFT JOIN artists ON artists.id = tracks.artistId
+                LEFT JOIN albums  ON albums.id  = tracks.albumId
+                ORDER BY RANDOM()
+                LIMIT ?
+            """, arguments: [limit])
             
-            allPicks.shuffle()
-            return allPicks
+            return rows.map { r in
+                TrackViewModel(
+                    id:               r["id"],
+                    filePath:         r["filePath"],
+                    title:            r["title"],
+                    trackNumber:      r["trackNumber"],
+                    duration:         r["duration"],
+                    sampleRate:       r["sampleRate"],
+                    bitDepth:         r["bitDepth"],
+                    artistName:       r["artistName"],
+                    albumTitle:       r["albumTitle"],
+                    albumArtworkPath: r["artworkCachePath"],
+                    lyrics:           r["lyrics"],
+                    fileSize:         r["fileSize"],
+                    bitrate:          r["bitrate"],
+                    channels:         r["channels"],
+                    playCount:        r["playCount"],
+                    isFavorite:       r["isFavorite"] ?? false
+                )
+            }
         }
     }
     

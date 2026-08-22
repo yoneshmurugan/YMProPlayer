@@ -177,7 +177,7 @@ struct ContentView: View {
                                 .environmentObject(playbackVM)
                                 .id(id)
                         case .search:
-                            SearchView(searchVM: searchVM, playbackVM: playbackVM)
+                            SearchView(searchVM: searchVM, libraryVM: libraryVM, playbackVM: playbackVM)
                         case .mock(let title):
                             mockView(title)
                         }

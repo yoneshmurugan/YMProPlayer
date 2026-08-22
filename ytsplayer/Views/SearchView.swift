@@ -5,7 +5,11 @@ import SwiftUI
 
 struct SearchView: View {
     @ObservedObject var searchVM: SearchViewModel
+    @ObservedObject var libraryVM: LibraryViewModel
     @ObservedObject var playbackVM: PlaybackViewModel
+    
+    @State private var selectedAlbum: AlbumViewModel?
+    @State private var selectedArtist: ArtistViewModel?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -82,6 +86,10 @@ struct SearchView: View {
                                     }
                                 }
                                 .padding(.vertical, 4)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedArtist = artist
+                                }
                             }
                         }
                     }
@@ -99,6 +107,10 @@ struct SearchView: View {
                                     }
                                 }
                                 .padding(.vertical, 4)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedAlbum = album
+                                }
                             }
                         }
                     }
@@ -165,6 +177,20 @@ struct SearchView: View {
                 }
                 .listStyle(.plain)
             }
+        }
+        .sheet(item: $selectedAlbum) { album in
+            AlbumDetailView(
+                album: album,
+                tracks: libraryVM.fetchTracks(for: album),
+                playbackVM: playbackVM
+            )
+        }
+        .sheet(item: $selectedArtist) { artist in
+            ArtistDetailView(
+                artist: artist,
+                libraryVM: libraryVM,
+                playbackVM: playbackVM
+            )
         }
     }
 

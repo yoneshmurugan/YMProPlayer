@@ -6,6 +6,7 @@
 
 import SwiftUI
 import GRDB
+import AppKit
 
 @MainActor
 class AppEnvironment: ObservableObject {
@@ -32,6 +33,23 @@ class AppEnvironment: ObservableObject {
         } catch {
             fatalError("Failed to initialize database: \(error)")
         }
+        
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // KeyCode 49 is Spacebar
+            if event.keyCode == 49 {
+                // Do not intercept if user is typing in a search bar or text field
+                if let responder = NSApp.keyWindow?.firstResponder {
+                    let className = String(describing: type(of: responder))
+                    if className.contains("NSTextView") || className.contains("TextField") || className.contains("SearchField") {
+                        return event
+                    }
+                }
+                
+                self?.playbackVM.togglePlayPause()
+                return nil // swallow event
+            }
+            return event
+        }
     }
 }
 
@@ -54,7 +72,6 @@ struct ytsplayerApp: App {
                 Button("Play/Pause") {
                     AppEnvironment.shared.playbackVM.togglePlayPause()
                 }
-                .keyboardShortcut(.space, modifiers: [])
                 
                 Button("Next Track") {
                     AppEnvironment.shared.playbackVM.skipNext()

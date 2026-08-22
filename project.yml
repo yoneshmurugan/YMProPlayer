@@ -1,4 +1,4 @@
-name: ytsplayer
+name: YM Pro
 options:
   bundleIdPrefix: com.ytsplayer
   deploymentTarget:
@@ -63,6 +63,7 @@ targets:
         # Disable App Sandbox for now (Phase 6 will enable)
         ENABLE_APP_SANDBOX: NO
         PRODUCT_NAME: ytsplayer
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       debug:
         SWIFT_OPTIMIZATION_LEVEL: -Onone
         GCC_OPTIMIZATION_LEVEL: "0"

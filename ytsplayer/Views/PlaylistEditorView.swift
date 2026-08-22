@@ -138,32 +138,9 @@ struct PlaylistEditorView: View {
             // Tracks List with Drop Destination
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(Array(displayedTracks.enumerated()), id: \.element.id) { index, track in
-                        TrackRow(
-                            index: index + 1, 
-                            track: track, 
-                            isPlaying: playbackVM.currentTrack?.id == track.id,
-                            onPlayNext: { playbackVM.playNext(track) },
-                            onEnqueue: { playbackVM.enqueue(track) },
-                            showDragHandle: searchQuery.isEmpty,
-                            enableExportDrag: false,
-                            onDragStarted: {
-                                self.draggedItem = track
-                                return NSItemProvider(object: track.id.description as NSString)
-                            }
-                        )
-                        .equatable()
-                        .onTapGesture {
-                                playbackVM.play(track: track, queue: displayedTracks, startIndex: index)
-                            }
-                            .onDrop(of: [.plainText], delegate: PlaylistDropDelegate(item: track, items: $tracks, playlistId: playlistId, draggedItem: $draggedItem, isSearchActive: !searchQuery.isEmpty))
-                            .contextMenu {
-                                if playlistId >= 0 {
-                                    Button("Remove from Playlist", role: .destructive) {
-                                        removeTrack(track)
-                                    }
-                                }
-                            }
+                    ForEach(0..<displayedTracks.count, id: \.self) { index in
+                        let track = displayedTracks[index]
+                        trackRowView(for: index, track: track)
                     }
                 }
                 .padding(.vertical, 8)
@@ -192,7 +169,7 @@ struct PlaylistEditorView: View {
         .onAppear {
             loadPlaylist()
         }
-        .onChange(of: playlistManager.playlists) {
+        .onChange(of: playlistManager.playlists) { _ in
             // Refresh if playlist was deleted or changed externally
             loadPlaylist()
         }
@@ -276,6 +253,35 @@ struct PlaylistEditorView: View {
         }
     }
     
+    @ViewBuilder
+    private func trackRowView(for index: Int, track: TrackViewModel) -> some View {
+        TrackRow(
+            index: index + 1, 
+            track: track, 
+            isPlaying: playbackVM.currentTrack?.id == track.id,
+            onPlayNext: { playbackVM.playNext(track) },
+            onEnqueue: { playbackVM.enqueue(track) },
+            showDragHandle: searchQuery.isEmpty,
+            enableExportDrag: false,
+            onDragStarted: {
+                self.draggedItem = track
+                return NSItemProvider(object: track.id.description as NSString)
+            }
+        )
+        .equatable()
+        .onTapGesture {
+            playbackVM.play(track: track, queue: displayedTracks, startIndex: index)
+        }
+        .onDrop(of: [.plainText], delegate: PlaylistDropDelegate(item: track, items: $tracks, playlistId: playlistId, draggedItem: $draggedItem, isSearchActive: !searchQuery.isEmpty))
+        .contextMenu {
+            if playlistId >= 0 {
+                Button("Remove from Playlist", role: .destructive) {
+                    removeTrack(track)
+                }
+            }
+        }
+    }
+
     private func removeTrack(_ track: TrackViewModel) {
         do {
             try db.removeTrackFromPlaylist(playlistId: playlistId, trackId: track.id)

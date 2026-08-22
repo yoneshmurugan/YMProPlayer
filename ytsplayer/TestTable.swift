@@ -13,7 +13,7 @@ struct TestTable: View {
     var body: some View {
         Table(tracks, sortOrder: $sortOrder) {
             TableColumn("Title", value: \.title)
-            TableColumn("Artist", value: \.artist)
+            TableColumn("Artist") { track in Text(track.artist ?? "") }
         }
     }
 }

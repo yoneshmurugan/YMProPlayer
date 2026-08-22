@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>YM Pro</string>
+	<string>ytsplayer</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.YM-Pro.app</string>
+	<string>com.ytsplayer.app</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>YM Pro</string>
+	<string>ytsplayer</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -32,18 +32,5 @@
 	<false/>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
-	<key>UTExportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-			</array>
-			<key>UTTypeDescription</key>
-			<string>YTS Player Track ID</string>
-			<key>UTTypeIdentifier</key>
-			<string>com.ytsplayer.track.id</string>
-		</dict>
-	</array>
 </dict>
 </plist>
