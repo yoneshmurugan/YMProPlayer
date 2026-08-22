@@ -15,9 +15,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "BF562347009EF85E919F7F42"
-               BuildableName = "ytsplayer.app"
-               BlueprintName = "ytsplayer"
+               BlueprintIdentifier = "38F1FA13AD63416B6E4432A3"
+               BuildableName = "YM Pro.app"
+               BlueprintName = "YM Pro"
                ReferencedContainer = "container:YM Pro.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -32,9 +32,9 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "BF562347009EF85E919F7F42"
-            BuildableName = "ytsplayer.app"
-            BlueprintName = "ytsplayer"
+            BlueprintIdentifier = "38F1FA13AD63416B6E4432A3"
+            BuildableName = "YM Pro.app"
+            BlueprintName = "YM Pro"
             ReferencedContainer = "container:YM Pro.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -44,9 +44,9 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "0C4B13461CE16C743B894C23"
-               BuildableName = "ytsplayerTests.xctest"
-               BlueprintName = "ytsplayerTests"
+               BlueprintIdentifier = "14BD7F29500F0E4C5560EAD3"
+               BuildableName = "YM ProTests.xctest"
+               BlueprintName = "YM ProTests"
                ReferencedContainer = "container:YM Pro.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -68,9 +68,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "BF562347009EF85E919F7F42"
-            BuildableName = "ytsplayer.app"
-            BlueprintName = "ytsplayer"
+            BlueprintIdentifier = "38F1FA13AD63416B6E4432A3"
+            BuildableName = "YM Pro.app"
+            BlueprintName = "YM Pro"
             ReferencedContainer = "container:YM Pro.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -87,9 +87,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "BF562347009EF85E919F7F42"
-            BuildableName = "ytsplayer.app"
-            BlueprintName = "ytsplayer"
+            BlueprintIdentifier = "38F1FA13AD63416B6E4432A3"
+            BuildableName = "YM Pro.app"
+            BlueprintName = "YM Pro"
             ReferencedContainer = "container:YM Pro.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

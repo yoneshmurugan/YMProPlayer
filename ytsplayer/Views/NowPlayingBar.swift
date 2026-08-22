@@ -12,7 +12,6 @@ struct NowPlayingBar: View {
     @EnvironmentObject var playlistManager: PlaylistManager
     @Environment(\.openWindow) var openWindow
     
-    var onSearchTapped: (() -> Void)? = nil
     @State private var isFavoriteLocal = false
     @State private var isQueuePresented = false
     @StateObject private var waveform = WaveformGenerator()
@@ -81,7 +80,7 @@ struct NowPlayingBar: View {
                     .padding(.leading, 8)
                 }
             }
-            .frame(width: 280, alignment: .leading)
+            .frame(minWidth: 150, idealWidth: 240, maxWidth: 280, alignment: .leading)
             .padding(.leading, 20)
             .onChange(of: vm.currentTrack?.id) { _ in
                 isFavoriteLocal = vm.currentTrack?.isFavorite ?? false
@@ -207,18 +206,7 @@ struct NowPlayingBar: View {
 
             // ── RIGHT: Volume & Aux ───────────────────────────────────────
             VStack(alignment: .trailing, spacing: 6) {
-                HStack(spacing: 20) {
-                    // Search
-                    if let onSearchTapped = onSearchTapped {
-                        Button(action: onSearchTapped) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(Color.white.opacity(0.8))
-                        }
-                        .buttonStyle(.plain)
-                        .help("Search")
-                    }
-                    
+                HStack(spacing: 16) {
                     // Bit-Perfect Toggle
                     Toggle("Bit-Perfect", isOn: $vm.isBitPerfect)
                         .toggleStyle(.switch)

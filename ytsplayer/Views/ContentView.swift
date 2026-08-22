@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var showFullScreenPlayer = false
     @State private var showSettings = false
+    @State private var showLogoPopover = false
 
     init(halEngine: CoreAudioHALEngine, db: DatabasePool, playbackVM: PlaybackViewModel) {
         self.halEngine = halEngine
@@ -122,28 +123,43 @@ struct ContentView: View {
                     Divider()
                         .background(Color.white.opacity(0.1))
                     
-                    Button(action: { showSettings = true }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundStyle(.purple)
+                    HStack(spacing: 12) {
+                        Button(action: { showLogoPopover = true }) {
+                            Image("Logo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 44, height: 44)
+                                .cornerRadius(8)
+                                .shadow(radius: 2)
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showLogoPopover, arrowEdge: .trailing) {
+                            Image("Logo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 300, height: 300)
+                                .padding()
+                                .background(Color.black.opacity(0.8))
+                        }
+                        
+                        Button(action: { showSettings = true }) {
                             Text("Settings")
                                 .font(.system(size: 14, weight: .medium))
-                            Spacer()
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(Color.clear)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .onHover { isHovering in
-                        if isHovering {
-                            NSCursor.pointingHand.push()
-                        } else {
-                            NSCursor.pop()
+                        .buttonStyle(.plain)
+                        .onHover { isHovering in
+                            if isHovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
                         }
+                        
+                        Spacer()
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color.clear)
                 }
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
 
@@ -192,7 +208,6 @@ struct ContentView: View {
                     // ── Now Playing Bar (Floating in Detail Pane) ─────────────
                     NowPlayingBar(
                         vm: playbackVM,
-                        onSearchTapped: { selectedTab = .search },
                         onArtworkTap: {
                             if playbackVM.currentTrack != nil {
                                 showFullScreenPlayer = true
@@ -210,7 +225,7 @@ struct ContentView: View {
             SettingsView(libraryVM: libraryVM, playbackVM: playbackVM, halEngine: halEngine)
                 .frame(width: 500, height: 400)
         }
-        .navigationTitle("ytsplayer")
+        .navigationTitle("YM Pro")
         .frame(minWidth: 1000, minHeight: 650)
         .preferredColorScheme(.dark)
         .onAppear {
@@ -224,27 +239,30 @@ struct ContentView: View {
         }
         .touchBar {
             // Premium Static Icon (Replaces buggy NSImage)
-            Image(systemName: playbackVM.isPlaying ? "waveform" : "waveform.path")
+            Image("Logo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 24, height: 24)
-                .foregroundColor(.purple)
+                .frame(width: 30, height: 30)
             
             // Static Track Info (Expanded width + Audiophile Stats)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(playbackVM.currentTrack?.title ?? "ytsplayer")
-                    .font(.system(size: 14, weight: .bold))
-                    .lineLimit(1)
-                
-                let stats = "\(playbackVM.currentBitDepth)-bit / \(playbackVM.currentSampleRate / 1000)kHz"
-                let artist = playbackVM.currentTrack?.artistName ?? "Bit-Perfect Audio"
-                Text("\(artist) • \(stats)")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
+            if let track = playbackVM.currentTrack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(track.title)
+                        .font(.system(size: 14, weight: .bold))
+                        .lineLimit(1)
+                    
+                    let stats = "\(playbackVM.currentBitDepth)-bit / \(playbackVM.currentSampleRate / 1000)kHz"
+                    Text("\(track.artistName ?? "Unknown") • \(stats)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: 300, alignment: .leading)
+                .clipped()
+            } else {
+                Text("YM Pro")
+                    .font(.system(size: 15, weight: .bold))
             }
-            .frame(maxWidth: 250, alignment: .leading)
-            .clipped()
             
             // Format Badge, Hi-Res Logo
             if let track = playbackVM.currentTrack {
