@@ -6,7 +6,7 @@ import GRDB
 
 struct TracksView: View {
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject var playlistManager: PlaylistManager
@@ -15,6 +15,9 @@ struct TracksView: View {
     @State private var isLoading = true
     @State private var selectedTracks: Set<Int64> = []
     
+    @State private var currentTrackId: Int64?
+    @State private var isPlaying: Bool = false
+    
     // Sorting state
     @State private var sortOrder = [KeyPathComparator(\TrackViewModel.title)]
     
@@ -22,7 +25,10 @@ struct TracksView: View {
     @State private var selectedRootFolder: URL? = nil
     
     // Column Customization
-    @SceneStorage("tracksTableCustomization") private var columnCustomization: TableColumnCustomization<TrackViewModel>
+    @AppStorage("selectedTracksColumns") private var selectedColumnsData: Data = Data()
+    @State private var selectedColumns: Set<String> = ["Artist", "Album", "Type", "Time"]
+    
+    let availableColumns = ["Artist", "Album", "Type", "Sample Rate", "Bit Depth", "Channels", "Bitrate", "Size", "Views", "Time"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -40,7 +46,8 @@ struct TracksView: View {
                         .foregroundStyle(.white)
                 }
                 Spacer()
-                Text("\(allTracks.count) tracks")
+                let totalDuration = allTracks.reduce(0) { $0 + $1.duration }
+                Text("\(allTracks.count) tracks • \(formatTotalDuration(totalDuration))")
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.4))
             }
@@ -108,42 +115,96 @@ struct TracksView: View {
                 }
                 Spacer()
             } else {
-                Table(allTracks, selection: $selectedTracks, sortOrder: $sortOrder, columnCustomization: $columnCustomization) {
+                Table(of: TrackViewModel.self, selection: $selectedTracks, sortOrder: $sortOrder) {
+                    TableColumn("Playing", value: \.id) { track in
+                        playingCell(for: track)
+                            .onTapGesture {
+                                let idx = allTracks.firstIndex(where: { $0.id == track.id }) ?? 0
+                                let queueEnd = min(idx + 10, allTracks.count - 1)
+                                let queuedTracks = Array(allTracks[idx...queueEnd])
+                                playbackVM.play(track: track, queue: queuedTracks, startIndex: 0, context: .allTracks)
+                            }
+                    }
+                    .width(min: 20, ideal: 30, max: 40)
+                    
+                    TableColumn("Title", value: \.title) { track in
+                        titleCell(for: track)
+                            .onTapGesture {
+                                let idx = allTracks.firstIndex(where: { $0.id == track.id }) ?? 0
+                                let queueEnd = min(idx + 10, allTracks.count - 1)
+                                let queuedTracks = Array(allTracks[idx...queueEnd])
+                                playbackVM.play(track: track, queue: queuedTracks, startIndex: 0, context: .allTracks)
+                            }
+                    }
+                    
                     Group {
-                        TableColumn("Playing", value: \.id) { playingCell(for: $0) }
-                            .width(min: 20, ideal: 30, max: 40).customizationID("Playing")
-                        TableColumn("Title", value: \.title) { titleCell(for: $0) }
-                            .customizationID("Title")
-                        TableColumn("Artist", value: \.sortArtist) { artistCell(for: $0) }
-                            .customizationID("Artist")
-                        TableColumn("Album", value: \.sortAlbum) { albumCell(for: $0) }
-                            .customizationID("Album")
+                        if selectedColumns.contains("Artist") {
+                            TableColumn("Artist", value: \.sortArtist) { artistCell(for: $0) }
+                        }
+                        if selectedColumns.contains("Album") {
+                            TableColumn("Album", value: \.sortAlbum) { albumCell(for: $0) }
+                        }
+                        if selectedColumns.contains("Type") {
+                            TableColumn("Type", value: \.filePath) { typeCell(for: $0) }.width(min: 40, ideal: 50, max: 80)
+                        }
+                        if selectedColumns.contains("Sample Rate") {
+                            TableColumn("Sample Rate", value: \.sampleRate) { sampleRateCell(for: $0) }
+                        }
                     }
                     Group {
-                        TableColumn("Type", value: \.filePath) { typeCell(for: $0) }
-                            .width(min: 40, ideal: 50, max: 80).customizationID("Type")
-                        TableColumn("Sample Rate", value: \.sampleRate) { sampleRateCell(for: $0) }
-                            .customizationID("SampleRate")
-                        TableColumn("Bit Depth", value: \.bitDepth) { bitDepthCell(for: $0) }
-                            .customizationID("BitDepth")
-                        TableColumn("Channels", value: \.channels) { channelsCell(for: $0) }
-                            .customizationID("Channels")
-                        TableColumn("Bitrate", value: \.sortBitrate) { bitrateCell(for: $0) }
-                            .customizationID("Bitrate")
+                        if selectedColumns.contains("Bit Depth") {
+                            TableColumn("Bit Depth", value: \.bitDepth) { bitDepthCell(for: $0) }
+                        }
+                        if selectedColumns.contains("Channels") {
+                            TableColumn("Channels", value: \.channels) { channelsCell(for: $0) }
+                        }
+                        if selectedColumns.contains("Bitrate") {
+                            TableColumn("Bitrate", value: \.sortBitrate) { bitrateCell(for: $0) }
+                        }
+                        if selectedColumns.contains("Size") {
+                            TableColumn("Size", value: \.sortSize) { sizeCell(for: $0) }
+                        }
                     }
                     Group {
-                        TableColumn("Size", value: \.sortSize) { sizeCell(for: $0) }
-                            .customizationID("Size")
-                        TableColumn("Views", value: \.playCount) { viewsCell(for: $0) }
-                            .customizationID("Views")
-                        TableColumn("Time", value: \.duration) { timeCell(for: $0) }
-                            .customizationID("Time")
-                        TableColumn("Fav") { favCell(for: $0) }
-                            .width(min: 20, ideal: 30, max: 40).customizationID("Fav")
+                        if selectedColumns.contains("Views") {
+                            TableColumn("Views", value: \.playCount) { viewsCell(for: $0) }
+                        }
+                        if selectedColumns.contains("Time") {
+                            TableColumn("Time", value: \.duration) { timeCell(for: $0) }
+                        }
+                    }
+                    
+                    TableColumn("Fav") { favCell(for: $0) }
+                        .width(min: 20, ideal: 30, max: 40)
+                } rows: {
+                    ForEach(allTracks) { track in
+                        TableRow(track)
+                            .itemProvider {
+                                let payload = selectedTracks.contains(track.id) ? 
+                                    TrackDropPayload(trackIds: Array(selectedTracks)) : 
+                                    TrackDropPayload(trackIds: [track.id])
+                                
+                                let provider = NSItemProvider()
+                                if let data = try? JSONEncoder().encode(payload) {
+                                    provider.registerDataRepresentation(forTypeIdentifier: "com.ytsplayer.track.id", visibility: .all) { completion in
+                                        completion(data, nil)
+                                        return nil
+                                    }
+                                }
+                                return provider
+                            }
                     }
                 }
                 .tableStyle(.inset)
                 .contextMenu(forSelectionType: TrackViewModel.ID.self) { items in
+                    Button(selectedTracks.isEmpty ? "Select" : "Deselect All") {
+                        if selectedTracks.isEmpty {
+                            for item in items { selectedTracks.insert(item) }
+                        } else {
+                            selectedTracks.removeAll()
+                        }
+                    }
+                    Divider()
                     Button("Play Next") {
                         for trackId in items {
                             if let track = allTracks.first(where: { $0.id == trackId }) {
@@ -187,10 +248,21 @@ struct TracksView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    // Let native table handle columns via TableColumnCustomization context menus if needed,
-                    // but we can provide a manual button to clear customization.
-                    Button("Reset Column Layout") {
-                        columnCustomization = TableColumnCustomization<TrackViewModel>()
+                    ForEach(availableColumns, id: \.self) { col in
+                        Button(action: {
+                            if selectedColumns.contains(col) {
+                                selectedColumns.remove(col)
+                            } else {
+                                selectedColumns.insert(col)
+                            }
+                            saveColumns()
+                        }) {
+                            if selectedColumns.contains(col) {
+                                Label(col, systemImage: "checkmark")
+                            } else {
+                                Text(col)
+                            }
+                        }
                     }
                 } label: {
                     Label("Columns", systemImage: "tablecells")
@@ -198,18 +270,31 @@ struct TracksView: View {
                 .help("Manage Columns")
             }
         }
-        .onAppear { loadTracks() }
+        .onAppear {
+            loadColumns()
+            loadTracks()
+        }
         .onChange(of: sortOrder) { _ in loadTracks() }
         .onChange(of: libraryVM.albums.count) { _ in loadTracks() }
         .onChange(of: selectedRootFolder) { _ in loadTracks() }
+        .onReceive(playbackVM.$currentTrack) { track in
+            currentTrackId = track?.id
+        }
+        .onReceive(playbackVM.$isPlaying) { playing in
+            isPlaying = playing
+        }
+        .onAppear {
+            currentTrackId = playbackVM.currentTrack?.id
+            isPlaying = playbackVM.isPlaying
+        }
     }
     
-    // MARK: - Helpers
+    // MARK: - Table Cell Helpers
     
     @ViewBuilder private func playingCell(for track: TrackViewModel) -> some View {
-        let isCurrent = playbackVM.currentTrack?.id == track.id
-        let isPlaying = isCurrent && playbackVM.isPlaying
-        if isPlaying {
+        let isCurrent = currentTrackId == track.id
+        let isTrackPlaying = isCurrent && isPlaying
+        if isTrackPlaying {
             Image(systemName: "waveform")
                 .font(.system(size: 11))
                 .foregroundStyle(.purple)
@@ -223,10 +308,10 @@ struct TracksView: View {
     }
     
     @ViewBuilder private func titleCell(for track: TrackViewModel) -> some View {
-        let isPlaying = playbackVM.currentTrack?.id == track.id
+        let isCurrent = currentTrackId == track.id
         Text(track.title)
-            .font(.system(size: 13, weight: isPlaying ? .semibold : .regular))
-            .foregroundStyle(isPlaying ? Color.purple : Color.primary)
+            .font(.system(size: 13, weight: isCurrent ? .semibold : .regular))
+            .foregroundStyle(isCurrent ? Color.purple : Color.primary)
             .lineLimit(1)
     }
     
@@ -279,8 +364,12 @@ struct TracksView: View {
     
     @ViewBuilder private func favCell(for track: TrackViewModel) -> some View {
         Button(action: {
-            if let _ = try? playlistManager.toggleFavorite(forTrackId: track.id) {
-                // relies on DB refresh
+            if let isFav = try? playlistManager.toggleFavorite(forTrackId: track.id) {
+                if let idx = allTracks.firstIndex(where: { $0.id == track.id }) {
+                    var updatedTrack = track
+                    updatedTrack.isFavorite = isFav
+                    allTracks[idx] = updatedTrack
+                }
             }
         }) {
             Image(systemName: track.isFavorite ? "heart.fill" : "heart")
@@ -294,6 +383,29 @@ struct TracksView: View {
         return String(format: "%d:%02d", s / 60, s % 60)
     }
 
+    private func formatTotalDuration(_ duration: Double) -> String {
+        let totalSeconds = Int(duration)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        if hours > 0 {
+            return "\(hours) hr \(minutes) min"
+        } else {
+            return "\(minutes) min"
+        }
+    }
+
+    private func saveColumns() {
+        if let data = try? JSONEncoder().encode(Array(selectedColumns)) {
+            selectedColumnsData = data
+        }
+    }
+
+    private func loadColumns() {
+        if let decoded = try? JSONDecoder().decode([String].self, from: selectedColumnsData) {
+            selectedColumns = Set(decoded)
+        }
+    }
+    
     private func loadTracks() {
         isLoading = true
         Task {

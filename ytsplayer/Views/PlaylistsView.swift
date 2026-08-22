@@ -11,21 +11,24 @@ struct PlaylistsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 HStack {
-                    Text("Your Playlists")
-                        .font(.system(size: 28, weight: .bold))
+                    Text("Playlists")
+                        .font(.system(size: 32, weight: .heavy, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(colors: [.white, .gray], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
                     Spacer()
                     Button(action: {
                         createNewPlaylist()
                     }) {
                         Label("New Playlist", systemImage: "plus")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 13, weight: .semibold))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Color.accentColor)
+                            .background(Capsule().fill(Color.purple))
                             .foregroundColor(.white)
-                            .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
+                    .shadow(color: .purple.opacity(0.3), radius: 8, y: 4)
                 }
                 
                 // Smart Playlists Section
@@ -85,40 +88,61 @@ struct PlaylistCard: View {
     let playlist: PlaylistViewModel
     @State private var isHovered = false
     
+    private func formatTotalDuration(_ duration: Double) -> String {
+        let totalSeconds = Int(duration)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        if hours > 0 { return "\(hours)h \(minutes)m" }
+        return "\(minutes)m"
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ZStack {
                 Rectangle()
-                    .fill(Color.gray.opacity(0.15))
+                    .fill(Color.gray.opacity(0.1))
                     .aspectRatio(1, contentMode: .fill)
-                    .cornerRadius(12)
                 
                 if let path = playlist.firstArtworkCachePath, let nsImage = NSImage(contentsOfFile: path) {
                     Image(nsImage: nsImage)
                         .resizable()
                         .scaledToFill()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 } else {
                     Image(systemName: "music.note.list")
                         .font(.system(size: 40))
-                        .foregroundColor(.gray.opacity(0.5))
+                        .foregroundColor(.gray.opacity(0.3))
+                }
+                
+                if isHovered {
+                    Rectangle()
+                        .fill(Color.black.opacity(0.4))
+                        .transition(.opacity)
+                    
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 48))
+                        .foregroundColor(.white)
+                        .shadow(radius: 10)
+                        .scaleEffect(isHovered ? 1.0 : 0.8)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isHovered)
                 }
             }
-            .shadow(color: Color.black.opacity(isHovered ? 0.3 : 0.1), radius: isHovered ? 12 : 8, y: 4)
-            .scaleEffect(isHovered ? 1.02 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: Color.black.opacity(isHovered ? 0.5 : 0.2), radius: isHovered ? 12 : 8, y: isHovered ? 8 : 4)
+            .scaleEffect(isHovered ? 1.03 : 1.0)
+            .animation(.easeOut(duration: 0.2), value: isHovered)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(playlist.name)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
                     .lineLimit(1)
                 
-                Text("\(playlist.trackCount) track\(playlist.trackCount == 1 ? "" : "s")")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                Text("\(playlist.trackCount) tracks • \(formatTotalDuration(playlist.totalDuration))")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.5))
             }
+            .padding(.horizontal, 4)
         }
         .onHover { hovering in
             isHovered = hovering
@@ -135,30 +159,41 @@ struct SmartPlaylistCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ZStack {
-                Rectangle()
-                    .fill(color.opacity(0.15))
+                LinearGradient(colors: [color.opacity(0.6), color.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     .aspectRatio(1, contentMode: .fill)
-                    .cornerRadius(12)
                 
                 Image(systemName: systemImage)
                     .font(.system(size: 48))
                     .foregroundColor(color)
-                    .shadow(color: color.opacity(0.5), radius: 8, x: 0, y: 4)
+                    .shadow(color: color.opacity(0.5), radius: 10, y: 5)
+                
+                if isHovered {
+                    Rectangle()
+                        .fill(Color.black.opacity(0.2))
+                        .transition(.opacity)
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 48))
+                        .foregroundColor(.white)
+                        .shadow(radius: 10)
+                        .scaleEffect(isHovered ? 1.0 : 0.8)
+                }
             }
-            .shadow(color: Color.black.opacity(isHovered ? 0.3 : 0.1), radius: isHovered ? 12 : 8, y: 4)
-            .scaleEffect(isHovered ? 1.02 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: color.opacity(isHovered ? 0.4 : 0.15), radius: isHovered ? 12 : 8, y: isHovered ? 8 : 4)
+            .scaleEffect(isHovered ? 1.03 : 1.0)
+            .animation(.easeOut(duration: 0.2), value: isHovered)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
                     .lineLimit(1)
                 
                 Text("Smart Playlist")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.5))
             }
+            .padding(.horizontal, 4)
         }
         .onHover { hovering in
             isHovered = hovering

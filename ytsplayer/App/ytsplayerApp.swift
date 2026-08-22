@@ -70,6 +70,12 @@ struct ytsplayerApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+        
+        MenuBarExtra("ytsplayer", systemImage: "waveform") {
+            MenuBarAppView()
+                .environmentObject(env.playbackVM)
+        }
+        .menuBarExtraStyle(.window)
 
         Settings {
             // macOS Settings window (Cmd+,)

@@ -31,21 +31,21 @@ struct PlaylistEditorView: View {
                                 .resizable()
                                 .scaledToFill()
                         } placeholder: {
-                            fallbackIcon
+                            fallbackIcon()
                         }
                     } else {
-                        fallbackIcon
+                        fallbackIcon()
                     }
                 }
-                .frame(width: 100, height: 100)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+                .frame(width: 140, height: 140)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
                 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 12) {
                     Text("PLAYLIST")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.purple)
+                        .kerning(1.2)
                     
                     HStack {
                         TextField("Playlist Name", text: $playlistName, onCommit: savePlaylistName)
@@ -78,9 +78,28 @@ struct PlaylistEditorView: View {
                         }
                     }
                     
-                    Text("\(tracks.count) track\(tracks.count == 1 ? "" : "s")")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            if let first = tracks.first {
+                                playbackVM.play(track: first, queue: tracks, startIndex: 0, context: .allTracks)
+                            }
+                        }) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Circle().fill(Color.purple))
+                                .shadow(color: .purple.opacity(0.5), radius: 8, y: 4)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(tracks.isEmpty)
+                        .opacity(tracks.isEmpty ? 0.5 : 1.0)
+                        
+                        let totalDuration = tracks.reduce(0) { $0 + $1.duration }
+                        Text("\(tracks.count) tracks • \(formatTotalDuration(totalDuration))")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
                 }
                 Spacer()
             }
@@ -231,14 +250,22 @@ struct PlaylistEditorView: View {
         }
     }
     
-    private var fallbackIcon: some View {
+    private func fallbackIcon(for name: String = "music.note.list") -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.accentColor.opacity(0.2))
-            Image(systemName: "music.note.list")
-                .font(.system(size: 40))
-                .foregroundColor(.accentColor)
+            LinearGradient(colors: [.purple.opacity(0.6), .purple.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            Image(systemName: name)
+                .font(.system(size: 48))
+                .foregroundColor(.purple)
+                .shadow(color: .purple.opacity(0.5), radius: 10, y: 5)
         }
+    }
+    
+    private func formatTotalDuration(_ duration: Double) -> String {
+        let totalSeconds = Int(duration)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        if hours > 0 { return "\(hours)h \(minutes)m" }
+        return "\(minutes)m"
     }
 }
 

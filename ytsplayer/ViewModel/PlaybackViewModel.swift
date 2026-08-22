@@ -159,7 +159,15 @@ final class PlaybackViewModel: ObservableObject {
 
         // Let CoreAudioHALEngine re-assert Hog Mode internally after stream setup
 
-        let ok = await halEngine.loadTrack(filePath: track.filePath)
+        // Check if the file exists (e.g. drive disconnected)
+        if !FileManager.default.fileExists(atPath: track.filePath) {
+            isBuffering = false
+            isPlaying = false
+            errorMessage = "File not found or drive disconnected."
+            return
+        }
+
+        let ok = await halEngine.loadTrack(filePath: track.filePath, expectedSampleRate: Double(track.sampleRate))
         isBuffering = false
         isPlaying   = ok
         updateNowPlayingInfo()
@@ -168,7 +176,7 @@ final class PlaybackViewModel: ObservableObject {
             // Track play count
             onTrackPlayed?(track.id)
         } else {
-            errorMessage = "Audio format not supported. Enable Downsampling in Settings."
+            errorMessage = "Audio format not supported or hardware rejected sample rate. Enable Downsampling in Settings."
         }
     }
 

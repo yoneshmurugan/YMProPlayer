@@ -98,6 +98,7 @@ struct PlaylistViewModel: Identifiable, Hashable {
     let name: String
     let createdAt: Date
     let trackCount: Int
+    let totalDuration: Double
     let firstArtworkCachePath: String?
 }
 
@@ -828,13 +829,15 @@ extension DatabasePool {
             let rows = try Row.fetchAll(db, sql: """
                 SELECT p.id, p.name, p.createdAt,
                        COUNT(pt.id) AS trackCount,
+                       COALESCE(SUM(t.duration), 0) AS totalDuration,
                        (SELECT a.artworkCachePath FROM playlist_tracks pt2
-                        JOIN tracks t ON pt2.trackId = t.id
-                        JOIN albums a ON t.albumId = a.id
+                        JOIN tracks t2 ON pt2.trackId = t2.id
+                        JOIN albums a ON t2.albumId = a.id
                         WHERE pt2.playlistId = p.id AND a.artworkCachePath IS NOT NULL
                         ORDER BY pt2.orderIndex ASC LIMIT 1) AS firstArtworkCachePath
                 FROM playlists p
                 LEFT JOIN playlist_tracks pt ON p.id = pt.playlistId
+                LEFT JOIN tracks t ON pt.trackId = t.id
                 GROUP BY p.id
                 ORDER BY p.createdAt DESC
             """)
@@ -845,6 +848,7 @@ extension DatabasePool {
                     name: r["name"],
                     createdAt: r["createdAt"],
                     trackCount: r["trackCount"],
+                    totalDuration: r["totalDuration"],
                     firstArtworkCachePath: r["firstArtworkCachePath"]
                 )
             }

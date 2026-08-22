@@ -319,7 +319,7 @@ final class CoreAudioHALEngine {
 
     // MARK: - Track Loading
 
-    func loadTrack(filePath: String) async -> Bool {
+    func loadTrack(filePath: String, expectedSampleRate: Double) async -> Bool {
         stopPlayback()
 
         if let w = decoderWorker {
@@ -337,7 +337,7 @@ final class CoreAudioHALEngine {
         }
         decoderWorker = worker
 
-        let originalRate = Double(context.pointee.sampleRate)
+        let originalRate = expectedSampleRate > 0 ? expectedSampleRate : Double(context.pointee.sampleRate)
         var hardwareRate = originalRate
         var ratio: UInt32 = 1
 

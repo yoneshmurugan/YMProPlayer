@@ -5,6 +5,7 @@
 // Reads purely from PlaybackViewModel — zero audio thread interaction.
 
 import SwiftUI
+import AVFoundation
 
 struct NowPlayingBar: View {
     @ObservedObject var vm: PlaybackViewModel
@@ -12,6 +13,7 @@ struct NowPlayingBar: View {
     @Environment(\.openWindow) var openWindow
     @State private var isFavoriteLocal = false
     @State private var isQueuePresented = false
+    @StateObject private var waveform = WaveformGenerator()
     var onArtworkTap: (() -> Void)? = nil
 
     var body: some View {
@@ -81,6 +83,16 @@ struct NowPlayingBar: View {
             .padding(.leading, 20)
             .onChange(of: vm.currentTrack?.id) { _ in
                 isFavoriteLocal = vm.currentTrack?.isFavorite ?? false
+                if let path = vm.currentTrack?.filePath {
+                    waveform.generatePeaks(for: path)
+                } else {
+                    waveform.peaks = []
+                }
+            }
+            .onAppear {
+                if let path = vm.currentTrack?.filePath {
+                    waveform.generatePeaks(for: path)
+                }
             }
 
             Spacer()
@@ -89,9 +101,9 @@ struct NowPlayingBar: View {
             VStack(spacing: 8) {
                 // 1. Controls
                 HStack(spacing: 32) {
-                    transportButton(systemImage: "backward.fill", size: 16) { vm.skipPrevious() }
+                    transportButton(systemImage: "backward.fill", size: 20) { vm.skipPrevious() }
                     playPauseButton
-                    transportButton(systemImage: "forward.fill", size: 16) { vm.skipNext() }
+                    transportButton(systemImage: "forward.fill", size: 20) { vm.skipNext() }
                 }
                 
                 // 2. Progress Scrubber
@@ -102,22 +114,28 @@ struct NowPlayingBar: View {
                         .frame(width: 36, alignment: .trailing)
 
                     GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.white.opacity(0.1))
-                                .frame(height: 4)
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.purple, .indigo],
-                                        startPoint: .leading, endPoint: .trailing
-                                    )
-                                )
-                                .frame(
-                                    width: geo.size.width * vm.playbackProgress,
-                                    height: 4
-                                )
-                                .shadow(color: .purple.opacity(0.5), radius: 3, y: 0)
+                        Group {
+                            if waveform.peaks.isEmpty {
+                                ZStack(alignment: .leading) {
+                                    Capsule()
+                                        .fill(Color.white.opacity(0.1))
+                                        .frame(height: 4)
+                                    Capsule()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [.purple, .indigo],
+                                                startPoint: .leading, endPoint: .trailing
+                                            )
+                                        )
+                                        .frame(
+                                            width: geo.size.width * vm.playbackProgress,
+                                            height: 4
+                                        )
+                                        .shadow(color: .purple.opacity(0.5), radius: 3, y: 0)
+                                }
+                            } else {
+                                WaveformView(peaks: waveform.peaks, progress: vm.playbackProgress)
+                            }
                         }
                         .gesture(
                             DragGesture(minimumDistance: 0)
@@ -132,10 +150,10 @@ struct NowPlayingBar: View {
                                     vm.isScrubbing = false
                                 }
                         )
-                        .frame(height: 12)
                         .contentShape(Rectangle())
+                        .frame(maxHeight: waveform.peaks.isEmpty ? 12 : 24)
                     }
-                    .frame(height: 12)
+                    .frame(height: 24)
                     .frame(maxWidth: 320)
 
                     Text("-" + vm.totalTimeString) // Mockup has negative remaining time usually, but we use total
@@ -165,18 +183,18 @@ struct NowPlayingBar: View {
                     HStack(spacing: 6) {
                         if vm.currentSampleRate > 0 {
                             if vm.currentBitDepth >= 24 {
-                                badge(text: "Hi-Res", gradient: [.orange, .pink])
+                                badge(text: "Hi-Res", gradient: [Color(red: 0.85, green: 0.65, blue: 0.13), Color(red: 0.95, green: 0.85, blue: 0.35)], textColor: .black)
                             }
                             let ext = (vm.currentTrack?.filePath as NSString?)?.pathExtension.uppercased() ?? ""
                             if !ext.isEmpty {
-                                badge(text: ext, gradient: [Color.white.opacity(0.4), Color.white.opacity(0.2)])
+                                badge(text: ext, gradient: [Color(white: 0.25), Color(white: 0.1)], textColor: .white)
                             }
                             let kHz = vm.currentSampleRate / 1000
                             let remainder = vm.currentSampleRate % 1000
                             let rateStr = remainder == 0 ? "\(kHz)kHz" : "\(kHz).\(remainder / 100)kHz"
-                            badge(text: rateStr, gradient: [.purple.opacity(0.8), .indigo.opacity(0.8)])
+                            badge(text: rateStr, gradient: [Color.blue.opacity(0.8), Color.indigo.opacity(0.9)], textColor: .white)
                             if vm.currentBitDepth > 0 {
-                                badge(text: "\(vm.currentBitDepth)-bit", gradient: [.cyan.opacity(0.6), .blue.opacity(0.6)])
+                                badge(text: "\(vm.currentBitDepth)-bit", gradient: [Color.purple.opacity(0.8), Color.black.opacity(0.6)], textColor: .white)
                             }
                         }
                     }
@@ -195,7 +213,7 @@ struct NowPlayingBar: View {
                         .frame(width: 40)
                         .help("Bit-Perfect Mode: Bypasses software volume for pure, unaltered audio.")
                         .tint(.purple)
-
+                        
                     // Mini-Player Toggle
                     Button(action: { openWindow(id: "MiniPlayer") }) {
                         Image(systemName: "pip.enter")
@@ -246,9 +264,29 @@ struct NowPlayingBar: View {
             .frame(width: 280, alignment: .trailing)
             .padding(.trailing, 20)
         }
-        .frame(height: 96) // Slightly taller
-        .background(Material.ultraThinMaterial)
-        // Removed Divider to reduce harsh lines
+        .frame(height: 96)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(Material.ultraThin)
+                
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.12),
+                        Color.clear,
+                        Color.black.opacity(0.15)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        )
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.white.opacity(0.2)),
+            alignment: .top
+        )
     }
 
     // MARK: - Sub-views
@@ -313,19 +351,92 @@ struct NowPlayingBar: View {
         .disabled(vm.currentTrack == nil)
     }
 
-    private func badge(text: String, gradient: [Color]) -> some View {
+    private func badge(text: String, gradient: [Color], textColor: Color) -> some View {
         Text(text)
-            .font(.system(size: 8, weight: .bold))
+            .font(.system(size: 9, weight: .heavy, design: .rounded))
+            .textCase(.uppercase)
+            .tracking(0.5)
             .padding(.horizontal, 6)
-            .padding(.vertical, 3)
+            .padding(.vertical, 2)
             .background(
-                Capsule()
-                    .stroke(
-                        LinearGradient(colors: gradient, startPoint: .leading, endPoint: .trailing),
-                        lineWidth: 1
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(
+                        LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
-                    .background(Capsule().fill(Color.white.opacity(0.05)))
+                    .shadow(color: gradient.first?.opacity(0.3) ?? .clear, radius: 2, y: 1)
             )
-            .foregroundStyle(.white.opacity(0.9))
+            .foregroundStyle(textColor)
+    }
+}
+
+struct WaveformView: View {
+    let peaks: [Float]
+    let progress: Double
+    
+    var body: some View {
+        GeometryReader { geo in
+            let barWidth = geo.size.width / CGFloat(peaks.count)
+            let playedWidth = geo.size.width * progress
+            
+            HStack(alignment: .center, spacing: 0) {
+                ForEach(0..<peaks.count, id: \.self) { i in
+                    let height = max(3.0, CGFloat(peaks[i]) * geo.size.height)
+                    let isPlayed = (CGFloat(i) * barWidth) < playedWidth
+                    
+                    RoundedRectangle(cornerRadius: barWidth / 2)
+                        .fill(isPlayed ? AnyShapeStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.white.opacity(0.15)))
+                        .frame(width: max(1.0, barWidth - 1), height: height)
+                        .padding(.horizontal, 0.5)
+                        .shadow(color: isPlayed ? .purple.opacity(0.4) : .clear, radius: 2, y: 0)
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .center)
+        }
+    }
+}
+
+final class WaveformGenerator: ObservableObject {
+    @Published var peaks: [Float] = []
+    
+    func generatePeaks(for filePath: String) {
+        self.peaks = []
+        let url = URL(fileURLWithPath: filePath)
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let file = try? AVAudioFile(forReading: url) else { return }
+            
+            let format = file.processingFormat
+            let frameCount = AVAudioFrameCount(file.length)
+            let targetPeakCount = 100
+            let samplesPerPeak = Int(frameCount) / targetPeakCount
+            
+            guard samplesPerPeak > 0, let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samplesPerPeak)) else { return }
+            
+            var newPeaks: [Float] = []
+            for _ in 0..<targetPeakCount {
+                do {
+                    try file.read(into: buffer, frameCount: AVAudioFrameCount(samplesPerPeak))
+                    guard let channelData = buffer.floatChannelData else { continue }
+                    
+                    let length = Int(buffer.frameLength)
+                    var sumSquare: Float = 0.0
+                    for i in 0..<length {
+                        let sample = channelData[0][i]
+                        sumSquare += sample * sample
+                    }
+                    let rms = sqrt(sumSquare / Float(length))
+                    newPeaks.append(pow(rms, 0.45)) // Enhance lower amplitudes to make waveform thicker
+                } catch {
+                    break
+                }
+            }
+            
+            let maxPeak = newPeaks.max() ?? 1.0
+            let safeMax = maxPeak > 0 ? maxPeak : 1.0
+            let normalized = newPeaks.map { $0 / safeMax }
+            
+            DispatchQueue.main.async {
+                self.peaks = normalized
+            }
+        }
     }
 }

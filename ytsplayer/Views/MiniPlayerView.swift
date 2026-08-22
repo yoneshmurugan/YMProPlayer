@@ -90,3 +90,73 @@ struct MiniPlayerView: View {
         }
     }
 }
+// MenuBarAppView.swift
+// ytsplayer
+
+import SwiftUI
+
+struct MenuBarAppView: View {
+    @EnvironmentObject var vm: PlaybackViewModel
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Artwork & Info
+            HStack(spacing: 12) {
+                if let path = vm.currentTrack?.albumArtworkPath,
+                   let cacheDir = ImageDownsampler.artworkCacheDirectory() {
+                    let url = cacheDir.appendingPathComponent(path)
+                    AsyncImage(url: url) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        Rectangle().fill(Color.gray.opacity(0.2))
+                    }
+                    .frame(width: 60, height: 60)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    ZStack {
+                        Rectangle().fill(Color.gray.opacity(0.2))
+                        Image(systemName: "music.note").foregroundColor(.gray)
+                    }
+                    .frame(width: 60, height: 60)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(vm.currentTrack?.title ?? "Not Playing")
+                        .font(.system(size: 14, weight: .bold))
+                        .lineLimit(1)
+                    Text(vm.currentTrack?.artistName ?? "")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+            
+            // Transport Controls
+            HStack(spacing: 32) {
+                Button(action: { vm.skipPrevious() }) {
+                    Image(systemName: "backward.fill").font(.system(size: 16))
+                }.buttonStyle(.plain)
+                
+                Button(action: { vm.togglePlayPause() }) {
+                    Image(systemName: vm.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 24))
+                }.buttonStyle(.plain)
+                
+                Button(action: { vm.skipNext() }) {
+                    Image(systemName: "forward.fill").font(.system(size: 16))
+                }.buttonStyle(.plain)
+            }
+            
+            // Volume
+            HStack {
+                Image(systemName: "speaker.fill").foregroundColor(.secondary).font(.caption)
+                Slider(value: $vm.volume, in: 0...1).tint(.purple)
+                Image(systemName: "speaker.wave.3.fill").foregroundColor(.secondary).font(.caption)
+            }
+        }
+        .padding(16)
+        .frame(width: 250)
+    }
+}

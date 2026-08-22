@@ -120,7 +120,7 @@ struct ContentView: View {
 
             } detail: {
                 // ── Detail Pane ────────────────────────────────────────────────
-                VStack(spacing: 0) {
+                ZStack(alignment: .bottom) {
                     Group {
                         switch selectedTab {
                         case .home, nil:
@@ -154,9 +154,13 @@ struct ContentView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black.opacity(0.45)) // Translucent to let ambient glow through
+                    .background(Color.black.opacity(0.45))
+                    // Safe area equivalent so scrollviews can scroll past the floating bar
+                    .safeAreaInset(edge: .bottom) {
+                        Color.clear.frame(height: 96)
+                    }
 
-                    // ── Now Playing Bar ────────────────────────────────────────
+                    // ── Now Playing Bar (Floating in Detail Pane) ─────────────
                     NowPlayingBar(vm: playbackVM) {
                         if playbackVM.currentTrack != nil {
                             showFullScreenPlayer = true
@@ -186,9 +190,57 @@ struct ContentView: View {
             }
         }
         .touchBar {
-            PlayerTouchBar(playbackVM: playbackVM, showFullScreenPlayer: $showFullScreenPlayer) { id in
-                openWindow(id: "PlaylistEditor", value: id)
+            // Premium Static Icon (Replaces buggy NSImage)
+            Image(systemName: playbackVM.isPlaying ? "waveform" : "waveform.path")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+                .foregroundColor(.purple)
+            
+            // Static Track Info (Expanded width + Audiophile Stats)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(playbackVM.currentTrack?.title ?? "ytsplayer")
+                    .font(.system(size: 14, weight: .bold))
+                    .lineLimit(1)
+                
+                let stats = "\(playbackVM.currentBitDepth)-bit / \(playbackVM.currentSampleRate / 1000)kHz"
+                let artist = playbackVM.currentTrack?.artistName ?? "Bit-Perfect Audio"
+                Text("\(artist) • \(stats)")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
+            .frame(maxWidth: 250, alignment: .leading)
+            .clipped()
+            
+            // Format Badge, Hi-Res Logo
+            if let track = playbackVM.currentTrack {
+                if playbackVM.currentBitDepth >= 24, let nsImage = NSImage(named: "hires.png") {
+                    let _ = { nsImage.isTemplate = false }()
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .renderingMode(.original)
+                        .scaledToFit()
+                        .frame(height: 14)
+                }
+            }
+            
+            Spacer(minLength: 16)
+            
+            Text("\(playbackVM.currentTimeString) / \(playbackVM.totalTimeString)")
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.secondary)
+                .frame(width: 75)
+                .layoutPriority(1)
+            
+            // Volume Slider (Disabled if Bit-Perfect)
+            Slider(value: $playbackVM.volume, in: 0...1) {
+                Image(systemName: "speaker.wave.2.fill")
+            }
+            .frame(width: 150)
+            .tint(playbackVM.isBitPerfect ? .gray : .purple)
+            .grayscale(playbackVM.isBitPerfect ? 1.0 : 0.0)
+            .disabled(playbackVM.isBitPerfect)
         }
     }
     
@@ -237,89 +289,5 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - PlayerTouchBar
-
-struct PlayerTouchBar: View {
-    @ObservedObject var playbackVM: PlaybackViewModel
-    @EnvironmentObject var playlistManager: PlaylistManager
-    @Binding var showFullScreenPlayer: Bool
-    var openPlaylistEditor: (Int64) -> Void
-
-    var body: some View {
-        if let track = playbackVM.currentTrack {
-            // Track Title (Fixed Width, Scrollable/Revealing)
-            ScrollView(.horizontal, showsIndicators: false) {
-                Text(track.title)
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-            .frame(width: 150)
-            
-            // Favorite Button
-            Button(action: {
-                if let next = try? playlistManager.toggleFavorite(forTrackId: track.id) {
-                    playbackVM.currentTrack?.isFavorite = next
-                }
-            }) {
-                Image(systemName: track.isFavorite ? "heart.fill" : "heart")
-            }
-
-            // Playlist Button
-            Button(action: {
-                if let id = playlistManager.createPlaylist(name: "New Playlist") {
-                    playlistManager.addTracks(to: id, trackIds: [track.id])
-                    openPlaylistEditor(id)
-                }
-            }) {
-                Image(systemName: "text.badge.plus")
-            }
-            
-            // Playback Controls
-            Button(action: { playbackVM.skipPrevious() }) { 
-                Image(systemName: "backward.fill") 
-            }
-            Button(action: { playbackVM.togglePlayPause() }) { 
-                Image(systemName: playbackVM.isPlaying ? "pause.fill" : "play.fill") 
-            }
-            Button(action: { playbackVM.skipNext() }) { 
-                Image(systemName: "forward.fill") 
-            }
-            
-            // Scrubber
-            Slider(value: $playbackVM.playbackProgress, in: 0...1) {
-                Text("")
-            }
-            
-            // Volume
-            Slider(value: $playbackVM.volume, in: 0...1) {
-                Image(systemName: "speaker.wave.2.fill")
-            }
-            .frame(width: 100)
-            .tint(playbackVM.isBitPerfect ? .gray : .purple)
-            .opacity(playbackVM.isBitPerfect ? 0.5 : 1.0)
-            
-            Spacer()
-            
-            // Cover Image -> Opens Lyrics
-            Button(action: {
-                showFullScreenPlayer = true
-            }) {
-                if let path = track.albumArtworkPath, let nsImage = NSImage(contentsOfFile: path) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 30, height: 30)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                } else {
-                    Image(systemName: "music.note")
-                        .frame(width: 30, height: 30)
-                }
-            }
-            .buttonStyle(.borderless)
-        } else {
-            Text("ytsplayer")
-        }
     }
 }
