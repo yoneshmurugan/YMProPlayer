@@ -145,7 +145,11 @@ final class LibraryViewModel: ObservableObject {
     }
 
     func fetchTracks(for album: AlbumViewModel) -> [TrackViewModel] {
-        (try? db.fetchTracks(forAlbumId: album.id)) ?? []
+        return (try? db.fetchTracks(forAlbumId: album.id)) ?? []
+    }
+    
+    func fetchAllTracks() -> [TrackViewModel] {
+        return (try? db.fetchAllTrackViewModels()) ?? []
     }
     
     func fetchTracks(for artist: ArtistViewModel) -> [TrackViewModel] {
@@ -208,8 +212,20 @@ enum SearchFilter: String, CaseIterable {
 final class SearchViewModel: ObservableObject {
     @Published var query: String             = ""
     @Published var results: [TrackViewModel] = []
+    @Published var albumResults: [AlbumViewModel] = []
+    @Published var artistResults: [ArtistViewModel] = []
+    @Published var playlistResults: [PlaylistViewModel] = []
+    
     @Published var isSearching: Bool         = false
-    @Published var selectedFilter: SearchFilter = .all
+    @Published var selectedFilter: SearchFilter = .all {
+        didSet {
+            performSearch(query)
+        }
+    }
+    
+    var hasNoResults: Bool {
+        results.isEmpty && albumResults.isEmpty && artistResults.isEmpty && playlistResults.isEmpty && !query.isEmpty && !isSearching
+    }
 
     private let db: DatabasePool
     private var cancellables = Set<AnyCancellable>()
@@ -228,11 +244,43 @@ final class SearchViewModel: ObservableObject {
 
     private func performSearch(_ q: String) {
         let trimmed = q.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { results = []; return }
+        guard !trimmed.isEmpty else {
+            results = []
+            albumResults = []
+            artistResults = []
+            playlistResults = []
+            return
+        }
         isSearching = true
         Task {
-            results = (try? db.searchTracks(query: trimmed)) ?? []
-            isSearching = false
+            var tResults: [TrackViewModel] = []
+            var alResults: [AlbumViewModel] = []
+            var arResults: [ArtistViewModel] = []
+            var pResults: [PlaylistViewModel] = []
+            
+            if selectedFilter == .all || selectedFilter == .songs {
+                tResults = (try? db.searchTracks(query: trimmed)) ?? []
+            }
+            if selectedFilter == .all || selectedFilter == .album {
+                alResults = (try? db.searchAlbums(query: trimmed)) ?? []
+            }
+            if selectedFilter == .all || selectedFilter == .artist {
+                arResults = (try? db.searchArtists(query: trimmed)) ?? []
+            }
+            if selectedFilter == .all || selectedFilter == .playlist {
+                await MainActor.run {
+                    let allPlaylists = AppEnvironment.shared.playlistManager.playlists
+                    pResults = allPlaylists.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+                }
+            }
+            
+            await MainActor.run {
+                self.results = tResults
+                self.albumResults = alResults
+                self.artistResults = arResults
+                self.playlistResults = pResults
+                self.isSearching = false
+            }
         }
     }
 }

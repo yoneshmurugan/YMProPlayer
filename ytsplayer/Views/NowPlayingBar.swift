@@ -11,6 +11,8 @@ struct NowPlayingBar: View {
     @ObservedObject var vm: PlaybackViewModel
     @EnvironmentObject var playlistManager: PlaylistManager
     @Environment(\.openWindow) var openWindow
+    
+    var onSearchTapped: (() -> Void)? = nil
     @State private var isFavoriteLocal = false
     @State private var isQueuePresented = false
     @StateObject private var waveform = WaveformGenerator()
@@ -183,18 +185,18 @@ struct NowPlayingBar: View {
                     HStack(spacing: 6) {
                         if vm.currentSampleRate > 0 {
                             if vm.currentBitDepth >= 24 {
-                                badge(text: "Hi-Res", gradient: [Color(red: 0.85, green: 0.65, blue: 0.13), Color(red: 0.95, green: 0.85, blue: 0.35)], textColor: .black)
+                                badge(text: "Hi-Res", accent: Color(red: 0.9, green: 0.75, blue: 0.2))
                             }
                             let ext = (vm.currentTrack?.filePath as NSString?)?.pathExtension.uppercased() ?? ""
                             if !ext.isEmpty {
-                                badge(text: ext, gradient: [Color(white: 0.25), Color(white: 0.1)], textColor: .white)
+                                badge(text: ext)
                             }
                             let kHz = vm.currentSampleRate / 1000
                             let remainder = vm.currentSampleRate % 1000
                             let rateStr = remainder == 0 ? "\(kHz)kHz" : "\(kHz).\(remainder / 100)kHz"
-                            badge(text: rateStr, gradient: [Color.blue.opacity(0.8), Color.indigo.opacity(0.9)], textColor: .white)
+                            badge(text: rateStr)
                             if vm.currentBitDepth > 0 {
-                                badge(text: "\(vm.currentBitDepth)-bit", gradient: [Color.purple.opacity(0.8), Color.black.opacity(0.6)], textColor: .white)
+                                badge(text: "\(vm.currentBitDepth)-bit")
                             }
                         }
                     }
@@ -206,11 +208,23 @@ struct NowPlayingBar: View {
             // ── RIGHT: Volume & Aux ───────────────────────────────────────
             VStack(alignment: .trailing, spacing: 6) {
                 HStack(spacing: 20) {
+                    // Search
+                    if let onSearchTapped = onSearchTapped {
+                        Button(action: onSearchTapped) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(Color.white.opacity(0.8))
+                        }
+                        .buttonStyle(.plain)
+                        .help("Search")
+                    }
+                    
                     // Bit-Perfect Toggle
                     Toggle("Bit-Perfect", isOn: $vm.isBitPerfect)
                         .toggleStyle(.switch)
                         .scaleEffect(0.6)
                         .frame(width: 40)
+                        .focusable(false)
                         .help("Bit-Perfect Mode: Bypasses software volume for pure, unaltered audio.")
                         .tint(.purple)
                         
@@ -264,7 +278,7 @@ struct NowPlayingBar: View {
             .frame(width: 280, alignment: .trailing)
             .padding(.trailing, 20)
         }
-        .frame(height: 96)
+        .frame(height: 120)
         .background(
             ZStack {
                 Rectangle()
@@ -351,21 +365,18 @@ struct NowPlayingBar: View {
         .disabled(vm.currentTrack == nil)
     }
 
-    private func badge(text: String, gradient: [Color], textColor: Color) -> some View {
+    private func badge(text: String, accent: Color = .white) -> some View {
         Text(text)
-            .font(.system(size: 9, weight: .heavy, design: .rounded))
+            .font(.system(size: 9, weight: .semibold, design: .rounded))
             .textCase(.uppercase)
             .tracking(0.5)
             .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.vertical, 3)
+            .foregroundStyle(accent.opacity(0.9))
             .background(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(
-                        LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .shadow(color: gradient.first?.opacity(0.3) ?? .clear, radius: 2, y: 1)
+                Capsule()
+                    .stroke(accent.opacity(0.3), lineWidth: 1)
             )
-            .foregroundStyle(textColor)
     }
 }
 

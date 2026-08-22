@@ -6,6 +6,7 @@ import SwiftUI
 struct ArtistsView: View {
     @ObservedObject var libraryVM: LibraryViewModel
     @ObservedObject var playbackVM: PlaybackViewModel
+    var onSearchTapped: (() -> Void)? = nil
     
     @State private var selectedArtist: ArtistViewModel?
     
@@ -25,6 +26,18 @@ struct ArtistsView: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(.white)
                 Spacer()
+                
+                if let onSearchTapped = onSearchTapped {
+                    Button(action: onSearchTapped) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Color.white.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .focusable(false)
+                    .padding(.trailing, 16)
+                }
+                
                 Text("\(libraryVM.artists.count) artists")
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.4))
@@ -38,6 +51,7 @@ struct ArtistsView: View {
                 LazyVGrid(columns: columns, spacing: 24) {
                     ForEach(libraryVM.artists) { artist in
                         ArtistCard(artist: artist)
+                            .equatable()
                             .onTapGesture {
                                 selectedArtist = artist
                             }
@@ -56,7 +70,7 @@ struct ArtistsView: View {
     }
 }
 
-struct ArtistCard: View {
+struct ArtistCard: View, Equatable {
     let artist: ArtistViewModel
     
     var body: some View {

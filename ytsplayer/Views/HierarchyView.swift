@@ -15,6 +15,7 @@ struct HierarchyItem: Identifiable {
 struct HierarchyView: View {
     @ObservedObject var libraryVM: LibraryViewModel
     @ObservedObject var playbackVM: PlaybackViewModel
+    var onSearchTapped: (() -> Void)? = nil
     
     @State private var currentPath: URL?
     @State private var history: [URL?] = []
@@ -68,6 +69,17 @@ struct HierarchyView: View {
                 }
                 
                 Spacer()
+                
+                if let onSearchTapped = onSearchTapped {
+                    Button(action: onSearchTapped) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Color.white.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .focusable(false)
+                    .padding(.trailing, 16)
+                }
                 
                 // View Toggles (Grid / List)
                 HStack(spacing: 0) {
@@ -153,6 +165,7 @@ struct HierarchyView: View {
                                         }
                                     }
                                 )
+                                .equatable()
                                 .onTapGesture {
                                     handleTap(on: item)
                                 }
@@ -175,6 +188,7 @@ struct HierarchyView: View {
                                         }
                                     }
                                 )
+                                .equatable()
                                 .onTapGesture {
                                     handleTap(on: item)
                                 }
@@ -342,12 +356,18 @@ struct HierarchyView: View {
 }
 
 // MARK: - Grid Item
-struct HierarchyGridItem: View {
+struct HierarchyGridItem: View, Equatable {
     let item: HierarchyItem
     let isSelected: Bool
     let selectedItemIds: Set<String>
     let allItems: [HierarchyItem]
     let onToggleSelection: () -> Void
+    
+    static func == (lhs: HierarchyGridItem, rhs: HierarchyGridItem) -> Bool {
+        lhs.item.id == rhs.item.id &&
+        lhs.isSelected == rhs.isSelected &&
+        lhs.selectedItemIds == rhs.selectedItemIds
+    }
     
     @State private var isHovered = false
     @EnvironmentObject var playlistManager: PlaylistManager
@@ -408,8 +428,9 @@ struct HierarchyGridItem: View {
             }
             Menu("Add to Playlist") {
                 Button("New Playlist...") {
-                    if let id = playlistManager.createPlaylist(name: "New Playlist") {
-                        if let tId = item.trackId { playlistManager.addTracks(to: id, trackIds: [tId]) }
+                    let tIds = getActiveTrackIds()
+                    if !tIds.isEmpty, let id = playlistManager.createPlaylist(name: "New Playlist") {
+                        playlistManager.addTracks(to: id, trackIds: tIds)
                         openWindow(id: "PlaylistEditor", value: id)
                     }
                 }
@@ -417,14 +438,22 @@ struct HierarchyGridItem: View {
                     Divider()
                     ForEach(playlistManager.playlists) { playlist in
                         Button(playlist.name) {
-                            if let tId = item.trackId { playlistManager.addTracks(to: playlist.id, trackIds: [tId]) }
-                            openWindow(id: "PlaylistEditor", value: playlist.id)
+                            let tIds = getActiveTrackIds()
+                            if !tIds.isEmpty {
+                                playlistManager.addTracks(to: playlist.id, trackIds: tIds)
+                                openWindow(id: "PlaylistEditor", value: playlist.id)
+                            }
                         }
                     }
                 }
             }
         }
-        .draggable(createDragPayload())
+        .draggable(createDragPayload()) {
+            HierarchyDragPreview(
+                item: item,
+                count: (selectedItemIds.contains(item.id) && selectedItemIds.count > 1) ? selectedItemIds.count : 1
+            )
+        }
     }
     
     // Helper to fetch track details for playbackVM queues if needed
@@ -432,7 +461,7 @@ struct HierarchyGridItem: View {
         return try? AppEnvironment.shared.db.fetchTrack(byId: id)
     }
 
-    private func createDragPayload() -> TrackDropPayload {
+    private func getActiveTrackIds() -> [Int64] {
         var trackIds: [Int64] = []
         let activeItems = selectedItemIds.contains(item.id) && selectedItemIds.count > 1
             ? allItems.filter { selectedItemIds.contains($0.id) }
@@ -441,9 +470,18 @@ struct HierarchyGridItem: View {
         for i in activeItems {
             if let tId = i.trackId {
                 trackIds.append(tId)
+            } else if i.isDirectory {
+                let prefix = i.url.path
+                let allTracks = (try? AppEnvironment.shared.db.fetchAllTrackViewModels()) ?? []
+                let matching = allTracks.filter { $0.filePath.hasPrefix(prefix) }.map { $0.id }
+                trackIds.append(contentsOf: matching)
             }
         }
-        return TrackDropPayload(trackIds: trackIds)
+        return trackIds
+    }
+
+    private func createDragPayload() -> TrackDropPayload {
+        return TrackDropPayload(trackIds: getActiveTrackIds())
     }
     
     private var fallbackIcon: some View {
@@ -458,12 +496,18 @@ struct HierarchyGridItem: View {
 }
 
 // MARK: - List Item
-struct HierarchyListItem: View {
+struct HierarchyListItem: View, Equatable {
     let item: HierarchyItem
     let isSelected: Bool
     let selectedItemIds: Set<String>
     let allItems: [HierarchyItem]
     let onToggleSelection: () -> Void
+    
+    static func == (lhs: HierarchyListItem, rhs: HierarchyListItem) -> Bool {
+        lhs.item.id == rhs.item.id &&
+        lhs.isSelected == rhs.isSelected &&
+        lhs.selectedItemIds == rhs.selectedItemIds
+    }
     
     @State private var isHovered = false
     @EnvironmentObject var playlistManager: PlaylistManager
@@ -526,8 +570,9 @@ struct HierarchyListItem: View {
             }
             Menu("Add to Playlist") {
                 Button("New Playlist...") {
-                    if let id = playlistManager.createPlaylist(name: "New Playlist") {
-                        if let tId = item.trackId { playlistManager.addTracks(to: id, trackIds: [tId]) }
+                    let tIds = getActiveTrackIds()
+                    if !tIds.isEmpty, let id = playlistManager.createPlaylist(name: "New Playlist") {
+                        playlistManager.addTracks(to: id, trackIds: tIds)
                         openWindow(id: "PlaylistEditor", value: id)
                     }
                 }
@@ -535,14 +580,22 @@ struct HierarchyListItem: View {
                     Divider()
                     ForEach(playlistManager.playlists) { playlist in
                         Button(playlist.name) {
-                            if let tId = item.trackId { playlistManager.addTracks(to: playlist.id, trackIds: [tId]) }
-                            openWindow(id: "PlaylistEditor", value: playlist.id)
+                            let tIds = getActiveTrackIds()
+                            if !tIds.isEmpty {
+                                playlistManager.addTracks(to: playlist.id, trackIds: tIds)
+                                openWindow(id: "PlaylistEditor", value: playlist.id)
+                            }
                         }
                     }
                 }
             }
         }
-        .draggable(createDragPayload())
+        .draggable(createDragPayload()) {
+            HierarchyDragPreview(
+                item: item,
+                count: (selectedItemIds.contains(item.id) && selectedItemIds.count > 1) ? selectedItemIds.count : 1
+            )
+        }
     }
     
     // Helper to fetch track details for playbackVM queues if needed
@@ -550,7 +603,7 @@ struct HierarchyListItem: View {
         return try? AppEnvironment.shared.db.fetchTrack(byId: id)
     }
     
-    private func createDragPayload() -> TrackDropPayload {
+    private func getActiveTrackIds() -> [Int64] {
         var trackIds: [Int64] = []
         let activeItems = selectedItemIds.contains(item.id) && selectedItemIds.count > 1
             ? allItems.filter { selectedItemIds.contains($0.id) }
@@ -559,9 +612,18 @@ struct HierarchyListItem: View {
         for i in activeItems {
             if let tId = i.trackId {
                 trackIds.append(tId)
+            } else if i.isDirectory {
+                let prefix = i.url.path
+                let allTracks = (try? AppEnvironment.shared.db.fetchAllTrackViewModels()) ?? []
+                let matching = allTracks.filter { $0.filePath.hasPrefix(prefix) }.map { $0.id }
+                trackIds.append(contentsOf: matching)
             }
         }
-        return TrackDropPayload(trackIds: trackIds)
+        return trackIds
+    }
+    
+    private func createDragPayload() -> TrackDropPayload {
+        return TrackDropPayload(trackIds: getActiveTrackIds())
     }
     
     private var fallbackIcon: some View {
@@ -570,6 +632,52 @@ struct HierarchyListItem: View {
             .overlay(
                 Image(systemName: item.isDirectory ? "folder.fill" : "music.note")
                     .font(.system(size: 18))
+                    .foregroundStyle(item.isDirectory ? Color.blue.opacity(0.8) : Color.white.opacity(0.3))
+            )
+    }
+}
+
+// MARK: - Drag Preview
+struct HierarchyDragPreview: View {
+    let item: HierarchyItem
+    let count: Int
+    
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Group {
+                if let path = item.artworkPath,
+                   let cacheDir = ImageDownsampler.artworkCacheDirectory() {
+                    let url = cacheDir.appendingPathComponent(path)
+                    AsyncImage(url: url) { img in
+                        img.resizable().scaledToFill()
+                    } placeholder: {
+                        fallbackIcon
+                    }
+                } else {
+                    fallbackIcon
+                }
+            }
+            .frame(width: 80, height: 80)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            
+            if count > 1 {
+                Text("\(count)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(6)
+                    .background(Color.red)
+                    .clipShape(Circle())
+                    .offset(x: 10, y: -10)
+            }
+        }
+    }
+    
+    private var fallbackIcon: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(item.isDirectory ? Color.blue.opacity(0.15) : Color.white.opacity(0.05))
+            .overlay(
+                Image(systemName: item.isDirectory ? "folder.fill" : "music.note")
+                    .font(.system(size: 30))
                     .foregroundStyle(item.isDirectory ? Color.blue.opacity(0.8) : Color.white.opacity(0.3))
             )
     }

@@ -145,30 +145,40 @@ struct FullScreenPlayerContent: View {
 
     @ViewBuilder
     private var artworkView: some View {
-        ZStack(alignment: .bottomTrailing) {
+        Button(action: {
             if let path = track?.albumArtworkPath,
                let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-                AsyncImage(url: cacheDir.appendingPathComponent(path)) { image in
-                    image.resizable().scaledToFit()
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 24).fill(Color.white.opacity(0.1))
+                let url = cacheDir.appendingPathComponent(path)
+                NSWorkspace.shared.open(url)
+            }
+        }) {
+            ZStack(alignment: .bottomTrailing) {
+                if let path = track?.albumArtworkPath,
+                   let cacheDir = ImageDownsampler.artworkCacheDirectory() {
+                    AsyncImage(url: cacheDir.appendingPathComponent(path)) { image in
+                        image.resizable().scaledToFit()
+                    } placeholder: {
+                        RoundedRectangle(cornerRadius: 24).fill(Color.white.opacity(0.1))
+                            .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.25)))
+                    }
+                } else {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Color.white.opacity(0.1))
                         .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.25)))
                 }
-            } else {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white.opacity(0.1))
-                    .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.25)))
-            }
 
-            if (track?.bitDepth ?? 0) >= 24,
-               let nsImage = NSImage(named: "hires.png") {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 32)
-                    .padding(12)
+                if (track?.bitDepth ?? 0) >= 24,
+                   let nsImage = NSImage(named: "hires.png") {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 32)
+                        .padding(12)
+                }
             }
         }
+        .buttonStyle(.plain)
+        .focusable(false)
     }
 
     @ViewBuilder
@@ -187,28 +197,37 @@ struct FullScreenPlayerContent: View {
             .clipShape(Capsule())
         } else if sampleRate > 0 {
             HStack(spacing: 8) {
+                let ext = (track?.filePath as NSString?)?.pathExtension.uppercased() ?? ""
+                if !ext.isEmpty {
+                    specBadge(ext)
+                }
+                
+                specBadge("\(bitDepth)-bit")
+                
                 let kHz = sampleRate / 1000
                 let rem = sampleRate % 1000
                 let rateStr = rem == 0 ? "\(kHz)kHz" : "\(kHz).\(rem / 100)kHz"
-
-                specBadge("FLAC", color: .white.opacity(0.25))
-                specBadge("\(bitDepth)-bit", color: .cyan.opacity(0.3))
-                specBadge(rateStr, color: .purple.opacity(0.5))
+                specBadge(rateStr)
+                
                 if bitDepth >= 24 {
-                    specBadge("Hi-Res", color: .orange.opacity(0.5))
+                    specBadge("Hi-Res", accent: Color(red: 0.9, green: 0.75, blue: 0.2))
                 }
             }
         }
     }
 
-    private func specBadge(_ text: String, color: Color) -> some View {
+    private func specBadge(_ text: String, accent: Color = .white) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .bold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(color)
-            .clipShape(Capsule())
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .textCase(.uppercase)
+            .tracking(0.5)
+            .foregroundStyle(accent.opacity(0.9))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .stroke(accent.opacity(0.3), lineWidth: 1)
+            )
     }
 
     @ViewBuilder

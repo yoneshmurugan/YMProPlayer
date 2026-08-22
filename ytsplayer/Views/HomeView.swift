@@ -37,14 +37,6 @@ struct HomeView: View {
                     .buttonStyle(.plain)
                     .focusable(false)
                     .padding(.trailing, 16)
-                    
-                    Button(action: onProfileTapped) {
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 30))
-                            .foregroundStyle(.purple)
-                    }
-                    .buttonStyle(.plain)
-                    .focusable(false)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 24)

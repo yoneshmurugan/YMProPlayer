@@ -49,6 +49,52 @@ struct ytsplayerApp: App {
         .commands {
             // Remove default new-window command
             CommandGroup(replacing: .newItem) {}
+            
+            CommandMenu("Playback") {
+                Button("Play/Pause") {
+                    AppEnvironment.shared.playbackVM.togglePlayPause()
+                }
+                .keyboardShortcut(.space, modifiers: [])
+                
+                Button("Next Track") {
+                    AppEnvironment.shared.playbackVM.skipNext()
+                }
+                .keyboardShortcut(.rightArrow, modifiers: [.command])
+                
+                Button("Previous Track") {
+                    AppEnvironment.shared.playbackVM.skipPrevious()
+                }
+                .keyboardShortcut(.leftArrow, modifiers: [.command])
+                
+                Divider()
+                
+                Button("Volume Up") {
+                    let current = AppEnvironment.shared.playbackVM.volume
+                    AppEnvironment.shared.playbackVM.volume = min(1.0, current + 0.05)
+                }
+                .keyboardShortcut(.upArrow, modifiers: [.command])
+                
+                Button("Volume Down") {
+                    let current = AppEnvironment.shared.playbackVM.volume
+                    AppEnvironment.shared.playbackVM.volume = max(0.0, current - 0.05)
+                }
+                .keyboardShortcut(.downArrow, modifiers: [.command])
+                
+                Button("Mute") {
+                    if AppEnvironment.shared.playbackVM.volume > 0 {
+                        AppEnvironment.shared.playbackVM.volume = 0
+                    } else {
+                        AppEnvironment.shared.playbackVM.volume = 1.0
+                    }
+                }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                
+                Divider()
+                
+                Button(AppEnvironment.shared.playbackVM.isBitPerfect ? "Disable Bit-Perfect" : "Enable Bit-Perfect") {
+                    AppEnvironment.shared.playbackVM.isBitPerfect.toggle()
+                }
+            }
         }
         
         WindowGroup("Playlist", id: "PlaylistEditor", for: Int64.self) { $playlistId in
@@ -71,7 +117,7 @@ struct ytsplayerApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         
-        MenuBarExtra("ytsplayer", systemImage: "waveform") {
+        MenuBarExtra("YM Pro", systemImage: "waveform") {
             MenuBarAppView()
                 .environmentObject(env.playbackVM)
         }

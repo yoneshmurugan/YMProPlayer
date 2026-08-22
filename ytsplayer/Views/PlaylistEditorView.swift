@@ -16,6 +16,8 @@ struct PlaylistEditorView: View {
     @State private var showSavedCheckmark = false
     @State private var showDeleteConfirmation = false
     @State private var draggedItem: TrackViewModel?
+    @State private var searchQuery: String = ""
+    @State private var displayedTracks: [TrackViewModel] = []
     
     var body: some View {
         VStack(spacing: 0) {
@@ -49,7 +51,8 @@ struct PlaylistEditorView: View {
                     
                     HStack {
                         TextField("Playlist Name", text: $playlistName, onCommit: savePlaylistName)
-                        .font(.system(size: 36, weight: .bold))
+                        .font(.system(size: 28, weight: .bold))
+                        .padding(.vertical, 4)
                         .textFieldStyle(.plain)
                         .disabled(playlistId < 0)
                         
@@ -99,6 +102,30 @@ struct PlaylistEditorView: View {
                         Text("\(tracks.count) tracks • \(formatTotalDuration(totalDuration))")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
+                            
+                        Spacer()
+                        
+                        // Internal Search
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.secondary)
+                            TextField("Search playlist...", text: $searchQuery)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 13))
+                                .frame(width: 150)
+                            
+                            if !searchQuery.isEmpty {
+                                Button(action: { searchQuery = "" }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(6)
                     }
                 }
                 Spacer()
@@ -111,25 +138,25 @@ struct PlaylistEditorView: View {
             // Tracks List with Drop Destination
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(0..<tracks.count, id: \.self) { index in
-                        let track = tracks[index]
+                    ForEach(Array(displayedTracks.enumerated()), id: \.element.id) { index, track in
                         TrackRow(
                             index: index + 1, 
                             track: track, 
                             isPlaying: playbackVM.currentTrack?.id == track.id,
                             onPlayNext: { playbackVM.playNext(track) },
                             onEnqueue: { playbackVM.enqueue(track) },
-                            showDragHandle: true,
+                            showDragHandle: searchQuery.isEmpty,
                             enableExportDrag: false,
                             onDragStarted: {
                                 self.draggedItem = track
                                 return NSItemProvider(object: track.id.description as NSString)
                             }
                         )
-                            .onTapGesture {
-                                playbackVM.play(track: track, queue: tracks, startIndex: index)
+                        .equatable()
+                        .onTapGesture {
+                                playbackVM.play(track: track, queue: displayedTracks, startIndex: index)
                             }
-                            .onDrop(of: [.plainText], delegate: PlaylistDropDelegate(item: track, items: $tracks, playlistId: playlistId, draggedItem: $draggedItem))
+                            .onDrop(of: [.plainText], delegate: PlaylistDropDelegate(item: track, items: $tracks, playlistId: playlistId, draggedItem: $draggedItem, isSearchActive: !searchQuery.isEmpty))
                             .contextMenu {
                                 if playlistId >= 0 {
                                     Button("Remove from Playlist", role: .destructive) {
@@ -165,9 +192,15 @@ struct PlaylistEditorView: View {
         .onAppear {
             loadPlaylist()
         }
-        .onChange(of: playlistManager.playlists) { _ in
+        .onChange(of: playlistManager.playlists) {
             // Refresh if playlist was deleted or changed externally
             loadPlaylist()
+        }
+        .onChange(of: tracks) { _ in
+            updateDisplayedTracks()
+        }
+        .onChange(of: searchQuery) { _ in
+            updateDisplayedTracks()
         }
         .confirmationDialog("Delete Playlist", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -204,6 +237,28 @@ struct PlaylistEditorView: View {
         }
         
         tracks = (try? db.fetchTracksForPlaylist(playlistId: playlistId)) ?? []
+    }
+    
+    private func updateDisplayedTracks() {
+        let query = searchQuery
+        let all = tracks
+        Task.detached {
+            let result: [TrackViewModel]
+            if query.isEmpty {
+                result = all
+            } else {
+                result = all.filter { track in
+                    track.title.localizedCaseInsensitiveContains(query) ||
+                    (track.artistName?.localizedCaseInsensitiveContains(query) ?? false) ||
+                    (track.albumTitle?.localizedCaseInsensitiveContains(query) ?? false)
+                }
+            }
+            await MainActor.run {
+                if self.searchQuery == query {
+                    self.displayedTracks = result
+                }
+            }
+        }
     }
     
     private func handleDrop(items: [TrackDropPayload]) -> Bool {
@@ -274,9 +329,11 @@ struct PlaylistDropDelegate: DropDelegate {
     @Binding var items: [TrackViewModel]
     let playlistId: Int64
     @Binding var draggedItem: TrackViewModel?
+    let isSearchActive: Bool
 
     func dropEntered(info: DropInfo) {
-        guard playlistId >= 0,
+        guard !isSearchActive,
+              playlistId >= 0,
               let draggedItem,
               draggedItem.id != item.id,
               let from = items.firstIndex(where: { $0.id == draggedItem.id }),

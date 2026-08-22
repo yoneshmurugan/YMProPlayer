@@ -70,53 +70,82 @@ struct ContentView: View {
 
             NavigationSplitView {
                 // ── Sidebar ────────────────────────────────────────────────────
-                List(selection: $selectedTab) {
+                VStack(spacing: 0) {
+                    List(selection: $selectedTab) {
 
-                    
-                    Section("Listen Now") {
-                        Label("Listen Now", systemImage: "play.circle").tag(AppTab.home)
-                    }
-                    
-                    Section("Library") {
-                        Label("Albums", systemImage: "rectangle.stack").tag(AppTab.albums)
-                        Label("Artists", systemImage: "music.mic").tag(AppTab.artists)
-                        Label("Tracks", systemImage: "music.note.list").tag(AppTab.tracks)
-                        Label("Hierarchy", systemImage: "folder").tag(AppTab.hierarchy)
-                    }
-                    
-                    Section("Playlists") {
-                        Label("All Playlists", systemImage: "square.grid.2x2").tag(AppTab.playlists)
                         
-                        ForEach(playlistManager.playlists) { pl in
-                            Label(pl.name, systemImage: "music.note.list")
-                                .dropDestination(for: TrackDropPayload.self) { payloads, _ in
-                                    let trackIds = payloads.flatMap { $0.trackIds }
-                                    if !trackIds.isEmpty {
-                                        playlistManager.addTracks(to: pl.id, trackIds: trackIds)
-                                        return true
+                        Section("Listen Now") {
+                            Label("Listen Now", systemImage: "play.circle").tag(AppTab.home)
+                            Label("Search", systemImage: "magnifyingglass").tag(AppTab.search)
+                        }
+                        
+                        Section("Library") {
+                            Label("Albums", systemImage: "rectangle.stack").tag(AppTab.albums)
+                            Label("Artists", systemImage: "music.mic").tag(AppTab.artists)
+                            Label("Tracks", systemImage: "music.note.list").tag(AppTab.tracks)
+                            Label("Hierarchy", systemImage: "folder").tag(AppTab.hierarchy)
+                        }
+                        
+                        Section("Playlists") {
+                            Label("All Playlists", systemImage: "square.grid.2x2").tag(AppTab.playlists)
+                            
+                            ForEach(playlistManager.playlists) { pl in
+                                Label(pl.name, systemImage: "music.note.list")
+                                    .dropDestination(for: TrackDropPayload.self) { payloads, _ in
+                                        let trackIds = payloads.flatMap { $0.trackIds }
+                                        if !trackIds.isEmpty {
+                                            playlistManager.addTracks(to: pl.id, trackIds: trackIds)
+                                            return true
+                                        }
+                                        return false
                                     }
-                                    return false
-                                }
-                                .contextMenu {
-                                    Button("Open in New Window") {
-                                        openWindow(id: "PlaylistEditor", value: pl.id)
-                                    }
-                                    Button("Delete Playlist", role: .destructive) {
-                                        playlistManager.deletePlaylist(id: pl.id)
-                                        if selectedTab == .playlist(pl.id) {
-                                            selectedTab = .playlists
+                                    .contextMenu {
+                                        Button("Open in New Window") {
+                                            openWindow(id: "PlaylistEditor", value: pl.id)
+                                        }
+                                        Button("Delete Playlist", role: .destructive) {
+                                            playlistManager.deletePlaylist(id: pl.id)
+                                            if selectedTab == .playlist(pl.id) {
+                                                selectedTab = .playlists
+                                            }
                                         }
                                     }
-                                }
-                                .tag(AppTab.playlist(pl.id))
+                                    .tag(AppTab.playlist(pl.id))
+                            }
+                        }
+                    }
+                    .listStyle(.sidebar)
+                    .scrollContentBackground(.hidden)
+                    .background(.clear)
+                    .tint(.purple)
+                    
+                    Divider()
+                        .background(Color.white.opacity(0.1))
+                    
+                    Button(action: { showSettings = true }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.purple)
+                            Text("Settings")
+                                .font(.system(size: 14, weight: .medium))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color.clear)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { isHovering in
+                        if isHovering {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.pop()
                         }
                     }
                 }
-                .listStyle(.sidebar)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
-                .scrollContentBackground(.hidden)
-                .background(.clear)
-                .tint(.purple)
 
             } detail: {
                 // ── Detail Pane ────────────────────────────────────────────────
@@ -132,15 +161,15 @@ struct ContentView: View {
                                 onNavigateToTab: { tab in selectedTab = tab }
                             )
                         case .albums:
-                            LibraryView(libraryVM: libraryVM, playbackVM: playbackVM) {
+                            LibraryView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search }) {
                                 showSettings = true
                             }
                         case .artists:
-                            ArtistsView(libraryVM: libraryVM, playbackVM: playbackVM)
+                            ArtistsView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search })
                         case .tracks:
-                            TracksView(libraryVM: libraryVM, playbackVM: playbackVM)
+                            TracksView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search })
                         case .hierarchy:
-                            HierarchyView(libraryVM: libraryVM, playbackVM: playbackVM)
+                            HierarchyView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search })
                         case .playlists:
                             PlaylistsView()
                         case .playlist(let id):
@@ -157,15 +186,19 @@ struct ContentView: View {
                     .background(Color.black.opacity(0.45))
                     // Safe area equivalent so scrollviews can scroll past the floating bar
                     .safeAreaInset(edge: .bottom) {
-                        Color.clear.frame(height: 96)
+                        Color.clear.frame(height: 120)
                     }
 
                     // ── Now Playing Bar (Floating in Detail Pane) ─────────────
-                    NowPlayingBar(vm: playbackVM) {
-                        if playbackVM.currentTrack != nil {
-                            showFullScreenPlayer = true
+                    NowPlayingBar(
+                        vm: playbackVM,
+                        onSearchTapped: { selectedTab = .search },
+                        onArtworkTap: {
+                            if playbackVM.currentTrack != nil {
+                                showFullScreenPlayer = true
+                            }
                         }
-                    }
+                    )
                 }
             }
         }

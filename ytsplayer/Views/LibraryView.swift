@@ -9,6 +9,7 @@ struct LibraryView: View {
     @State private var selectedAlbum: AlbumViewModel?
     @State private var showFolderPicker = false
     @AppStorage("albumsIsGridView") private var isGridView = true
+    var onSearchTapped: (() -> Void)? = nil
     var onProfileTapped: (() -> Void)? = nil
     
     @EnvironmentObject var playlistManager: PlaylistManager
@@ -78,21 +79,14 @@ struct LibraryView: View {
                     .fixedSize()
                     
                     // Search Icon
-                    Button(action: {}) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.white.opacity(0.7))
+                    if let onSearchTapped = onSearchTapped {
+                        Button(action: onSearchTapped) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                    
-                    // Avatar
-                    Button(action: { onProfileTapped?() }) {
-                        Circle()
-                            .fill(LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 28, height: 28)
-                            .overlay(Text("Y").font(.system(size: 12, weight: .bold)).foregroundStyle(.white))
-                    }
-                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 24)
@@ -131,6 +125,7 @@ struct LibraryView: View {
                                     album: album,
                                     isSelected: selectedAlbum?.id == album.id
                                 )
+                                .equatable()
                                 .onTapGesture {
                                     withAnimation(.spring(response: 0.3)) {
                                         selectedAlbum = album
@@ -153,6 +148,7 @@ struct LibraryView: View {
                                     album: album,
                                     isSelected: selectedAlbum?.id == album.id
                                 )
+                                .equatable()
                                 .onTapGesture {
                                     withAnimation(.spring(response: 0.3)) {
                                         selectedAlbum = album
@@ -223,9 +219,14 @@ struct LibraryView: View {
 
 // MARK: - Album Card
 
-struct AlbumCard: View {
+struct AlbumCard: View, Equatable {
     let album: AlbumViewModel
     let isSelected: Bool
+    
+    static func == (lhs: AlbumCard, rhs: AlbumCard) -> Bool {
+        lhs.album.id == rhs.album.id && lhs.isSelected == rhs.isSelected
+    }
+    
     @State private var isHovered = false
 
     var body: some View {
@@ -371,9 +372,14 @@ struct AlbumContextMenu: View {
 
 // MARK: - Album List Row
 
-struct AlbumListRow: View {
+struct AlbumListRow: View, Equatable {
     let album: AlbumViewModel
     let isSelected: Bool
+    
+    static func == (lhs: AlbumListRow, rhs: AlbumListRow) -> Bool {
+        lhs.album.id == rhs.album.id && lhs.isSelected == rhs.isSelected
+    }
+    
     @State private var isHovered = false
 
     var body: some View {
