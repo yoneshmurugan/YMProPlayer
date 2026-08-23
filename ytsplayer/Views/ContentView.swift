@@ -85,6 +85,10 @@ struct ContentView: View {
                             Label("Artists", systemImage: "music.mic").tag(AppTab.artists)
                             Label("Tracks", systemImage: "music.note.list").tag(AppTab.tracks)
                             Label("Hierarchy", systemImage: "folder").tag(AppTab.hierarchy)
+                            Button(action: { showSettings = true }) {
+                                Label("Settings", systemImage: "gearshape")
+                            }
+                            .buttonStyle(.plain)
                         }
                         
                         Section("Playlists") {
@@ -123,14 +127,15 @@ struct ContentView: View {
                     Divider()
                         .background(Color.white.opacity(0.1))
                     
-                    HStack(spacing: 12) {
+                    HStack {
+                        Spacer()
                         Button(action: { showLogoPopover = true }) {
                             Image("Logo")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 44, height: 44)
-                                .cornerRadius(8)
-                                .shadow(radius: 2)
+                                .frame(width: 90, height: 90)
+                                .cornerRadius(12)
+                                .shadow(radius: 4)
                         }
                         .buttonStyle(.plain)
                         .popover(isPresented: $showLogoPopover, arrowEdge: .trailing) {
@@ -141,24 +146,9 @@ struct ContentView: View {
                                 .padding()
                                 .background(Color.black.opacity(0.8))
                         }
-                        
-                        Button(action: { showSettings = true }) {
-                            Text("Settings")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .buttonStyle(.plain)
-                        .onHover { isHovering in
-                            if isHovering {
-                                NSCursor.pointingHand.push()
-                            } else {
-                                NSCursor.pop()
-                            }
-                        }
-                        
                         Spacer()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.bottom, 20)
                     .background(Color.clear)
                 }
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)

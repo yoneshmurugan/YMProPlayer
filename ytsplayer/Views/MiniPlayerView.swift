@@ -3,6 +3,7 @@ import SwiftUI
 struct MiniPlayerView: View {
     @EnvironmentObject var vm: PlaybackViewModel
     @State private var isHovered = false
+    @State private var showQueue = false
     @Environment(\.dismiss) var dismiss
     
     private var artworkURL: URL? {
@@ -13,50 +14,77 @@ struct MiniPlayerView: View {
     
     var body: some View {
         ZStack {
-            // Background Artwork
+            // Background Artwork (Full Bleed)
             if let url = artworkURL {
                 AsyncImage(url: url) { image in
                     image.resizable().scaledToFill()
                 } placeholder: {
-                    Color.black
+                    LinearGradient(colors: [Color.purple.opacity(0.8), Color.blue.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 }
             } else {
-                Color.black
+                LinearGradient(colors: [Color.black, Color.gray.opacity(0.2)], startPoint: .top, endPoint: .bottom)
             }
             
-            // Hover Overlay
+            // Interactive Glass Overlay
             if isHovered || !vm.isPlaying {
-                Color.black.opacity(0.6)
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .environment(\.colorScheme, .dark)
+                    .transition(.opacity)
                 
                 VStack {
+                    // Top Bar: Close & Queue
                     HStack {
                         Button(action: { dismiss() }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 16))
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
                                 .foregroundColor(.white.opacity(0.8))
+                                .padding(8)
+                                .background(Color.black.opacity(0.4))
+                                .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
+                        
                         Spacer()
+                        
+                        Button(action: { showQueue.toggle() }) {
+                            Image(systemName: "list.bullet")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(showQueue ? .green : .white.opacity(0.8))
+                                .padding(8)
+                                .background(Color.black.opacity(0.4))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showQueue, arrowEdge: .trailing) {
+                            QueueView()
+                                .frame(width: 300, height: 400)
+                        }
                     }
-                    .padding(8)
+                    .padding(12)
                     
                     Spacer()
                     
-                    Text(vm.currentTrack?.title ?? "Nothing Playing")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .padding(.horizontal)
+                    // Track Info
+                    VStack(spacing: 4) {
+                        Text(vm.currentTrack?.title ?? "YM Pro")
+                            .font(.system(size: 16, weight: .heavy))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        
+                        Text(vm.currentTrack?.artistName ?? "No Track Playing")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 16)
                     
-                    Text(vm.currentTrack?.artistName ?? "")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.7))
-                        .lineLimit(1)
-                        .padding(.horizontal)
+                    Spacer()
                     
-                    HStack(spacing: 24) {
+                    // Transport Controls
+                    HStack(spacing: 28) {
                         Button(action: { vm.skipPrevious() }) {
-                            Image(systemName: "backward.fill")
+                            Image(systemName: "backward.end.fill")
                                 .font(.system(size: 20))
                                 .foregroundColor(.white)
                         }
@@ -64,27 +92,27 @@ struct MiniPlayerView: View {
                         
                         Button(action: { vm.togglePlayPause() }) {
                             Image(systemName: vm.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                                .font(.system(size: 32))
+                                .font(.system(size: 44))
                                 .foregroundColor(.white)
+                                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                         }
                         .buttonStyle(.plain)
                         
                         Button(action: { vm.skipNext() }) {
-                            Image(systemName: "forward.fill")
+                            Image(systemName: "forward.end.fill")
                                 .font(.system(size: 20))
                                 .foregroundColor(.white)
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(.top, 8)
-                    
-                    Spacer()
+                    .padding(.bottom, 24)
                 }
             }
         }
-        .frame(width: 200, height: 200)
+        .frame(width: 260, height: 260)
+        .cornerRadius(16) // Smooth rounded corners for the entire window
         .onHover { h in
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 isHovered = h
             }
         }

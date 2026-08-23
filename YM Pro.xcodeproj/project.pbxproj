@@ -40,6 +40,7 @@
 		BB8A862F03E52F5BC011E2F0 /* TestTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BF9C05B41C9A07B3654DD95 /* TestTable.swift */; };
 		C0BCAF46272AB566EF0DFB2C /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2326DB1FB29B7FCA52A5422 /* LibraryView.swift */; };
 		CB8657BA7205FD52FB297E27 /* PlaylistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9E253DD5EF5D3481CB96115 /* PlaylistsView.swift */; };
+		D01B3277A0B46757625CBADD /* ym_pro_logo_abstract_minimal_1787464540434.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 5644800290DF0326D0BA2571 /* ym_pro_logo_abstract_minimal_1787464540434.jpg */; };
 		D37960EB768E98B922AB73C7 /* FolderNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA3746921016FB0A7967066 /* FolderNode.swift */; };
 		D4F05231078E9E6515EEBEF0 /* LibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B92A648F3BAE9A1CF1D4FCE /* LibraryScanner.swift */; };
 		F1E9CEE1623FBBF207CC8711 /* TracksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED52DDFBF41815E6D0017B1 /* TracksView.swift */; };
@@ -73,6 +74,7 @@
 		4ED52DDFBF41815E6D0017B1 /* TracksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TracksView.swift; sourceTree = "<group>"; };
 		503F13397235E56B1010E82C /* TrackDropPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackDropPayload.swift; sourceTree = "<group>"; };
 		508CF27A2C0534D5FF3D735F /* RingBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBufferTests.swift; sourceTree = "<group>"; };
+		5644800290DF0326D0BA2571 /* ym_pro_logo_abstract_minimal_1787464540434.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = ym_pro_logo_abstract_minimal_1787464540434.jpg; sourceTree = "<group>"; };
 		5B80D908EC8C1C8AB5AFC551 /* MetadataBridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MetadataBridge.cpp; sourceTree = "<group>"; };
 		61919E47E4C262214B089F45 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		6216C1D3B9E4934554DF1F2D /* HierarchyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HierarchyView.swift; sourceTree = "<group>"; };
@@ -236,6 +238,7 @@
 			isa = PBXGroup;
 			children = (
 				889A84984E77A80E81F2422E /* hires.png */,
+				5644800290DF0326D0BA2571 /* ym_pro_logo_abstract_minimal_1787464540434.jpg */,
 				A22787EC015496D332058968 /* ym_pro_logo_stylus_grooves_1787427753152.jpg */,
 			);
 			path = Assets;
@@ -351,6 +354,7 @@
 				93596C331F627F10F8115542 /* AppIcon.icns in Resources */,
 				0D3B635FF8B75F1369C24D7B /* Assets.xcassets in Resources */,
 				02A7A4B6A17114412D028F0A /* hires.png in Resources */,
+				D01B3277A0B46757625CBADD /* ym_pro_logo_abstract_minimal_1787464540434.jpg in Resources */,
 				B115F3745B7B1F8F5B112F11 /* ym_pro_logo_stylus_grooves_1787427753152.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
