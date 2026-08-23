@@ -9,9 +9,15 @@
 
 #include <taglib/fileref.h>
 #include <taglib/flacfile.h>
+#include <taglib/mpegfile.h>
+#include <taglib/id3v2tag.h>
+#include <taglib/attachedpictureframe.h>
+#include <taglib/mp4file.h>
+#include <taglib/mp4tag.h>
 #include <taglib/xiphcomment.h>
 #include <taglib/flacpicture.h>
 #include <taglib/tstring.h>
+#include <taglib/tpropertymap.h>
 #include <taglib/tpropertymap.h>
 
 #include <cstring>
@@ -36,36 +42,43 @@ extern "C" bool ExtractFLACMetadata(const char *filePath, ExtractedTrackMetadata
     if (!filePath || !out) return false;
     memset(out, 0, sizeof(*out));
 
-    TagLib::FLAC::File file(filePath);
-    if (!file.isValid()) return false;
+    TagLib::FileRef fileRef(filePath);
+    if (fileRef.isNull() || !fileRef.file()) return false;
+    
+    TagLib::File *file = fileRef.file();
 
     // ── Audio properties ───────────────────────────────────────────────────
-    auto *props = file.audioProperties();
-    if (props) {
+    if (auto *props = file->audioProperties()) {
         out->sampleRate = static_cast<uint32_t>(props->sampleRate());
-        out->bitDepth   = static_cast<uint32_t>(props->bitsPerSample());
         out->channels   = static_cast<uint32_t>(props->channels());
         out->duration   = static_cast<double>(props->lengthInSeconds());
+        out->bitDepth   = 16; // default fallback
+        
+        if (auto *flacFile = dynamic_cast<TagLib::FLAC::File*>(file)) {
+            if (auto *flacProps = flacFile->audioProperties()) {
+                out->bitDepth = static_cast<uint32_t>(flacProps->bitsPerSample());
+            }
+        }
     }
 
     // ── Tags — prefer PropertyMap for universal, case-insensitive extraction ──
-    TagLib::PropertyMap pm = file.properties();
-    if (pm.contains("TITLE"))       copyTag(pm["TITLE"].front(),       out->title,  sizeof(out->title));
-    if (pm.contains("ARTIST"))      copyTag(pm["ARTIST"].front(),      out->artist, sizeof(out->artist));
-    if (pm.contains("ALBUM"))       copyTag(pm["ALBUM"].front(),       out->album,  sizeof(out->album));
-    if (pm.contains("ALBUMARTIST")) copyTag(pm["ALBUMARTIST"].front(), out->albumArtist, sizeof(out->albumArtist));
+    TagLib::PropertyMap pm = file->properties();
+    if (pm.contains("TITLE") && !pm["TITLE"].isEmpty())             copyTag(pm["TITLE"].front(),       out->title,  sizeof(out->title));
+    if (pm.contains("ARTIST") && !pm["ARTIST"].isEmpty())           copyTag(pm["ARTIST"].front(),      out->artist, sizeof(out->artist));
+    if (pm.contains("ALBUM") && !pm["ALBUM"].isEmpty())             copyTag(pm["ALBUM"].front(),       out->album,  sizeof(out->album));
+    if (pm.contains("ALBUMARTIST") && !pm["ALBUMARTIST"].isEmpty()) copyTag(pm["ALBUMARTIST"].front(), out->albumArtist, sizeof(out->albumArtist));
     
     out->trackNumber = tagUInt(pm, "TRACKNUMBER");
     out->discNumber  = tagUInt(pm, "DISCNUMBER");
     out->year        = tagUInt(pm, "DATE"); // TagLib exposes Year as DATE in PropertyMap
     if (out->year == 0) out->year = tagUInt(pm, "YEAR");
 
-    if (pm.contains("LYRICS")) {
+    if (pm.contains("LYRICS") && !pm["LYRICS"].isEmpty()) {
         std::string lyricsStr = pm["LYRICS"].front().to8Bit(true);
         if (!lyricsStr.empty()) {
             out->lyricsData = strdup(lyricsStr.c_str());
         }
-    } else if (pm.contains("UNSYNCEDLYRICS")) {
+    } else if (pm.contains("UNSYNCEDLYRICS") && !pm["UNSYNCEDLYRICS"].isEmpty()) {
         std::string lyricsStr = pm["UNSYNCEDLYRICS"].front().to8Bit(true);
         if (!lyricsStr.empty()) {
             out->lyricsData = strdup(lyricsStr.c_str());
@@ -73,7 +86,7 @@ extern "C" bool ExtractFLACMetadata(const char *filePath, ExtractedTrackMetadata
     }
 
     // ── Fallback to basic tag() if properties failed ───────────────────────
-    auto *tag = file.tag();
+    auto *tag = file->tag();
     if (tag) {
         if (out->title[0] == '\0')  copyTag(tag->title(),  out->title,  sizeof(out->title));
         if (out->artist[0] == '\0') copyTag(tag->artist(), out->artist, sizeof(out->artist));
@@ -82,20 +95,58 @@ extern "C" bool ExtractFLACMetadata(const char *filePath, ExtractedTrackMetadata
         if (out->year == 0)         out->year = static_cast<uint32_t>(tag->year());
     }
 
-    // ── Embedded artwork ───────────────────────────────────────────────────
-    const TagLib::List<TagLib::FLAC::Picture *> &pics = file.pictureList();
-    for (auto *pic : pics) {
-        // Prefer front-cover; fall back to the first picture found
-        if (pic->type() == TagLib::FLAC::Picture::FrontCover || out->artworkData == nullptr) {
-            free(out->artworkData); // free a non-FrontCover we may have already stored
-            const TagLib::ByteVector &data = pic->data();
-            out->artworkData = static_cast<uint8_t *>(malloc(data.size()));
-            if (out->artworkData) {
-                memcpy(out->artworkData, data.data(), data.size());
-                out->artworkSize = data.size();
+    // ── Embedded Artwork Extraction ────────────────────────────────────────
+
+    // 1. Try FLAC
+    if (auto *flacFile = dynamic_cast<TagLib::FLAC::File*>(file)) {
+        if (flacFile->hasXiphComment()) {
+            auto pictures = flacFile->pictureList();
+            if (!pictures.isEmpty()) {
+                auto *pic = pictures.front();
+                out->artworkSize = pic->data().size();
+                out->artworkData = (uint8_t *)malloc(out->artworkSize);
+                memcpy(out->artworkData, pic->data().data(), out->artworkSize);
                 copyTag(pic->mimeType(), out->artworkMimeType, sizeof(out->artworkMimeType));
+                return true;
             }
-            if (pic->type() == TagLib::FLAC::Picture::FrontCover) break;
+        }
+    }
+    
+    // 2. Try ID3v2 (MP3/WAV)
+    if (auto *mpegFile = dynamic_cast<TagLib::MPEG::File*>(file)) {
+        if (auto *id3v2Tag = mpegFile->ID3v2Tag()) {
+            auto frames = id3v2Tag->frameListMap()["APIC"];
+            if (!frames.isEmpty()) {
+                if (auto *pic = dynamic_cast<TagLib::ID3v2::AttachedPictureFrame*>(frames.front())) {
+                    out->artworkSize = pic->picture().size();
+                    out->artworkData = (uint8_t *)malloc(out->artworkSize);
+                    memcpy(out->artworkData, pic->picture().data(), out->artworkSize);
+                    copyTag(pic->mimeType(), out->artworkMimeType, sizeof(out->artworkMimeType));
+                    return true;
+                }
+            }
+        }
+    }
+
+    // 3. Try MP4/M4A/ALAC/AAC
+    if (auto *mp4File = dynamic_cast<TagLib::MP4::File*>(file)) {
+        if (auto *mp4Tag = mp4File->tag()) {
+            if (mp4Tag->itemMap().contains("covr")) {
+                auto covrList = mp4Tag->itemMap()["covr"].toCoverArtList();
+                if (!covrList.isEmpty()) {
+                    auto covr = covrList.front();
+                    out->artworkSize = covr.data().size();
+                    out->artworkData = (uint8_t *)malloc(out->artworkSize);
+                    memcpy(out->artworkData, covr.data().data(), out->artworkSize);
+                    
+                    if (covr.format() == TagLib::MP4::CoverArt::JPEG) {
+                        strcpy(out->artworkMimeType, "image/jpeg");
+                    } else if (covr.format() == TagLib::MP4::CoverArt::PNG) {
+                        strcpy(out->artworkMimeType, "image/png");
+                    }
+                    return true;
+                }
+            }
         }
     }
 

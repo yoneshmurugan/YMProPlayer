@@ -18,9 +18,7 @@ struct AlbumDetailView: View {
                     // Blurred artwork background
                     if let path = album.artworkCachePath,
                        let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-                        AsyncImage(url: cacheDir.appendingPathComponent(path)) { img in
-                            img.resizable().scaledToFill()
-                        } placeholder: { Color.clear }
+                        CachedAsyncImage(url: cacheDir.appendingPathComponent(path)) { Color.clear }
                         .frame(height: 220)
                         .clipped()
                         .blur(radius: 40)
@@ -140,9 +138,8 @@ struct AlbumDetailView: View {
     private var artworkView: some View {
         if let path = album.artworkCachePath,
            let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-            AsyncImage(url: cacheDir.appendingPathComponent(path)) { img in
-                img.resizable().scaledToFill()
-            } placeholder: { placeholderArt }
+            CachedAsyncImage(url: cacheDir.appendingPathComponent(path)) { placeholderArt }
+            .scaledToFill()
         } else {
             placeholderArt
         }
@@ -265,7 +262,7 @@ struct AlbumTrackRow: View {
 
                 // File Type Badge
                 let ext = (track.filePath as NSString).pathExtension.uppercased()
-                Text(ext.isEmpty ? "FLAC" : ext)
+                Text(ext.isEmpty ? "AUDIO" : ext)
                     .font(.system(size: 8, weight: .bold))
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)

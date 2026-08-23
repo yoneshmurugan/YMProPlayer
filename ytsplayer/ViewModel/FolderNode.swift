@@ -33,7 +33,7 @@ struct FolderNode: Identifiable {
                     url: fileURL,
                     children: children.isEmpty ? nil : children // nil means empty or leaf
                 ))
-            } else if fileURL.pathExtension.lowercased() == "flac" {
+            } else if supportedAudioExtensions.contains(fileURL.pathExtension.lowercased()) {
                 nodes.append(FolderNode(
                     id: fileURL.path,
                     name: fileURL.deletingPathExtension().lastPathComponent,

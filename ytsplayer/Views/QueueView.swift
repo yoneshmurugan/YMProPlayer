@@ -61,7 +61,7 @@ struct QueueView: View {
                 }
             }
         }
-        .frame(minWidth: 400, idealWidth: 450, minHeight: 500)
+        .frame(minWidth: 300, idealWidth: 400, minHeight: 400)
     }
 }
 

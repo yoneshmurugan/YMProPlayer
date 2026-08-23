@@ -325,11 +325,10 @@ struct RecentTrackCell: View {
                 if let path = track.albumArtworkPath,
                    let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                     let url = cacheDir.appendingPathComponent(path)
-                    AsyncImage(url: url) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
+                    CachedAsyncImage(url: url) {
                         Color.white.opacity(0.1)
                     }
+                    .scaledToFill()
                 } else {
                     Color.white.opacity(0.1)
                 }

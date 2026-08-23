@@ -306,7 +306,7 @@ struct ContentView: View {
                     let nextDir = dirs[idx + 1]
                     let files = (try? fm.contentsOfDirectory(at: nextDir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? []
                     let trackPaths = files
-                        .filter { $0.pathExtension.lowercased() == "flac" }
+                        .filter { supportedAudioExtensions.contains($0.pathExtension.lowercased()) }
                         .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
                         .map { $0.path }
                     let tracks = trackPaths.compactMap { libraryVM.fetchTrack(byPath: $0) }

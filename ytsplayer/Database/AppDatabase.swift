@@ -231,6 +231,13 @@ enum AppDatabase {
             }
         }
 
+        m.registerMigration("v7_indexes") { db in
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_tracks_albumId ON tracks(albumId)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_tracks_artistId ON tracks(artistId)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_albums_artistId ON albums(artistId)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_tracks_isFavorite ON tracks(isFavorite)")
+        }
+
         return m
     }
 }

@@ -273,7 +273,7 @@ struct HierarchyView: View {
                 for fileURL in urls {
                     let isDir = (try? fileURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
                     
-                    if isDir || fileURL.pathExtension.lowercased() == "flac" {
+                    if isDir || supportedAudioExtensions.contains(fileURL.pathExtension.lowercased()) {
                         var artworkPath: String? = nil
                         var trackId: Int64? = nil
                         
@@ -380,11 +380,10 @@ struct HierarchyGridItem: View, Equatable {
                 if let path = item.artworkPath,
                    let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                     let url = cacheDir.appendingPathComponent(path)
-                    AsyncImage(url: url) { img in
-                        img.resizable().scaledToFill()
-                    } placeholder: {
+                    CachedAsyncImage(url: url) {
                         fallbackIcon
                     }
+                    .scaledToFill()
                 } else {
                     fallbackIcon
                 }
@@ -520,11 +519,10 @@ struct HierarchyListItem: View, Equatable {
                 if let path = item.artworkPath,
                    let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                     let url = cacheDir.appendingPathComponent(path)
-                    AsyncImage(url: url) { img in
-                        img.resizable().scaledToFill()
-                    } placeholder: {
+                    CachedAsyncImage(url: url) {
                         fallbackIcon
                     }
+                    .scaledToFill()
                 } else {
                     fallbackIcon
                 }
@@ -648,11 +646,10 @@ struct HierarchyDragPreview: View {
                 if let path = item.artworkPath,
                    let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                     let url = cacheDir.appendingPathComponent(path)
-                    AsyncImage(url: url) { img in
-                        img.resizable().scaledToFill()
-                    } placeholder: {
+                    CachedAsyncImage(url: url) {
                         fallbackIcon
                     }
+                    .scaledToFill()
                 } else {
                     fallbackIcon
                 }

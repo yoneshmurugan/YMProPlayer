@@ -129,17 +129,43 @@ final class LibraryViewModel: ObservableObject {
     }
     
     func loadFoldersFromUserDefaults() {
-        if let paths = UserDefaults.standard.stringArray(forKey: "libraryRootPaths") {
+        if let bookmarks = UserDefaults.standard.dictionary(forKey: "libraryBookmarks") as? [String: Data] {
+            var loadedFolders: [URL] = []
+            for (_, bookmarkData) in bookmarks {
+                var isStale = false
+                do {
+                    let url = try URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale)
+                    if url.startAccessingSecurityScopedResource() {
+                        loadedFolders.append(url)
+                    } else {
+                        // Fallback just in case
+                        loadedFolders.append(url)
+                    }
+                } catch {
+                    print("Failed to resolve bookmark: \(error)")
+                }
+            }
+            libraryFolders = loadedFolders
+        } else if let paths = UserDefaults.standard.stringArray(forKey: "libraryRootPaths") {
+            // Legacy load
             libraryFolders = paths.map { URL(fileURLWithPath: $0) }
-        } else if let legacyPath = UserDefaults.standard.string(forKey: "libraryRootPath") {
-            let url = URL(fileURLWithPath: legacyPath)
-            libraryFolders = [url]
             saveFoldersToUserDefaults()
-            UserDefaults.standard.removeObject(forKey: "libraryRootPath")
         }
     }
     
     private func saveFoldersToUserDefaults() {
+        var bookmarks: [String: Data] = [:]
+        for url in libraryFolders {
+            do {
+                let data = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+                bookmarks[url.path] = data
+            } catch {
+                print("Failed to create bookmark for \(url.path): \(error)")
+            }
+        }
+        UserDefaults.standard.set(bookmarks, forKey: "libraryBookmarks")
+        
+        // Also save simple paths for legacy/display purposes
         let paths = libraryFolders.map { $0.path }
         UserDefaults.standard.set(paths, forKey: "libraryRootPaths")
     }

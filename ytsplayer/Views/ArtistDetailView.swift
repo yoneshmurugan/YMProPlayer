@@ -21,11 +21,10 @@ struct ArtistDetailView: View {
                             if let path = artist.artworkCachePath,
                                let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                                 let url = cacheDir.appendingPathComponent(path)
-                                AsyncImage(url: url) { image in
-                                    image.resizable().scaledToFill()
-                                } placeholder: {
+                                CachedAsyncImage(url: url) {
                                     fallbackCircle
                                 }
+                                .scaledToFill()
                             } else {
                                 fallbackCircle
                             }

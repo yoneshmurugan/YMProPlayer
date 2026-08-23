@@ -295,11 +295,11 @@ struct AlbumCard: View, Equatable {
         if let path = album.artworkCachePath,
            let cacheDir = ImageDownsampler.artworkCacheDirectory() {
             let url = cacheDir.appendingPathComponent(path)
-            AsyncImage(url: url) { img in
-                img.resizable().scaledToFill()
-            } placeholder: {
+            CachedAsyncImage(url: url) {
                 placeholderArt
             }
+            .scaledToFill()
+            .clipped()
         } else {
             placeholderArt
         }
@@ -451,11 +451,11 @@ struct AlbumListRow: View, Equatable {
         if let path = album.artworkCachePath,
            let cacheDir = ImageDownsampler.artworkCacheDirectory() {
             let url = cacheDir.appendingPathComponent(path)
-            AsyncImage(url: url) { img in
-                img.resizable().scaledToFill()
-            } placeholder: {
+            CachedAsyncImage(url: url) {
                 placeholderArt
             }
+            .scaledToFill()
+            .clipped()
         } else {
             placeholderArt
         }

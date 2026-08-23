@@ -298,11 +298,10 @@ struct NowPlayingBar: View {
         if let path = vm.currentTrack?.albumArtworkPath,
            let cacheDir = ImageDownsampler.artworkCacheDirectory() {
             let url = cacheDir.appendingPathComponent(path)
-            AsyncImage(url: url) { img in
-                img.resizable().scaledToFill()
-            } placeholder: {
+            CachedAsyncImage(url: url) {
                 placeholderArt
             }
+            .scaledToFill()
         } else {
             placeholderArt
         }
@@ -405,27 +404,34 @@ final class WaveformGenerator: ObservableObject {
             
             let format = file.processingFormat
             let frameCount = AVAudioFrameCount(file.length)
+            // Instead of fully decoding the file, read small sparse chunks for the waveform
             let targetPeakCount = 100
-            let samplesPerPeak = Int(frameCount) / targetPeakCount
+            let stride = Int(frameCount) / targetPeakCount
+            let framesToReadPerPeak = AVAudioFrameCount(min(stride, 1024))
             
-            guard samplesPerPeak > 0, let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samplesPerPeak)) else { return }
+            guard stride > 0, let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: framesToReadPerPeak) else { return }
             
             var newPeaks: [Float] = []
-            for _ in 0..<targetPeakCount {
+            for i in 0..<targetPeakCount {
                 do {
-                    try file.read(into: buffer, frameCount: AVAudioFrameCount(samplesPerPeak))
+                    file.framePosition = AVAudioFramePosition(i * stride)
+                    try file.read(into: buffer, frameCount: framesToReadPerPeak)
                     guard let channelData = buffer.floatChannelData else { continue }
                     
                     let length = Int(buffer.frameLength)
+                    if length == 0 {
+                        newPeaks.append(0)
+                        continue
+                    }
                     var sumSquare: Float = 0.0
-                    for i in 0..<length {
-                        let sample = channelData[0][i]
+                    for j in 0..<length {
+                        let sample = channelData[0][j]
                         sumSquare += sample * sample
                     }
                     let rms = sqrt(sumSquare / Float(length))
-                    newPeaks.append(pow(rms, 0.45)) // Enhance lower amplitudes to make waveform thicker
+                    newPeaks.append(pow(rms, 0.45)) // Enhance lower amplitudes
                 } catch {
-                    break
+                    newPeaks.append(0)
                 }
             }
             

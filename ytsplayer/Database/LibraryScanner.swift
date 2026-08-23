@@ -7,6 +7,9 @@
 
 import Foundation
 import GRDB
+import CryptoKit
+
+public let supportedAudioExtensions: Set<String> = ["flac", "mp3", "wav", "m4a", "aac", "alac"]
 
 @MainActor
 final class LibraryScanner: ObservableObject {
@@ -194,7 +197,7 @@ final class LibraryScanner: ObservableObject {
                     options: [.skipsHiddenFiles, .skipsPackageDescendants]
                 ) {
                     while let next = enumerator.nextObject() as? URL {
-                        if next.pathExtension.lowercased() == "flac" {
+                        if supportedAudioExtensions.contains(next.pathExtension.lowercased()) {
                             results.append(next)
                         }
                     }

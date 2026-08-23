@@ -19,6 +19,9 @@
 // ── FLAC Decoder Worker (C linkage) ───────────────────────────────────────
 #include "FLACDecoderWorker.h"
 
+// ── AV Decoder Worker (C linkage) ─────────────────────────────────────────
+#include "AVDecoderWorker.h"
+
 // ── TagLib Metadata Bridge (C linkage from C++ impl) ──────────────────────
 #include "MetadataBridge.h"
 

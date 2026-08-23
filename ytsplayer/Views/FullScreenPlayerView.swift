@@ -124,15 +124,12 @@ struct FullScreenPlayerContent: View {
     private var backgroundLayer: some View {
         if let path = track?.albumArtworkPath,
            let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-            AsyncImage(url: cacheDir.appendingPathComponent(path)) { image in
-                image
-                    .resizable()
-                    .scaledToFill()
-                    .blur(radius: 80)
-                    .overlay(Color.black.opacity(0.55))
-            } placeholder: {
+            CachedAsyncImage(url: cacheDir.appendingPathComponent(path)) {
                 Color(red: 0.08, green: 0.05, blue: 0.18)
             }
+            .scaledToFill()
+            .blur(radius: 80)
+            .overlay(Color.black.opacity(0.55))
             .ignoresSafeArea()
         } else {
             LinearGradient(
@@ -155,12 +152,11 @@ struct FullScreenPlayerContent: View {
             ZStack(alignment: .bottomTrailing) {
                 if let path = track?.albumArtworkPath,
                    let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-                    AsyncImage(url: cacheDir.appendingPathComponent(path)) { image in
-                        image.resizable().scaledToFit()
-                    } placeholder: {
+                    CachedAsyncImage(url: cacheDir.appendingPathComponent(path)) {
                         RoundedRectangle(cornerRadius: 24).fill(Color.white.opacity(0.1))
                             .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.25)))
                     }
+                    .scaledToFit()
                 } else {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(Color.white.opacity(0.1))

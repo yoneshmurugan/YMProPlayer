@@ -26,6 +26,7 @@
 		747B5B47324B31689AA6428C /* MetadataBridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5B80D908EC8C1C8AB5AFC551 /* MetadataBridge.cpp */; };
 		766D8BE2A95CDE7B666FD24F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A79CDE38367083399B50D9AE /* ContentView.swift */; };
 		76C74FF40D528CC3353340FB /* LibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 690C4537F46AD563CD07DFA7 /* LibraryViewModel.swift */; };
+		7E7858C007D9A0001C4FD232 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B7B810E184692F5DEC06B2 /* ImageLoader.swift */; };
 		85B5B7586A41AE4025E6D2E3 /* ImageDownsampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46098959A179314291117FA0 /* ImageDownsampler.swift */; };
 		85B8A53CD1FBD61D62A5E007 /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2634A51A593E894A009B8331 /* AlbumDetailView.swift */; };
 		87F8D15FD137E14FCF158020 /* PlaylistEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF3D3D3A207FC447666D895 /* PlaylistEditorView.swift */; };
@@ -45,6 +46,7 @@
 		D01B3277A0B46757625CBADD /* ym_pro_logo_abstract_minimal_1787464540434.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 5644800290DF0326D0BA2571 /* ym_pro_logo_abstract_minimal_1787464540434.jpg */; };
 		D37960EB768E98B922AB73C7 /* FolderNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA3746921016FB0A7967066 /* FolderNode.swift */; };
 		D4F05231078E9E6515EEBEF0 /* LibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B92A648F3BAE9A1CF1D4FCE /* LibraryScanner.swift */; };
+		E21FDFF35DF7DBF4AC49A309 /* AVDecoderWorker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6BC5A693C12D7761CD429DE9 /* AVDecoderWorker.cpp */; };
 		F1E9CEE1623FBBF207CC8711 /* TracksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED52DDFBF41815E6D0017B1 /* TracksView.swift */; };
 		FA97C68BC7F557B058F65908 /* TrackDropPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 503F13397235E56B1010E82C /* TrackDropPayload.swift */; };
 		FAE5B7859DD413B1BA2C2047 /* AudioDeviceRenderCallback.c in Sources */ = {isa = PBXBuildFile; fileRef = 3722A4A0A782BCD0263B7255 /* AudioDeviceRenderCallback.c */; };
@@ -100,16 +102,18 @@
 		508CF27A2C0534D5FF3D735F /* RingBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBufferTests.swift; sourceTree = "<group>"; };
 		5524CB3D8EA4F5EB83DA2C8B /* YM Pro Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "YM Pro Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5644800290DF0326D0BA2571 /* ym_pro_logo_abstract_minimal_1787464540434.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = ym_pro_logo_abstract_minimal_1787464540434.jpg; sourceTree = "<group>"; };
+		58B7B810E184692F5DEC06B2 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
 		5B80D908EC8C1C8AB5AFC551 /* MetadataBridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MetadataBridge.cpp; sourceTree = "<group>"; };
 		61919E47E4C262214B089F45 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		6216C1D3B9E4934554DF1F2D /* HierarchyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HierarchyView.swift; sourceTree = "<group>"; };
 		638AD7A33CC5D709B00D5C56 /* LyricsOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsOverlayView.swift; sourceTree = "<group>"; };
 		690C4537F46AD563CD07DFA7 /* LibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViewModel.swift; sourceTree = "<group>"; };
+		6BC5A693C12D7761CD429DE9 /* AVDecoderWorker.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = AVDecoderWorker.cpp; sourceTree = "<group>"; };
 		6DDD5905DF014AA057EC3450 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		6E9C6B988AF723304392485D /* NowPlayingBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingBar.swift; sourceTree = "<group>"; };
 		7DF3D3D3A207FC447666D895 /* PlaylistEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistEditorView.swift; sourceTree = "<group>"; };
 		889A84984E77A80E81F2422E /* hires.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hires.png; sourceTree = "<group>"; };
-		8D39838763B23A52624A3CD6 /* GRDB */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GRDB; path = GRDB; sourceTree = SOURCE_ROOT; };
+		8D39838763B23A52624A3CD6 /* GRDB */ = {isa = PBXFileReference; lastKnownFileType = folder; path = GRDB; sourceTree = SOURCE_ROOT; };
 		98B66BF0357FFF6E6B9B3B47 /* MetadataBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetadataBridge.h; sourceTree = "<group>"; };
 		9B92A648F3BAE9A1CF1D4FCE /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
 		9DDC3F8ECDD606A9826A8DC6 /* FLACDecoderWorker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FLACDecoderWorker.h; sourceTree = "<group>"; };
@@ -131,6 +135,7 @@
 		E1D00EF6C4615B3BA221A99D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E2326DB1FB29B7FCA52A5422 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		F8C89228F599E4B4D2B9D45B /* AudioEngineContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioEngineContext.h; sourceTree = "<group>"; };
+		F915F2A5591244102FFE97B4 /* AVDecoderWorker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AVDecoderWorker.h; sourceTree = "<group>"; };
 		FD33D4A46D47A41B630AABBF /* YM ProTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "YM ProTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD467466CEE60619EE2EE55E /* ytsplayer-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ytsplayer-Bridging-Header.h"; sourceTree = "<group>"; };
 		FDFC944784596512322BFAE5 /* ytsplayerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ytsplayerApp.swift; sourceTree = "<group>"; };
@@ -227,6 +232,7 @@
 			isa = PBXGroup;
 			children = (
 				46098959A179314291117FA0 /* ImageDownsampler.swift */,
+				58B7B810E184692F5DEC06B2 /* ImageLoader.swift */,
 				FFEAD1B2C830993710DCA4EC /* LyricsService.swift */,
 			);
 			path = Utilities;
@@ -291,6 +297,8 @@
 				3722A4A0A782BCD0263B7255 /* AudioDeviceRenderCallback.c */,
 				B0B3285702DB128EE27FCA7C /* AudioDeviceRenderCallback.h */,
 				F8C89228F599E4B4D2B9D45B /* AudioEngineContext.h */,
+				6BC5A693C12D7761CD429DE9 /* AVDecoderWorker.cpp */,
+				F915F2A5591244102FFE97B4 /* AVDecoderWorker.h */,
 				3B31E615833331A8DB981C7D /* FLACDecoderWorker.c */,
 				9DDC3F8ECDD606A9826A8DC6 /* FLACDecoderWorker.h */,
 				B46250EB79915341078F2B2E /* LockFreeRingBuffer.h */,
@@ -382,10 +390,10 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					38F1FA13AD63416B6E4432A3 = {
-						ProvisioningStyle = Manual;
+						ProvisioningStyle = Automatic;
 					};
 					8329D80BCA65BEF2B52F3E10 = {
-						ProvisioningStyle = Manual;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -433,6 +441,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E21FDFF35DF7DBF4AC49A309 /* AVDecoderWorker.cpp in Sources */,
 				85B8A53CD1FBD61D62A5E007 /* AlbumDetailView.swift in Sources */,
 				0A4F319DBF8C46150E879405 /* AppDatabase.swift in Sources */,
 				11D17020C88605D846D76B83 /* ArtistDetailView.swift in Sources */,
@@ -446,6 +455,7 @@
 				95722CCBB6348F518DF2D73E /* HierarchyView.swift in Sources */,
 				AC86EFC4E1931000BE362C17 /* HomeView.swift in Sources */,
 				85B5B7586A41AE4025E6D2E3 /* ImageDownsampler.swift in Sources */,
+				7E7858C007D9A0001C4FD232 /* ImageLoader.swift in Sources */,
 				D4F05231078E9E6515EEBEF0 /* LibraryScanner.swift in Sources */,
 				C0BCAF46272AB566EF0DFB2C /* LibraryView.swift in Sources */,
 				76C74FF40D528CC3353340FB /* LibraryViewModel.swift in Sources */,
@@ -622,9 +632,11 @@
 		553BFB44EE61256591BEB14B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_ENTITLEMENTS = ytsplayerWidget/ytsplayerWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7C4RH6695J;
 				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_FILE = ytsplayerWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -633,7 +645,8 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ytsplayer.app.widget;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ympro.mac.widget;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5;
 			};
@@ -645,11 +658,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CLANG_CXX_LIBRARY = "libc++";
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_ENTITLEMENTS = ytsplayer/ytsplayer.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_APP_SANDBOX = NO;
+				DEVELOPMENT_TEAM = 7C4RH6695J;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GCC_C_LANGUAGE_STANDARD = c11;
 				GCC_OPTIMIZATION_LEVEL = 3;
@@ -668,6 +683,7 @@
 					/opt/homebrew/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-I/opt/homebrew/include",
@@ -677,7 +693,7 @@
 					"-lFLAC",
 					"-ltag",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ytsplayer.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ympro.mac;
 				PRODUCT_NAME = "YM Pro";
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "ytsplayer/App/ytsplayer-Bridging-Header.h";
@@ -711,9 +727,11 @@
 		9AF464F9D802B0959DD0569F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_ENTITLEMENTS = ytsplayerWidget/ytsplayerWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7C4RH6695J;
 				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_FILE = ytsplayerWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -722,7 +740,8 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ytsplayer.app.widget;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ympro.mac.widget;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5;
 			};
@@ -734,11 +753,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CLANG_CXX_LIBRARY = "libc++";
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_ENTITLEMENTS = ytsplayer/ytsplayer.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_APP_SANDBOX = NO;
+				DEVELOPMENT_TEAM = 7C4RH6695J;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GCC_C_LANGUAGE_STANDARD = c11;
 				GCC_OPTIMIZATION_LEVEL = 3;
@@ -757,6 +778,7 @@
 					/opt/homebrew/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-I/opt/homebrew/include",
@@ -766,7 +788,7 @@
 					"-lFLAC",
 					"-ltag",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ytsplayer.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ympro.mac;
 				PRODUCT_NAME = "YM Pro";
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "ytsplayer/App/ytsplayer-Bridging-Header.h";

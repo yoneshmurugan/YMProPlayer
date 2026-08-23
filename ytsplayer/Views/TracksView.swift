@@ -639,9 +639,7 @@ struct TrackRow: View, Equatable {
         HStack(spacing: 0) {
             // Artwork
             if let url = artworkURL {
-                AsyncImage(url: url) { img in
-                    img.resizable().scaledToFill()
-                } placeholder: {
+                CachedAsyncImage(url: url) {
                     RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.1))
                 }
                 .frame(width: 36, height: 36)

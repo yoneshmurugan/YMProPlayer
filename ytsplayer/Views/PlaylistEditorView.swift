@@ -28,13 +28,10 @@ struct PlaylistEditorView: View {
                        let path = firstTrack.albumArtworkPath,
                        let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                         let url = cacheDir.appendingPathComponent(path)
-                        AsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        } placeholder: {
+                        CachedAsyncImage(url: url) {
                             fallbackIcon()
                         }
+                        .scaledToFill()
                     } else {
                         fallbackIcon()
                     }

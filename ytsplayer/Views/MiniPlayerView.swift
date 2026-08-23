@@ -16,11 +16,10 @@ struct MiniPlayerView: View {
         ZStack {
             // Background Artwork (Full Bleed)
             if let url = artworkURL {
-                AsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
+                CachedAsyncImage(url: url) {
                     LinearGradient(colors: [Color.purple.opacity(0.8), Color.blue.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 }
+                .scaledToFill()
             } else {
                 LinearGradient(colors: [Color.black, Color.gray.opacity(0.2)], startPoint: .top, endPoint: .bottom)
             }
@@ -133,11 +132,10 @@ struct MenuBarAppView: View {
                 if let path = vm.currentTrack?.albumArtworkPath,
                    let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                     let url = cacheDir.appendingPathComponent(path)
-                    AsyncImage(url: url) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
+                    CachedAsyncImage(url: url) {
                         Rectangle().fill(Color.gray.opacity(0.2))
                     }
+                    .scaledToFill()
                     .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {

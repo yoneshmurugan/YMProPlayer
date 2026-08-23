@@ -39,6 +39,7 @@ final class CoreAudioHALEngine {
     let context: UnsafeMutablePointer<AudioEngineContext>
 
     private var decoderWorker: OpaquePointer?
+    private var avDecoderWorker: OpaquePointer?
 
     // Ring buffer: 131072 frames = power-of-two, ~3s at 44.1kHz
     private let ringBufferCapacity: Int = 131_072
@@ -327,15 +328,31 @@ final class CoreAudioHALEngine {
             FLACDecoder_Destroy(w)
             decoderWorker = nil
         }
+        if let w = avDecoderWorker {
+            AVDecoder_Stop(w)
+            AVDecoder_Destroy(w)
+            avDecoderWorker = nil
+        }
 
         RingBuffer_Reset(context.pointee.ringBuffer)
         AEC_ResetPlayback(context)
 
-        guard let worker = FLACDecoder_Create(filePath, context) else {
-            NSLog("[ytsplayer] FLACDecoder_Create failed for: \(filePath)")
-            return false
+        let ext = (filePath as NSString).pathExtension.lowercased()
+        let isFLAC = (ext == "flac")
+
+        if isFLAC {
+            guard let worker = FLACDecoder_Create(filePath, context) else {
+                NSLog("[ytsplayer] FLACDecoder_Create failed for: \(filePath)")
+                return false
+            }
+            decoderWorker = worker
+        } else {
+            guard let worker = AVDecoder_Create(filePath, context) else {
+                NSLog("[ytsplayer] AVDecoder_Create failed for: \(filePath)")
+                return false
+            }
+            avDecoderWorker = worker
         }
-        decoderWorker = worker
 
         let originalRate = expectedSampleRate > 0 ? expectedSampleRate : Double(context.pointee.sampleRate)
         var hardwareRate = originalRate
@@ -400,15 +417,23 @@ final class CoreAudioHALEngine {
         try? await Task.sleep(nanoseconds: 50_000_000)
         guard startPlayback() else { return false }
 
-        FLACDecoder_Start(worker)
+        // Start whichever worker was created
+        if let w = decoderWorker {
+            FLACDecoder_Start(w)
+        } else if let w = avDecoderWorker {
+            AVDecoder_Start(w)
+        }
         return true
     }
 
     // MARK: - Seek
 
     func seek(to frame: UInt64) {
-        guard let w = decoderWorker else { return }
-        FLACDecoder_Seek(w, frame)
+        if let w = decoderWorker {
+            _ = FLACDecoder_Seek(w, frame)
+        } else if let w = avDecoderWorker {
+            _ = AVDecoder_Seek(w, frame)
+        }
     }
 
     // MARK: - Convenience Reads for UI (safe on main thread)

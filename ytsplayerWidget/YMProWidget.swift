@@ -7,47 +7,22 @@ struct Provider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        var title = "YM Pro"
-        var artist = "Nothing Playing"
-        var artworkPath: String? = nil
-        var isPlaying = false
-        
-        let fileManager = FileManager.default
-        let homeDir = fileManager.homeDirectoryForCurrentUser
-        // In a sandboxed widget, homeDir IS already the Container/Data folder!
-        let widgetDataURL = homeDir.appendingPathComponent("widget_state.json")
-        
-        if let data = try? Data(contentsOf: widgetDataURL),
-           let state = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            title = state["title"] as? String ?? title
-            artist = state["artist"] as? String ?? artist
-            let path = state["artworkPath"] as? String ?? ""
-            artworkPath = path.isEmpty ? nil : path
-            isPlaying = state["isPlaying"] as? Bool ?? false
-        }
+        let defaults = UserDefaults(suiteName: "group.com.ympro.mac")
+        let title = defaults?.string(forKey: "widget_title") ?? "YM Pro"
+        let artist = defaults?.string(forKey: "widget_artist") ?? "Nothing Playing"
+        let artworkPath = defaults?.string(forKey: "widget_artworkPath")
+        let isPlaying = defaults?.bool(forKey: "widget_isPlaying") ?? false
         
         let entry = SimpleEntry(date: Date(), title: title, artist: artist, artworkPath: artworkPath, isPlaying: isPlaying)
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-        var title = "Nothing Playing"
-        var artist = ""
-        var artworkPath: String? = nil
-        var isPlaying = false
-        
-        let fileManager = FileManager.default
-        let homeDir = fileManager.homeDirectoryForCurrentUser
-        let widgetDataURL = homeDir.appendingPathComponent("widget_state.json")
-        
-        if let data = try? Data(contentsOf: widgetDataURL),
-           let state = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            title = state["title"] as? String ?? title
-            artist = state["artist"] as? String ?? artist
-            let path = state["artworkPath"] as? String ?? ""
-            artworkPath = path.isEmpty ? nil : path
-            isPlaying = state["isPlaying"] as? Bool ?? false
-        }
+        let defaults = UserDefaults(suiteName: "group.com.ympro.mac")
+        let title = defaults?.string(forKey: "widget_title") ?? "Nothing Playing"
+        let artist = defaults?.string(forKey: "widget_artist") ?? ""
+        let artworkPath = defaults?.string(forKey: "widget_artworkPath")
+        let isPlaying = defaults?.bool(forKey: "widget_isPlaying") ?? false
         
         let entry = SimpleEntry(date: Date(), title: title, artist: artist, artworkPath: artworkPath, isPlaying: isPlaying)
         let timeline = Timeline(entries: [entry], policy: .never)
@@ -90,11 +65,13 @@ struct YMProWidgetEntryView : View {
     var entry: Provider.Entry
     
     var artworkURL: URL? {
-        if entry.artworkPath == nil { return nil }
+        if entry.artworkPath == nil || entry.artworkPath?.isEmpty == true { return nil }
         let fileManager = FileManager.default
-        let homeDir = fileManager.homeDirectoryForCurrentUser
-        let url = homeDir.appendingPathComponent("widget_artwork.jpg")
-        return fileManager.fileExists(atPath: url.path) ? url : nil
+        if let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ympro.mac") {
+            let url = groupURL.appendingPathComponent("widget_artwork.jpg")
+            return fileManager.fileExists(atPath: url.path) ? url : nil
+        }
+        return nil
     }
 
     var body: some View {
