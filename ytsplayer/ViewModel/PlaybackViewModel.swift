@@ -309,7 +309,7 @@ final class PlaybackViewModel: ObservableObject {
     }
 
     private func updateWidget() {
-        if let defaults = UserDefaults(suiteName: "group.com.ympro.mac") {
+        if let defaults = UserDefaults(suiteName: "group.com.yonesh.ympro.mac") {
             defaults.set(currentTrack?.title ?? "Nothing Playing", forKey: "widget_title")
             defaults.set(currentTrack?.artistName ?? "", forKey: "widget_artist")
             defaults.set(currentTrack?.albumArtworkPath ?? "", forKey: "widget_artworkPath")
@@ -317,7 +317,7 @@ final class PlaybackViewModel: ObservableObject {
         }
         
         let fileManager = FileManager.default
-        if let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ympro.mac") {
+        if let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yonesh.ympro.mac") {
             let widgetImageURL = groupURL.appendingPathComponent("widget_artwork.jpg")
             
             if let cachePath = currentTrack?.albumArtworkPath {

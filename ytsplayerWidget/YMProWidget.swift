@@ -7,7 +7,7 @@ struct Provider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        let defaults = UserDefaults(suiteName: "group.com.ympro.mac")
+        let defaults = UserDefaults(suiteName: "group.com.yonesh.ympro.mac")
         let title = defaults?.string(forKey: "widget_title") ?? "YM Pro"
         let artist = defaults?.string(forKey: "widget_artist") ?? "Nothing Playing"
         let artworkPath = defaults?.string(forKey: "widget_artworkPath")
@@ -18,7 +18,7 @@ struct Provider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-        let defaults = UserDefaults(suiteName: "group.com.ympro.mac")
+        let defaults = UserDefaults(suiteName: "group.com.yonesh.ympro.mac")
         let title = defaults?.string(forKey: "widget_title") ?? "Nothing Playing"
         let artist = defaults?.string(forKey: "widget_artist") ?? ""
         let artworkPath = defaults?.string(forKey: "widget_artworkPath")
@@ -67,7 +67,7 @@ struct YMProWidgetEntryView : View {
     var artworkURL: URL? {
         if entry.artworkPath == nil || entry.artworkPath?.isEmpty == true { return nil }
         let fileManager = FileManager.default
-        if let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.ympro.mac") {
+        if let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yonesh.ympro.mac") {
             let url = groupURL.appendingPathComponent("widget_artwork.jpg")
             return fileManager.fileExists(atPath: url.path) ? url : nil
         }

@@ -6,7 +6,7 @@
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.ympro.mac</string>
+		<string>group.com.yonesh.ympro.mac</string>
 	</array>
 </dict>
 </plist>

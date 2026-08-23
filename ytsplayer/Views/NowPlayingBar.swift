@@ -223,6 +223,7 @@ struct NowPlayingBar: View {
                             .foregroundStyle(Color.white.opacity(0.8))
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
                     .help("Open Mini-Player")
                     
                     // Queue Button
@@ -232,6 +233,7 @@ struct NowPlayingBar: View {
                             .foregroundStyle(isQueuePresented ? Color.accentColor : Color.white.opacity(0.8))
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
                     .popover(isPresented: $isQueuePresented, arrowEdge: .top) {
                         QueueView()
                             .environmentObject(vm)
