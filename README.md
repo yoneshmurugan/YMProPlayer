@@ -51,31 +51,43 @@ If you own high-resolution FLAC files and a premium external DAC, standard playe
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     SwiftUI (macOS 13+)                  │
-│  ContentView · NowPlayingBar · FullScreenPlayer · ...    │
-├─────────────────────────────────────────────────────────┤
-│                   PlaybackViewModel                      │
-│          Queue · Shuffle · Repeat · Gapless              │
-├──────────────────┬──────────────────────────────────────┤
-│  CoreAudioHAL    │         LibraryViewModel              │
-│  Engine (Swift)  │     GRDB (SQLite + FTS5)              │
-│  ┌────────────┐  │  ┌──────────────────────────────┐    │
-│  │ Hog Mode   │  │  │  MetadataBridge (C++ TagLib) │    │
-│  │ SampleRate  │  │  │  Artwork · Tags · Properties │    │
-│  │ Exclusive   │  │  └──────────────────────────────┘    │
-│  └─────┬──────┘  │                                      │
-│        │         │                                      │
-│  ┌─────▼──────┐  │                                      │
-│  │ AVDecoder  │  │                                      │
-│  │ Worker     │  │                                      │
-│  │ (C++ FLAC) │  │                                      │
-│  └────────────┘  │                                      │
-├──────────────────┴──────────────────────────────────────┤
-│              macOS CoreAudio HAL (Hardware)               │
-│                   Your DAC / Speakers                     │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph UI["SwiftUI Layer — macOS 13+"]
+        CV["ContentView"]
+        NPB["NowPlayingBar"]
+        FSP["FullScreenPlayer"]
+        HV["HomeView · LibraryView · ArtistsView"]
+    end
+
+    subgraph VM["ViewModel Layer"]
+        PVM["PlaybackViewModel — Queue · Shuffle · Repeat · Gapless"]
+        LVM["LibraryViewModel"]
+        SVM["SearchViewModel"]
+    end
+
+    subgraph Engine["Playback Engine — Swift + C++"]
+        HAL["CoreAudioHALEngine — Hog Mode · Sample Rate · Exclusive Access"]
+        DEC["AVDecoderWorker C++ — libFLAC Decoder · Background Thread"]
+    end
+
+    subgraph Data["Data Layer"]
+        MB["MetadataBridge C++ TagLib — Artwork · ID3v2 · Vorbis Comments"]
+        DB["GRDB SQLite + FTS5 — Library · Playlists · Play Counts"]
+    end
+
+    subgraph HW["Hardware"]
+        DAC["macOS CoreAudio HAL — Your DAC or Speakers"]
+    end
+
+    UI --> VM
+    PVM --> HAL
+    HAL --> DEC
+    DEC --> DAC
+    LVM --> DB
+    LVM --> MB
+    SVM --> DB
+    PVM -.->|Track Metadata| DB
 ```
 
 **Key layers:**
