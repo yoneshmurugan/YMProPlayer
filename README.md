@@ -34,18 +34,18 @@ If you own high-resolution FLAC files and a premium external DAC, standard playe
 
 | Feature | Description |
 |---|---|
-| 🎛️ **Bit-Perfect CoreAudio HAL** | Custom C++ engine talks directly to your audio hardware, completely bypassing the macOS system mixer. |
-| 🔒 **Exclusive Hog Mode** | Locks your DAC so no system alerts or other apps can interfere with your listening session. |
-| 🔄 **Dynamic Sample Rate Switching** | Automatically changes your hardware's sample rate on-the-fly to match each track (44.1kHz → 96kHz → 192kHz). |
-| 🎵 **Native FLAC Decoding** | High-performance C++ decoder with gapless, zero-latency playback on a dedicated background thread. |
-| 📊 **Hi-Res Badges** | Automatically detects and displays bit-depth/sample-rate info with dynamic Hi-Res Audio badges. |
-| 🎨 **Glassmorphism UI** | Stunning dark interface built 100% in SwiftUI with ambient gradients, blur effects, and smooth animations. |
-| 📁 **Folder Hierarchy Browser** | Navigate your music library exactly as it's organized on disk — no forced "Album/Artist" view. |
-| 📋 **Playlists** | Create, manage, and drag-and-drop tracks into custom playlists. |
-| 🔍 **Instant Search** | Full-text search powered by SQLite FTS5 across titles, artists, albums, and file paths. |
-| ⌨️ **Touch Bar & Media Keys** | Full playback control from your keyboard and MacBook Touch Bar with live track info. |
-| 🧩 **macOS Widget** | Now Playing widget for your desktop via WidgetKit. |
-| 🎬 **Intro Splash** | Premium animated logo intro on app launch. |
+| **Bit-Perfect CoreAudio HAL** | Custom C++ engine talks directly to your audio hardware, completely bypassing the macOS system mixer. |
+| **Exclusive Hog Mode** | Locks your DAC so no system alerts or other apps can interfere with your listening session. |
+| **Dynamic Sample Rate Switching** | Automatically changes your hardware's sample rate on-the-fly to match each track (44.1kHz → 96kHz → 192kHz). |
+| **Native FLAC Decoding** | High-performance C++ decoder with gapless, zero-latency playback on a dedicated background thread. |
+| **Hi-Res Badges** | Automatically detects and displays bit-depth/sample-rate info with dynamic Hi-Res Audio badges. |
+| **Glassmorphism UI** | Stunning dark interface built 100% in SwiftUI with ambient gradients, blur effects, and smooth animations. |
+| **Folder Hierarchy Browser** | Navigate your music library exactly as it's organized on disk — no forced "Album/Artist" view. |
+| **Playlists** | Create, manage, and drag-and-drop tracks into custom playlists. |
+| **Instant Search** | Full-text search powered by SQLite FTS5 across titles, artists, albums, and file paths. |
+| **Touch Bar & Media Keys** | Full playback control from your keyboard and MacBook Touch Bar with live track info. |
+| **macOS Widget** | Now Playing widget for your desktop via WidgetKit. |
+| **Intro Splash** | Premium animated logo intro on app launch. |
 
 ---
 
@@ -86,14 +86,6 @@ If you own high-resolution FLAC files and a premium external DAC, standard playe
 - **Database** — GRDB (SQLite) with FTS5 full-text search, batch upserts, and play count tracking.
 
 ---
-
-## 🖥️ Screenshots
-
-<!-- TODO: Add screenshots of the app here -->
-<!-- ![Home Screen](screenshots/home.png) -->
-<!-- ![Full Screen Player](screenshots/fullscreen.png) -->
-
-*Screenshots coming soon.*
 
 ---
 
