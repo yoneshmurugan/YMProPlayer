@@ -66,8 +66,9 @@ targets:
         DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
         SWIFT_OPTIMIZATION_LEVEL: -O
         GCC_OPTIMIZATION_LEVEL: "3"
-        # Disable App Sandbox for now (Phase 6 will enable)
         ENABLE_APP_SANDBOX: NO
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
         PRODUCT_NAME: "YM Pro"
       debug:
         SWIFT_OPTIMIZATION_LEVEL: -Onone
@@ -75,9 +76,35 @@ targets:
         DEBUG_INFORMATION_FORMAT: dwarf
     dependencies:
       - package: GRDB
+      - target: YM Pro Widget
+        embed: true
     scheme:
       testTargets:
         - YM ProTests
+        
+  YM Pro Widget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: ytsplayerWidget
+    info:
+      path: ytsplayerWidget/Info.plist
+      properties:
+        CFBundleName: "YM Pro Widget"
+        CFBundleDisplayName: "YM Pro Widget"
+        CFBundleIdentifier: com.ytsplayer.app.widget
+        CFBundleVersion: "1"
+        CFBundleShortVersionString: "1.0.0"
+        NSExtension:
+          NSExtensionPointIdentifier: "com.apple.widgetkit-extension"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ytsplayer.app.widget
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        SWIFT_VERSION: "5"
+        ENABLE_APP_SANDBOX: YES
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
         
   YM ProTests:
     type: bundle.unit-test

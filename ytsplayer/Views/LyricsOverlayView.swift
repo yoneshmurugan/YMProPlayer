@@ -4,6 +4,7 @@ import GRDB
 struct LyricsOverlayView: View {
     @EnvironmentObject var playbackVM: PlaybackViewModel
     @State private var lyrics: String?
+    @State private var cachedParsedLyrics: [LyricLine] = []
     @State private var isLoading = false
     let database: DatabasePool
     
@@ -14,27 +15,9 @@ struct LyricsOverlayView: View {
         let text: String
     }
     
-    var parsedLyrics: [LyricLine] {
-        guard let text = lyrics else { return [] }
-        return text.components(separatedBy: .newlines).compactMap { line in
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty { return nil }
-            // Try parsing LRC timestamp [mm:ss.xx]
-            if trimmed.hasPrefix("[") && trimmed.count > 10 {
-                let timeString = trimmed.dropFirst().prefix(8)
-                let textPart = trimmed.dropFirst(10)
-                let parts = timeString.components(separatedBy: ":")
-                if parts.count == 2, let min = Double(parts[0]), let sec = Double(parts[1]) {
-                    return LyricLine(time: min * 60 + sec, text: String(textPart))
-                }
-            }
-            return LyricLine(time: nil, text: trimmed)
-        }
-    }
-    
     var currentLineIndex: Int? {
         let currentProgress = playbackVM.playbackProgress * (playbackVM.currentTrack?.duration ?? 0)
-        let lines = parsedLyrics
+        let lines = cachedParsedLyrics
         guard !lines.isEmpty, lines[0].time != nil else { return nil } // Only sync if we have timestamps
         
         var lastValidIndex: Int = 0
@@ -58,7 +41,7 @@ struct LyricsOverlayView: View {
             if isLoading {
                 ProgressView()
                     .scaleEffect(1.5)
-            } else if parsedLyrics.isEmpty {
+            } else if cachedParsedLyrics.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "music.mic")
                         .font(.system(size: 48))
@@ -76,7 +59,7 @@ struct LyricsOverlayView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 24) {
-                            ForEach(Array(parsedLyrics.enumerated()), id: \.element.id) { index, line in
+                            ForEach(Array(cachedParsedLyrics.enumerated()), id: \.element.id) { index, line in
                                 let isCurrent = index == currentLineIndex
                                 let isPast = currentLineIndex != nil && index < currentLineIndex!
                                 
@@ -122,13 +105,35 @@ struct LyricsOverlayView: View {
     
     private func loadInitialLyrics() {
         guard let track = playbackVM.currentTrack else {
-            lyrics = nil
+            setLyrics(nil)
             return
         }
         if let l = track.lyrics, !l.isEmpty {
-            lyrics = l
+            setLyrics(l)
         } else {
-            lyrics = nil
+            setLyrics(nil)
+        }
+    }
+    
+    private func setLyrics(_ text: String?) {
+        self.lyrics = text
+        guard let text = text else {
+            self.cachedParsedLyrics = []
+            return
+        }
+        
+        self.cachedParsedLyrics = text.components(separatedBy: .newlines).compactMap { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { return nil }
+            if trimmed.hasPrefix("[") && trimmed.count > 10 {
+                let timeString = trimmed.dropFirst().prefix(8)
+                let textPart = trimmed.dropFirst(10)
+                let parts = timeString.components(separatedBy: ":")
+                if parts.count == 2, let min = Double(parts[0]), let sec = Double(parts[1]) {
+                    return LyricLine(time: min * 60 + sec, text: String(textPart))
+                }
+            }
+            return LyricLine(time: nil, text: trimmed)
         }
     }
     
@@ -138,7 +143,7 @@ struct LyricsOverlayView: View {
         do {
             let fetched = try await LyricsService.shared.fetchAndEmbedLyrics(for: track, database: database)
             await MainActor.run {
-                self.lyrics = fetched
+                self.setLyrics(fetched)
                 self.isLoading = false
             }
         } catch {

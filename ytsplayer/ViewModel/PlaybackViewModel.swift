@@ -3,7 +3,9 @@
 
 import SwiftUI
 import Combine
+import AVFoundation
 import MediaPlayer
+import WidgetKit
 
 enum PlaybackContext: Equatable {
     case none
@@ -278,6 +280,10 @@ final class PlaybackViewModel: ObservableObject {
     private func updateNowPlayingInfo() {
         guard let track = currentTrack else {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            if let defaults = UserDefaults(suiteName: "group.com.ytsplayer.YMPro") {
+                defaults.set(false, forKey: "isPlaying")
+                WidgetCenter.shared.reloadAllTimelines()
+            }
             return
         }
         
@@ -299,5 +305,48 @@ final class PlaybackViewModel: ObservableObject {
         }
         
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        updateWidget()
+    }
+
+    private func updateWidget() {
+        let state: [String: Any] = [
+            "title": currentTrack?.title ?? "Nothing Playing",
+            "artist": currentTrack?.artistName ?? "",
+            "artworkPath": currentTrack?.albumArtworkPath ?? "",
+            "isPlaying": isPlaying
+        ]
+        
+        let fileManager = FileManager.default
+        let homeDir = fileManager.homeDirectoryForCurrentUser
+        // Write directly into the Widget's Sandboxed container
+        let widgetDataURL = homeDir.appendingPathComponent("Library/Containers/com.ytsplayer.app.widget/Data/widget_state.json")
+        let widgetImageURL = homeDir.appendingPathComponent("Library/Containers/com.ytsplayer.app.widget/Data/widget_artwork.jpg")
+        
+        do {
+            // Ensure the directory exists (macOS creates it, but just in case)
+            try fileManager.createDirectory(at: widgetDataURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data = try JSONSerialization.data(withJSONObject: state)
+            try data.write(to: widgetDataURL)
+            
+            // Copy artwork to widget container
+            if let cachePath = currentTrack?.albumArtworkPath {
+                let cacheDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("ytsplayer/artwork")
+                let sourceURL = cacheDir.appendingPathComponent(cachePath)
+                if fileManager.fileExists(atPath: sourceURL.path) {
+                    if fileManager.fileExists(atPath: widgetImageURL.path) {
+                        try fileManager.removeItem(at: widgetImageURL)
+                    }
+                    try fileManager.copyItem(at: sourceURL, to: widgetImageURL)
+                }
+            } else {
+                if fileManager.fileExists(atPath: widgetImageURL.path) {
+                    try fileManager.removeItem(at: widgetImageURL)
+                }
+            }
+            
+            WidgetCenter.shared.reloadAllTimelines()
+        } catch {
+            print("Failed to write widget state: \(error)")
+        }
     }
 }

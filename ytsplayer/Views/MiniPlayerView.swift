@@ -26,7 +26,7 @@ struct MiniPlayerView: View {
             }
             
             // Interactive Glass Overlay
-            if isHovered || !vm.isPlaying {
+            if isHovered || !vm.isPlaying || showQueue {
                 Rectangle()
                     .fill(.ultraThinMaterial)
                     .environment(\.colorScheme, .dark)

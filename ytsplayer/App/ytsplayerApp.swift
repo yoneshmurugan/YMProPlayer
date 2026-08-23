@@ -130,6 +130,7 @@ struct ytsplayerApp: App {
         WindowGroup(id: "MiniPlayer") {
             MiniPlayerView()
                 .environmentObject(env.playbackVM)
+                .environmentObject(env.playlistManager)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
