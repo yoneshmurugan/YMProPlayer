@@ -50,11 +50,7 @@ targets:
           - ytsplayer/Engine
         LIBRARY_SEARCH_PATHS:
           - "$(inherited)"
-          - /opt/homebrew/lib
-        OTHER_LDFLAGS:
-          - "$(inherited)"
-          - -lFLAC
-          - -ltag
+          - ytsplayer/Dependencies
         OTHER_CFLAGS:
           - "$(inherited)"
           - -I/opt/homebrew/include
@@ -65,9 +61,12 @@ targets:
         GCC_C_LANGUAGE_STANDARD: c11
         SWIFT_VERSION: "5"
         MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "2"
+        CURRENT_PROJECT_VERSION: "3"
         PRODUCT_BUNDLE_IDENTIFIER: com.yonesh.ympro.mac
         MACOSX_DEPLOYMENT_TARGET: "13.0"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
         ENABLE_HARDENED_RUNTIME: NO
         DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
         SWIFT_OPTIMIZATION_LEVEL: -O
@@ -91,6 +90,12 @@ targets:
       - package: GRDB
       - target: YM Pro Widget
         embed: true
+      - framework: ytsplayer/Dependencies/libFLAC.dylib
+        embed: true
+        codeSign: true
+      - framework: ytsplayer/Dependencies/libtag.dylib
+        embed: true
+        codeSign: true
     scheme:
       testTargets:
         - YM ProTests
