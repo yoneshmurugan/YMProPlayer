@@ -26,8 +26,8 @@ targets:
         CFBundleDisplayName: "YM Pro"
         CFBundleIconFile: AppIcon
         CFBundleIdentifier: com.yonesh.ympro.mac
-        CFBundleVersion: "1"
-        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
         NSHumanReadableCopyright: ""
         NSHighResolutionCapable: true
         NSSupportsAutomaticTermination: false
@@ -111,8 +111,8 @@ targets:
         CFBundleName: "YM Pro Widget"
         CFBundleDisplayName: "YM Pro Widget"
         CFBundleIdentifier: com.yonesh.ympro.mac.widget
-        CFBundleVersion: "1"
-        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
         NSExtension:
           NSExtensionPointIdentifier: "com.apple.widgetkit-extension"
     settings:
