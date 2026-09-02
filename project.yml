@@ -62,7 +62,7 @@ targets:
         GCC_C_LANGUAGE_STANDARD: c11
         SWIFT_VERSION: "5"
         MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "3"
+        CURRENT_PROJECT_VERSION: "4"
         PRODUCT_BUNDLE_IDENTIFIER: com.yonesh.ympro.mac
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         LD_RUNPATH_SEARCH_PATHS:
@@ -97,6 +97,9 @@ targets:
       - framework: ytsplayer/Dependencies/libtag.dylib
         embed: true
         codeSign: true
+      - framework: ytsplayer/Dependencies/libogg.0.dylib
+        embed: true
+        codeSign: true
     postBuildScripts:
       - name: "Copy Framework dSYMs to Archive"
         script: |
@@ -104,6 +107,7 @@ targets:
             mkdir -p "${DWARF_DSYM_FOLDER_PATH}"
             cp -R "${SRCROOT}/ytsplayer/Dependencies/libFLAC.dylib.dSYM" "${DWARF_DSYM_FOLDER_PATH}/"
             cp -R "${SRCROOT}/ytsplayer/Dependencies/libtag.dylib.dSYM" "${DWARF_DSYM_FOLDER_PATH}/"
+            cp -R "${SRCROOT}/ytsplayer/Dependencies/libogg.0.dylib.dSYM" "${DWARF_DSYM_FOLDER_PATH}/"
           fi
     scheme:
       testTargets:
