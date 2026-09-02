@@ -19,6 +19,7 @@ targets:
       - path: ytsplayer
         excludes:
           - "**/*.md"
+          - "**/*.dSYM"
     info:
       path: ytsplayer/App/Info.plist
       properties:
@@ -96,6 +97,14 @@ targets:
       - framework: ytsplayer/Dependencies/libtag.dylib
         embed: true
         codeSign: true
+    postBuildScripts:
+      - name: "Copy Framework dSYMs to Archive"
+        script: |
+          if [ "${ACTION}" = "install" ]; then
+            mkdir -p "${ARCHIVE_DSYMS_PATH}"
+            cp -R "${SRCROOT}/ytsplayer/Dependencies/libFLAC.dylib.dSYM" "${ARCHIVE_DSYMS_PATH}/"
+            cp -R "${SRCROOT}/ytsplayer/Dependencies/libtag.dylib.dSYM" "${ARCHIVE_DSYMS_PATH}/"
+          fi
     scheme:
       testTargets:
         - YM ProTests
