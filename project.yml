@@ -100,10 +100,10 @@ targets:
     postBuildScripts:
       - name: "Copy Framework dSYMs to Archive"
         script: |
-          if [ "${ACTION}" = "install" ]; then
-            mkdir -p "${ARCHIVE_DSYMS_PATH}"
-            cp -R "${SRCROOT}/ytsplayer/Dependencies/libFLAC.dylib.dSYM" "${ARCHIVE_DSYMS_PATH}/"
-            cp -R "${SRCROOT}/ytsplayer/Dependencies/libtag.dylib.dSYM" "${ARCHIVE_DSYMS_PATH}/"
+          if [ -n "${DWARF_DSYM_FOLDER_PATH}" ] && [ "${DWARF_DSYM_FOLDER_PATH}" != "/" ]; then
+            mkdir -p "${DWARF_DSYM_FOLDER_PATH}"
+            cp -R "${SRCROOT}/ytsplayer/Dependencies/libFLAC.dylib.dSYM" "${DWARF_DSYM_FOLDER_PATH}/"
+            cp -R "${SRCROOT}/ytsplayer/Dependencies/libtag.dylib.dSYM" "${DWARF_DSYM_FOLDER_PATH}/"
           fi
     scheme:
       testTargets:
