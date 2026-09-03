@@ -17,10 +17,8 @@
 		23646CF20DA3E59042CA1259 /* LyricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEAD1B2C830993710DCA4EC /* LyricsService.swift */; };
 		2DE7E071312657B02E418664 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19336B470E0B0A5C2301A125 /* MiniPlayerView.swift */; };
 		3492A26B16DD2B945C1CAD0A /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18EA526B232720C482FAE9E6 /* QueueView.swift */; };
-		410C96A6024AB5C884D86B5F /* libtag.dylib in Resources */ = {isa = PBXBuildFile; fileRef = 858E1FD32165357DA3A102ED /* libtag.dylib */; };
 		41E1C60B065B899C958FCE4E /* PlaylistManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A82CB847C27B8ABF1A3687 /* PlaylistManager.swift */; };
 		4387622231B3DB094C370F57 /* LyricsOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 638AD7A33CC5D709B00D5C56 /* LyricsOverlayView.swift */; };
-		44186CDEBC1AF46A4EB15490 /* libFLAC.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 690990752BB49EC3B48691EA /* libFLAC.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		4EE1EB5FB2BA7281DC24A393 /* CoreAudioHALEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB761222953D5B18C015723A /* CoreAudioHALEngine.swift */; };
 		4F8C6CEFC2DD907095CF960A /* libtag.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 320A6233F03E6DF222DF04AE /* libtag.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5F77955916BBC4ACDC9184B0 /* NowPlayingBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9C6B988AF723304392485D /* NowPlayingBar.swift */; };
@@ -29,18 +27,17 @@
 		747B5B47324B31689AA6428C /* MetadataBridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5B80D908EC8C1C8AB5AFC551 /* MetadataBridge.cpp */; };
 		766D8BE2A95CDE7B666FD24F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A79CDE38367083399B50D9AE /* ContentView.swift */; };
 		76C74FF40D528CC3353340FB /* LibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 690C4537F46AD563CD07DFA7 /* LibraryViewModel.swift */; };
-		79514398784F1F15F902606E /* libFLAC.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 690990752BB49EC3B48691EA /* libFLAC.dylib */; };
 		7E7858C007D9A0001C4FD232 /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58B7B810E184692F5DEC06B2 /* ImageLoader.swift */; };
 		8448E5736C348BA595920711 /* IntroVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21397CC6A241191D21385FF /* IntroVideoView.swift */; };
 		85B5B7586A41AE4025E6D2E3 /* ImageDownsampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46098959A179314291117FA0 /* ImageDownsampler.swift */; };
 		85B8A53CD1FBD61D62A5E007 /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2634A51A593E894A009B8331 /* AlbumDetailView.swift */; };
 		87F8D15FD137E14FCF158020 /* PlaylistEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF3D3D3A207FC447666D895 /* PlaylistEditorView.swift */; };
+		8A957E534CB8019481FD07A7 /* libogg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6ABFB748F04234C21DF93966 /* libogg.a */; };
 		93596C331F627F10F8115542 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = ACE7E146440363A519F7B858 /* AppIcon.icns */; };
 		952BC305B45ADB3A27373822 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC8E69BA1FF0469964FEEB5A /* SettingsView.swift */; };
 		95722CCBB6348F518DF2D73E /* HierarchyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6216C1D3B9E4934554DF1F2D /* HierarchyView.swift */; };
 		99C4321C460C09B97C0356B0 /* FullScreenPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2182811DF3722A727F88140C /* FullScreenPlayerView.swift */; };
 		9AB2ABF645FF69EAD08DA39B /* ytsplayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFC944784596512322BFAE5 /* ytsplayerApp.swift */; };
-		9EC0C4DE2A18A041FFC97BEC /* libFLAC.dylib in Resources */ = {isa = PBXBuildFile; fileRef = 00AAD7280EB5BF96551DFD56 /* libFLAC.dylib */; };
 		9FEB408991BBB7489A9BA73B /* YM Pro Widget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5524CB3D8EA4F5EB83DA2C8B /* YM Pro Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A5523A884DE02670C8AE4DE8 /* libtag.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 320A6233F03E6DF222DF04AE /* libtag.dylib */; };
 		AC86EFC4E1931000BE362C17 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DDD5905DF014AA057EC3450 /* HomeView.swift */; };
@@ -53,6 +50,7 @@
 		D4F05231078E9E6515EEBEF0 /* LibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B92A648F3BAE9A1CF1D4FCE /* LibraryScanner.swift */; };
 		D9E0BCDFAB42010111C2E221 /* intro_video.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = E3EEDE38BA742171F8B4DCC3 /* intro_video.mp4 */; };
 		E21FDFF35DF7DBF4AC49A309 /* AVDecoderWorker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6BC5A693C12D7761CD429DE9 /* AVDecoderWorker.cpp */; };
+		EB16B0B2A4BF5BC0870EF0E4 /* libFLAC.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 05DD260C4F60B9BD23F39DE7 /* libFLAC.a */; };
 		F1E9CEE1623FBBF207CC8711 /* TracksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED52DDFBF41815E6D0017B1 /* TracksView.swift */; };
 		FA97C68BC7F557B058F65908 /* TrackDropPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 503F13397235E56B1010E82C /* TrackDropPayload.swift */; };
 		FAE5B7859DD413B1BA2C2047 /* AudioDeviceRenderCallback.c in Sources */ = {isa = PBXBuildFile; fileRef = 3722A4A0A782BCD0263B7255 /* AudioDeviceRenderCallback.c */; };
@@ -82,7 +80,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				44186CDEBC1AF46A4EB15490 /* libFLAC.dylib in Embed Frameworks */,
 				4F8C6CEFC2DD907095CF960A /* libtag.dylib in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
@@ -102,7 +99,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		00AAD7280EB5BF96551DFD56 /* libFLAC.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libFLAC.dylib; sourceTree = "<group>"; };
+		05DD260C4F60B9BD23F39DE7 /* libFLAC.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libFLAC.a; path = ytsplayer/Dependencies/libFLAC.a; sourceTree = "<group>"; };
 		06ED02E59FC17D7287A58C33 /* ArtistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtistsView.swift; sourceTree = "<group>"; };
 		18EA526B232720C482FAE9E6 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
 		19336B470E0B0A5C2301A125 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
@@ -126,13 +123,12 @@
 		61919E47E4C262214B089F45 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		6216C1D3B9E4934554DF1F2D /* HierarchyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HierarchyView.swift; sourceTree = "<group>"; };
 		638AD7A33CC5D709B00D5C56 /* LyricsOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsOverlayView.swift; sourceTree = "<group>"; };
-		690990752BB49EC3B48691EA /* libFLAC.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libFLAC.dylib; path = ytsplayer/Dependencies/libFLAC.dylib; sourceTree = "<group>"; };
 		690C4537F46AD563CD07DFA7 /* LibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViewModel.swift; sourceTree = "<group>"; };
+		6ABFB748F04234C21DF93966 /* libogg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libogg.a; path = ytsplayer/Dependencies/libogg.a; sourceTree = "<group>"; };
 		6BC5A693C12D7761CD429DE9 /* AVDecoderWorker.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = AVDecoderWorker.cpp; sourceTree = "<group>"; };
 		6DDD5905DF014AA057EC3450 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		6E9C6B988AF723304392485D /* NowPlayingBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingBar.swift; sourceTree = "<group>"; };
 		7DF3D3D3A207FC447666D895 /* PlaylistEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistEditorView.swift; sourceTree = "<group>"; };
-		858E1FD32165357DA3A102ED /* libtag.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libtag.dylib; sourceTree = "<group>"; };
 		889A84984E77A80E81F2422E /* hires.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hires.png; sourceTree = "<group>"; };
 		8D39838763B23A52624A3CD6 /* GRDB */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GRDB; path = GRDB; sourceTree = SOURCE_ROOT; };
 		98B66BF0357FFF6E6B9B3B47 /* MetadataBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetadataBridge.h; sourceTree = "<group>"; };
@@ -170,8 +166,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB3DEB28BCBD6E0FE0A5E7D7 /* GRDB in Frameworks */,
-				79514398784F1F15F902606E /* libFLAC.dylib in Frameworks */,
 				A5523A884DE02670C8AE4DE8 /* libtag.dylib in Frameworks */,
+				EB16B0B2A4BF5BC0870EF0E4 /* libFLAC.a in Frameworks */,
+				8A957E534CB8019481FD07A7 /* libogg.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -244,8 +241,6 @@
 		A4F58E83AF1328822AE81BBE /* Dependencies */ = {
 			isa = PBXGroup;
 			children = (
-				00AAD7280EB5BF96551DFD56 /* libFLAC.dylib */,
-				858E1FD32165357DA3A102ED /* libtag.dylib */,
 			);
 			path = Dependencies;
 			sourceTree = "<group>";
@@ -265,7 +260,8 @@
 		B010CA5E3701F3860183A706 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				690990752BB49EC3B48691EA /* libFLAC.dylib */,
+				05DD260C4F60B9BD23F39DE7 /* libFLAC.a */,
+				6ABFB748F04234C21DF93966 /* libogg.a */,
 				320A6233F03E6DF222DF04AE /* libtag.dylib */,
 			);
 			name = Frameworks;
@@ -394,6 +390,7 @@
 				4FB035EAABDC459E00110E5F /* Frameworks */,
 				E9EBF4A029F13361CF715BF1 /* Embed Foundation Extensions */,
 				2D78DA4B6660320A1C68235C /* Embed Frameworks */,
+				E184AD93582A13F433CD55B9 /* Copy Framework dSYMs to Archive */,
 			);
 			buildRules = (
 			);
@@ -475,12 +472,31 @@
 				0D3B635FF8B75F1369C24D7B /* Assets.xcassets in Resources */,
 				02A7A4B6A17114412D028F0A /* hires.png in Resources */,
 				D9E0BCDFAB42010111C2E221 /* intro_video.mp4 in Resources */,
-				9EC0C4DE2A18A041FFC97BEC /* libFLAC.dylib in Resources */,
-				410C96A6024AB5C884D86B5F /* libtag.dylib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		E184AD93582A13F433CD55B9 /* Copy Framework dSYMs to Archive */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Framework dSYMs to Archive";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ -n \"${DWARF_DSYM_FOLDER_PATH}\" ] && [ \"${DWARF_DSYM_FOLDER_PATH}\" != \"/\" ]; then\n  mkdir -p \"${DWARF_DSYM_FOLDER_PATH}\"\n  cp -R \"${SRCROOT}/ytsplayer/Dependencies/libtag.dylib.dSYM\" \"${DWARF_DSYM_FOLDER_PATH}/\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		90B9357F1E0074C8474830E1 /* Sources */ = {
@@ -710,7 +726,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -805,7 +821,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;

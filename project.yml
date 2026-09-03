@@ -20,6 +20,8 @@ targets:
         excludes:
           - "**/*.md"
           - "**/*.dSYM"
+          - "**/*.dylib"
+          - "**/*.a"
     info:
       path: ytsplayer/App/Info.plist
       properties:
@@ -62,7 +64,7 @@ targets:
         GCC_C_LANGUAGE_STANDARD: c11
         SWIFT_VERSION: "5"
         MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "4"
+        CURRENT_PROJECT_VERSION: "7"
         PRODUCT_BUNDLE_IDENTIFIER: com.yonesh.ympro.mac
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         LD_RUNPATH_SEARCH_PATHS:
@@ -91,23 +93,19 @@ targets:
       - package: GRDB
       - target: YM Pro Widget
         embed: true
-      - framework: ytsplayer/Dependencies/libFLAC.dylib
-        embed: true
-        codeSign: true
       - framework: ytsplayer/Dependencies/libtag.dylib
         embed: true
         codeSign: true
-      - framework: ytsplayer/Dependencies/libogg.0.dylib
-        embed: true
-        codeSign: true
+      - framework: ytsplayer/Dependencies/libFLAC.a
+        embed: false
+      - framework: ytsplayer/Dependencies/libogg.a
+        embed: false
     postBuildScripts:
       - name: "Copy Framework dSYMs to Archive"
         script: |
           if [ -n "${DWARF_DSYM_FOLDER_PATH}" ] && [ "${DWARF_DSYM_FOLDER_PATH}" != "/" ]; then
             mkdir -p "${DWARF_DSYM_FOLDER_PATH}"
-            cp -R "${SRCROOT}/ytsplayer/Dependencies/libFLAC.dylib.dSYM" "${DWARF_DSYM_FOLDER_PATH}/"
             cp -R "${SRCROOT}/ytsplayer/Dependencies/libtag.dylib.dSYM" "${DWARF_DSYM_FOLDER_PATH}/"
-            cp -R "${SRCROOT}/ytsplayer/Dependencies/libogg.0.dylib.dSYM" "${DWARF_DSYM_FOLDER_PATH}/"
           fi
     scheme:
       testTargets:
