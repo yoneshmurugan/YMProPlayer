@@ -53,8 +53,21 @@ class AppEnvironment: ObservableObject {
     }
 }
 
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            for window in sender.windows {
+                window.makeKeyAndOrderFront(nil)
+                break
+            }
+        }
+        return true
+    }
+}
+
 @main
 struct ytsplayerApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var env = AppEnvironment.shared
 
     var body: some Scene {
@@ -67,6 +80,16 @@ struct ytsplayerApp: App {
         .commands {
             // Remove default new-window command
             CommandGroup(replacing: .newItem) {}
+            
+            CommandGroup(after: .windowList) {
+                Button("Show YM Pro") {
+                    for window in NSApp.windows {
+                        window.makeKeyAndOrderFront(nil)
+                        break
+                    }
+                }
+                .keyboardShortcut("0", modifiers: [.command])
+            }
             
             CommandMenu("Playback") {
                 Button("Play/Pause") {
