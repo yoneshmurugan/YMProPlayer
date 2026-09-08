@@ -53,31 +53,19 @@ class AppEnvironment: ObservableObject {
     }
 }
 
+struct OpenWindowButton: View {
+    @Environment(\.openWindow) var openWindow
+    var body: some View {
+        Button("Show YM Pro") {
+            openWindow(id: "main")
+        }
+        .keyboardShortcut("0", modifiers: [.command])
+    }
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Prevent main windows from being destroyed on close — just hide them instead
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            for window in NSApp.windows where window.canBecomeMain {
-                window.isReleasedWhenClosed = false
-            }
-        }
-    }
-    
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            showMainWindow()
-        }
-        return true
-    }
-    
-    func showMainWindow() {
-        // Find and show a hidden main-capable window
-        for window in NSApp.windows where window.canBecomeMain {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-    }
+    // SwiftUI 13+ automatically handles Dock clicks to reopen Window scenes,
+    // so we don't need manual NSApp hacks here anymore!
 }
 
 @main
@@ -86,7 +74,9 @@ struct ytsplayerApp: App {
     @StateObject private var env = AppEnvironment.shared
 
     var body: some Scene {
-        WindowGroup {
+        // Using `Window` instead of `WindowGroup` enforces a single main window
+        // and automatically handles Dock icon clicks to reopen it natively!
+        Window("YM Pro", id: "main") {
             ContentView(halEngine: env.halEngine, db: env.db, playbackVM: env.playbackVM)
                 .environmentObject(env.playlistManager)
                 .preferredColorScheme(.dark)
@@ -115,10 +105,7 @@ struct ytsplayerApp: App {
             }
             
             CommandGroup(after: .windowList) {
-                Button("Show YM Pro") {
-                    (NSApp.delegate as? AppDelegate)?.showMainWindow()
-                }
-                .keyboardShortcut("0", modifiers: [.command])
+                OpenWindowButton()
             }
             
             CommandMenu("Playback") {
