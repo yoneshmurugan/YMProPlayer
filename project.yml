@@ -31,13 +31,14 @@ targets:
         CFBundleIdentifier: com.yonesh.ympro.mac
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
-        NSHumanReadableCopyright: ""
+        NSHumanReadableCopyright: "Copyright © 2026 Yonesh. All rights reserved."
         NSHighResolutionCapable: true
         NSSupportsAutomaticTermination: false
         NSRequiresAquaSystemAppearance: false
         LSMinimumSystemVersion: "13.0"
-        NSMicrophoneUsageDescription: "ytsplayer requires audio device access for bit-perfect playback."
+        NSMicrophoneUsageDescription: "YM Pro requires audio device access for bit-perfect playback."
         LSApplicationCategoryType: "public.app-category.music"
+        ITSAppUsesNonExemptEncryption: false
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: "com.ytsplayer.track.id"
             UTTypeDescription: "Track ID"

@@ -22,6 +22,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.music</string>
 	<key>LSMinimumSystemVersion</key>
@@ -29,9 +31,9 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string></string>
+	<string>Copyright © 2026 Yonesh. All rights reserved.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>ytsplayer requires audio device access for bit-perfect playback.</string>
+	<string>YM Pro requires audio device access for bit-perfect playback.</string>
 	<key>NSRequiresAquaSystemAppearance</key>
 	<false/>
 	<key>NSSupportsAutomaticTermination</key>
