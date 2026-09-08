@@ -31,7 +31,7 @@ struct ContentView: View {
     @State private var showFullScreenPlayer = false
     @State private var showSettings = false
     @State private var showLogoPopover = false
-    @State private var introFinished = false
+    @AppStorage("introFinished") private var introFinished = false
     init(halEngine: CoreAudioHALEngine, db: DatabasePool, playbackVM: PlaybackViewModel) {
         self.halEngine = halEngine
         self.db = db
