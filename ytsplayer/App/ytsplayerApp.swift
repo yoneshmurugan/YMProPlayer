@@ -81,6 +81,24 @@ struct ytsplayerApp: App {
             // Remove default new-window command
             CommandGroup(replacing: .newItem) {}
             
+            // Ensure "About YM Pro" is in the app menu
+            CommandGroup(replacing: .appInfo) {
+                Button("About YM Pro") {
+                    NSApplication.shared.orderFrontStandardAboutPanel(options: [
+                        .applicationName: "YM Pro",
+                        .applicationVersion: "1.0.0"
+                    ])
+                }
+            }
+            
+            // Ensure "Quit YM Pro" is in the app menu
+            CommandGroup(replacing: .appTermination) {
+                Button("Quit YM Pro") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .keyboardShortcut("q", modifiers: [.command])
+            }
+            
             CommandGroup(after: .windowList) {
                 Button("Show YM Pro") {
                     for window in NSApp.windows {
