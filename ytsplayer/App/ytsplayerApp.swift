@@ -54,14 +54,29 @@ class AppEnvironment: ObservableObject {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            for window in sender.windows {
-                window.makeKeyAndOrderFront(nil)
-                break
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Prevent main windows from being destroyed on close — just hide them instead
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            for window in NSApp.windows where window.canBecomeMain {
+                window.isReleasedWhenClosed = false
             }
         }
+    }
+    
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            showMainWindow()
+        }
         return true
+    }
+    
+    func showMainWindow() {
+        // Find and show a hidden main-capable window
+        for window in NSApp.windows where window.canBecomeMain {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
     }
 }
 
@@ -101,10 +116,7 @@ struct ytsplayerApp: App {
             
             CommandGroup(after: .windowList) {
                 Button("Show YM Pro") {
-                    for window in NSApp.windows {
-                        window.makeKeyAndOrderFront(nil)
-                        break
-                    }
+                    (NSApp.delegate as? AppDelegate)?.showMainWindow()
                 }
                 .keyboardShortcut("0", modifiers: [.command])
             }
