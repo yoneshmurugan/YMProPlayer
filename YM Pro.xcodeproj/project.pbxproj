@@ -131,7 +131,7 @@
 		6E9C6B988AF723304392485D /* NowPlayingBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingBar.swift; sourceTree = "<group>"; };
 		7DF3D3D3A207FC447666D895 /* PlaylistEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistEditorView.swift; sourceTree = "<group>"; };
 		889A84984E77A80E81F2422E /* hires.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hires.png; sourceTree = "<group>"; };
-		8D39838763B23A52624A3CD6 /* GRDB */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GRDB; path = GRDB; sourceTree = SOURCE_ROOT; };
+		8D39838763B23A52624A3CD6 /* GRDB */ = {isa = PBXFileReference; lastKnownFileType = folder; path = GRDB; sourceTree = SOURCE_ROOT; };
 		98B66BF0357FFF6E6B9B3B47 /* MetadataBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetadataBridge.h; sourceTree = "<group>"; };
 		9B92A648F3BAE9A1CF1D4FCE /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
 		9DDC3F8ECDD606A9826A8DC6 /* FLACDecoderWorker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FLACDecoderWorker.h; sourceTree = "<group>"; };
@@ -143,7 +143,7 @@
 		B0B3285702DB128EE27FCA7C /* AudioDeviceRenderCallback.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioDeviceRenderCallback.h; sourceTree = "<group>"; };
 		B18F07C96FE4ECAC1A82B441 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B46250EB79915341078F2B2E /* LockFreeRingBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LockFreeRingBuffer.h; sourceTree = "<group>"; };
-		BB7CD6C9C6F7521ED774C8E3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		BB7CD6C9C6F7521ED774C8E3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		C1C1F3B1F88EBB707D645916 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		C9E253DD5EF5D3481CB96115 /* PlaylistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistsView.swift; sourceTree = "<group>"; };
 		D4B7F9E2B05E3FCD91FF1771 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -152,7 +152,7 @@
 		E134E7DB8CB1FC45B55D2587 /* PlaybackViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackViewModel.swift; sourceTree = "<group>"; };
 		E1D00EF6C4615B3BA221A99D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E2326DB1FB29B7FCA52A5422 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
-		E3EEDE38BA742171F8B4DCC3 /* intro_video.mp4 */ = {isa = PBXFileReference; path = intro_video.mp4; sourceTree = "<group>"; };
+		E3EEDE38BA742171F8B4DCC3 /* intro_video.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = intro_video.mp4; sourceTree = "<group>"; };
 		F21397CC6A241191D21385FF /* IntroVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroVideoView.swift; sourceTree = "<group>"; };
 		F8C89228F599E4B4D2B9D45B /* AudioEngineContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioEngineContext.h; sourceTree = "<group>"; };
 		F915F2A5591244102FFE97B4 /* AVDecoderWorker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AVDecoderWorker.h; sourceTree = "<group>"; };
@@ -704,6 +704,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 7C4RH6695J;
 				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_FILE = ytsplayerWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -728,10 +729,12 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_ENTITLEMENTS = ytsplayer/ytsplayer.entitlements;
 				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 10;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7C4RH6695J;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -799,6 +802,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 7C4RH6695J;
 				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_FILE = ytsplayerWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -823,10 +827,12 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_ENTITLEMENTS = ytsplayer/ytsplayer.entitlements;
 				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 10;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7C4RH6695J;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				FRAMEWORK_SEARCH_PATHS = (
