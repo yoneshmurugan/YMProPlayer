@@ -16,8 +16,8 @@
 </p>
 
 <p align="center">
-  <!-- TODO: Replace with actual App Store link once published -->
-  <a href="https://apps.apple.com/app/ym-pro/id__YOUR_APP_ID__">
+
+  <a href="https://apps.apple.com/in/app/ym-pro/id6804453207?mt=12">
     <img src="https://developer.apple.com/assets/elements/badges/download-on-the-mac-app-store.svg" height="48" alt="Download on the Mac App Store" />
   </a>
 </p>
