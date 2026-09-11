@@ -18,7 +18,7 @@
 <p align="center">
 
   <a href="https://apps.apple.com/in/app/ym-pro/id6804453207?mt=12">
-    <img src="https://developer.apple.com/assets/elements/badges/download-on-the-mac-app-store.svg" height="48" alt="Download on the Mac App Store" />
+    <img src="https://img.shields.io/badge/Mac_App_Store-Download-black?style=for-the-badge&logo=apple" alt="Download on the Mac App Store" />
   </a>
 </p>
 
