@@ -76,9 +76,23 @@ final class LibraryScanner: ObservableObject {
                             $0.withMemoryRebound(to: CChar.self, capacity: 512) { String(cString: $0) }
                         }.trimmingCharacters(in: .whitespacesAndNewlines)
                         
-                        let artist = withUnsafePointer(to: meta.artist) {
+                        let rawArtist = withUnsafePointer(to: meta.artist) {
                             $0.withMemoryRebound(to: CChar.self, capacity: 512) { String(cString: $0) }
                         }.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        // Clean up multiple artists: keep only the main artist
+                        var artist = rawArtist
+                        let delimiters = [";", "/", " feat.", " ft.", " feat ", " ft ", ", ", " & ", "&"]
+                        for d in delimiters {
+                            if let first = artist.components(separatedBy: d).first, !first.isEmpty {
+                                // Exclude splitting by comma or ampersand for known special cases if needed, but usually 
+                                // it's better to aggressively split for clean artist sections.
+                                if (d == ", " || d == " & " || d == "&") && (artist.contains("The Creator") || artist.contains("Wind & Fire") || artist.contains("Hall & Oates") || artist.contains("Crosby, Stills")) {
+                                    continue
+                                }
+                                artist = String(first).trimmingCharacters(in: .whitespacesAndNewlines)
+                            }
+                        }
                         
                         let album = withUnsafePointer(to: meta.album) {
                             $0.withMemoryRebound(to: CChar.self, capacity: 512) { String(cString: $0) }
@@ -127,6 +141,26 @@ final class LibraryScanner: ObservableObject {
                             }
                         }
 
+                        let genre = withUnsafePointer(to: meta.genre) {
+                            $0.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) }
+                        }.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let composer = withUnsafePointer(to: meta.composer) {
+                            $0.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) }
+                        }.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let comment = withUnsafePointer(to: meta.comment) {
+                            $0.withMemoryRebound(to: CChar.self, capacity: 1024) { String(cString: $0) }
+                        }.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let publisher = withUnsafePointer(to: meta.publisher) {
+                            $0.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) }
+                        }.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let isrc = withUnsafePointer(to: meta.isrc) {
+                            $0.withMemoryRebound(to: CChar.self, capacity: 64) { String(cString: $0) }
+                        }.trimmingCharacters(in: .whitespacesAndNewlines)
+
                         let trackRecord  = TrackRecord(
                             filePath:    url.path,
                             title:       title.isEmpty ? url.deletingPathExtension().lastPathComponent : title,
@@ -138,7 +172,13 @@ final class LibraryScanner: ObservableObject {
                             channels:    Int(meta.channels),
                             lyrics:      finalLyrics,
                             fileSize:    fileSize,
-                            bitrate:     bitrate
+                            bitrate:     bitrate,
+                            genre:       genre.isEmpty ? nil : genre,
+                            composer:    composer.isEmpty ? nil : composer,
+                            comment:     comment.isEmpty ? nil : comment,
+                            publisher:   publisher.isEmpty ? nil : publisher,
+                            isrc:        isrc.isEmpty ? nil : isrc,
+                            bpm:         meta.bpm > 0 ? Int(meta.bpm) : nil
                         )
                         return (artistRecord, albumRecord, trackRecord, artworkFilename)
                     }

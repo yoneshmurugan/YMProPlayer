@@ -54,12 +54,6 @@ struct NowPlayingBar: View {
                             .foregroundStyle(.white.opacity(0.7))
                             .lineLimit(1)
                     }
-                    if let artist = vm.currentTrack?.artistName, !artist.isEmpty {
-                        Text(artist)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.white.opacity(0.4))
-                            .lineLimit(1)
-                    }
                 }
                 .frame(minWidth: 160, alignment: .leading)
                 
@@ -207,14 +201,7 @@ struct NowPlayingBar: View {
             // ── RIGHT: Volume & Aux ───────────────────────────────────────
             VStack(alignment: .trailing, spacing: 6) {
                 HStack(spacing: 16) {
-                    // Bit-Perfect Toggle
-                    Toggle("Bit-Perfect", isOn: $vm.isBitPerfect)
-                        .toggleStyle(.switch)
-                        .scaleEffect(0.6)
-                        .frame(width: 40)
-                        .focusable(false)
-                        .help("Bit-Perfect Mode: Bypasses software volume for pure, unaltered audio.")
-                        .tint(.purple)
+
                         
                     // Mini-Player Toggle
                     Button(action: { openWindow(id: "MiniPlayer") }) {
@@ -265,7 +252,7 @@ struct NowPlayingBar: View {
                         .padding(.trailing, 16)
                 }
             }
-            .frame(width: 280, alignment: .trailing)
+            .frame(minWidth: 280, maxWidth: 360, alignment: .trailing)
             .padding(.trailing, 20)
         }
         .frame(height: 120)

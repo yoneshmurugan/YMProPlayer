@@ -30,6 +30,9 @@ typedef struct {
 
     /// Linear gain scalar [0.0–1.0] applied per-frame (click suppression)
     _Atomic float outputGain;
+    
+    /// ReplayGain scalar applied per-frame
+    _Atomic float trackReplayGain;
 
     /// True if bit-perfect mode is enabled (ignores software volume)
     _Atomic bool isBitPerfect;
@@ -59,6 +62,7 @@ static inline AudioEngineContext *AudioEngineContext_Create(size_t ringBufferCap
     atomic_store_explicit(&ctx->totalFrames,          0,     memory_order_relaxed);
     atomic_store_explicit(&ctx->isPlaying,            false, memory_order_relaxed);
     atomic_store_explicit(&ctx->outputGain,           1.0f,  memory_order_relaxed);
+    atomic_store_explicit(&ctx->trackReplayGain,      1.0f,  memory_order_relaxed);
     atomic_store_explicit(&ctx->isBitPerfect,         true,  memory_order_relaxed);
     atomic_store_explicit(&ctx->softwareVolume,       1.0f,  memory_order_relaxed);
     ctx->downsampleRatio = 1;
@@ -102,6 +106,13 @@ static inline void  AEC_SetOutputGain(AudioEngineContext *ctx, float v) {
     atomic_store_explicit(&ctx->outputGain, v, memory_order_relaxed);
 }
 
+static inline float AEC_GetTrackReplayGain(AudioEngineContext *ctx) {
+    return atomic_load_explicit(&ctx->trackReplayGain, memory_order_relaxed);
+}
+static inline void  AEC_SetTrackReplayGain(AudioEngineContext *ctx, float v) {
+    atomic_store_explicit(&ctx->trackReplayGain, v, memory_order_relaxed);
+}
+
 static inline bool AEC_GetIsBitPerfect(AudioEngineContext *ctx) {
     return atomic_load_explicit(&ctx->isBitPerfect, memory_order_relaxed);
 }
@@ -121,4 +132,5 @@ static inline void AEC_ResetPlayback(AudioEngineContext *ctx) {
     atomic_store_explicit(&ctx->currentFramePosition, 0,     memory_order_seq_cst);
     atomic_store_explicit(&ctx->totalFrames,          0,     memory_order_seq_cst);
     atomic_store_explicit(&ctx->outputGain,           1.0f,  memory_order_seq_cst);
+    atomic_store_explicit(&ctx->trackReplayGain,      1.0f,  memory_order_seq_cst);
 }

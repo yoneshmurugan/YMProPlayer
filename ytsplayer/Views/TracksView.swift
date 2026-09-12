@@ -59,13 +59,14 @@ struct ExpandableFolderRow: View {
     let node: MenuFolderNode
     let depth: Int
     @Binding var expandedFolders: Set<URL>
-    let selectedFolder: URL?
+    let selectedFolder: Binding<URL?>
     let onSelect: (URL) -> Void
     
+    var isExpanded: Bool { expandedFolders.contains(node.id) }
+    var isSelected: Bool { selectedFolder.wrappedValue == node.id }
+    
     var body: some View {
-        let isExpanded = expandedFolders.contains(node.id)
         let hasChildren = !node.children.isEmpty
-        let isSelected = node.id == selectedFolder
         
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
@@ -145,15 +146,19 @@ struct TracksView: View {
     @State private var isPlaying: Bool = false
     
     // Sorting state
-    @State private var sortOrder = [KeyPathComparator(\TrackViewModel.title)]
+    // Filter state
+    private var selectedRootFolder: Binding<URL?> {
+        $libraryVM.tracksSelectedRootFolder
+    }
+    private var expandedFolders: Binding<Set<URL>> {
+        $libraryVM.tracksExpandedFolders
+    }
+    private var folderSearchQuery: Binding<String> {
+        $libraryVM.tracksFolderSearchQuery
+    }
     
-    // Filter state
-    // Filter state
-    @State private var selectedRootFolder: URL? = nil
     @State private var folderTree: [MenuFolderNode] = []
-    @State private var expandedFolders: Set<URL> = []
     @State private var isShowingFolderPicker = false
-    @State private var folderSearchQuery = ""
     
     // Column Customization
     @AppStorage("selectedTracksColumns") private var selectedColumnsData: Data = Data()
@@ -209,7 +214,7 @@ struct TracksView: View {
                         isShowingFolderPicker.toggle()
                     }) {
                         HStack {
-                            Text(selectedRootFolder?.lastPathComponent ?? "All Locations")
+                            Text(selectedRootFolder.wrappedValue?.lastPathComponent ?? "All Locations")
                             Spacer()
                             Image(systemName: "chevron.up.chevron.down")
                                 .font(.system(size: 10))
@@ -227,7 +232,7 @@ struct TracksView: View {
                             // Search bar
                             HStack {
                                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                                TextField("Search folders...", text: $folderSearchQuery)
+                                TextField("Search folders...", text: folderSearchQuery)
                                     .textFieldStyle(.plain)
                             }
                             .padding(10)
@@ -238,7 +243,7 @@ struct TracksView: View {
                             ScrollView {
                                 LazyVStack(alignment: .leading, spacing: 0) {
                                     Button(action: {
-                                        selectedRootFolder = nil
+                                        selectedRootFolder.wrappedValue = nil
                                         isShowingFolderPicker = false
                                     }) {
                                         Text("All Locations")
@@ -249,25 +254,25 @@ struct TracksView: View {
                                     }
                                     .buttonStyle(.plain)
                                     
-                                    if folderSearchQuery.isEmpty {
+                                    if folderSearchQuery.wrappedValue.isEmpty {
                                         ForEach(folderTree) { rootNode in
                                             ExpandableFolderRow(
                                                 node: rootNode,
                                                 depth: 0,
-                                                expandedFolders: $expandedFolders,
+                                                expandedFolders: expandedFolders,
                                                 selectedFolder: selectedRootFolder,
                                                 onSelect: { url in
-                                                    selectedRootFolder = url
+                                                    selectedRootFolder.wrappedValue = url
                                                     isShowingFolderPicker = false
                                                 }
                                             )
                                         }
                                     } else {
                                         let allNodes = flatten(folderTree)
-                                        let filtered = allNodes.filter { $0.name.localizedCaseInsensitiveContains(folderSearchQuery) }
+                                        let filtered = allNodes.filter { $0.name.localizedCaseInsensitiveContains(folderSearchQuery.wrappedValue) }
                                         ForEach(filtered) { node in
                                             Button(action: {
-                                                selectedRootFolder = node.id
+                                                selectedRootFolder.wrappedValue = node.id
                                                 isShowingFolderPicker = false
                                             }) {
                                                 HStack {
@@ -436,13 +441,21 @@ struct TracksView: View {
         }
         .onAppear {
             loadColumns()
-            loadTracks(for: selectedRootFolder)
+            loadTracks(for: selectedRootFolder.wrappedValue)
         }
-        .onChange(of: sortOrder) { _ in
-            loadTracks(for: selectedRootFolder)
+        .onChange(of: libraryVM.tracksSortField) { _ in
+            loadTracks(for: selectedRootFolder.wrappedValue)
         }
-        .onChange(of: libraryVM.albums.count) { _ in loadTracks(for: selectedRootFolder) }
-        .onChange(of: selectedRootFolder) { newValue in loadTracks(for: newValue) }
+        .onChange(of: libraryVM.tracksSortAscending) { _ in
+            loadTracks(for: selectedRootFolder.wrappedValue)
+        }
+        .onChange(of: libraryVM.albums.count) { _ in loadTracks(for: selectedRootFolder.wrappedValue) }
+        .onChange(of: selectedRootFolder.wrappedValue) { newRoot in
+            loadTracks(for: newRoot)
+        }
+        .onChange(of: folderSearchQuery.wrappedValue) { _ in
+            loadTracks(for: selectedRootFolder.wrappedValue)
+        }
         .onReceive(playbackVM.$currentTrack) { track in
             currentTrackId = track?.id
         }
@@ -458,22 +471,20 @@ struct TracksView: View {
     // MARK: - Table Cell Helpers
     
     @ViewBuilder
-    private func sortButton(title: String, keyPath: AnyKeyPath, comparator: KeyPathComparator<TrackViewModel>, width: CGFloat? = nil, alignment: Alignment = .leading) -> some View {
+    private func sortButton(title: String, field: String, width: CGFloat? = nil, alignment: Alignment = .leading) -> some View {
         Button(action: {
-            if let current = sortOrder.first, current.keyPath == keyPath {
-                let order: SortOrder = current.order == .forward ? .reverse : .forward
-                var newComparator = comparator
-                newComparator.order = order
-                sortOrder = [newComparator]
+            if libraryVM.tracksSortField == field {
+                libraryVM.tracksSortAscending.toggle()
             } else {
-                sortOrder = [comparator]
+                libraryVM.tracksSortField = field
+                libraryVM.tracksSortAscending = true
             }
         }) {
             HStack(spacing: 4) {
                 if alignment == .trailing { Spacer() }
                 Text(title)
-                if let current = sortOrder.first, current.keyPath == keyPath {
-                    Image(systemName: current.order == .forward ? "chevron.up" : "chevron.down")
+                if libraryVM.tracksSortField == field {
+                    Image(systemName: libraryVM.tracksSortAscending ? "chevron.up" : "chevron.down")
                         .font(.system(size: 9, weight: .bold))
                 }
                 if alignment == .leading { Spacer() }
@@ -487,17 +498,17 @@ struct TracksView: View {
     
     private var headerRow: some View {
         HStack(spacing: 16) {
-            sortButton(title: "Title", keyPath: \TrackViewModel.title, comparator: KeyPathComparator(\.title))
-            if selectedColumns.contains("Artist") { sortButton(title: "Artist", keyPath: \TrackViewModel.artistName, comparator: KeyPathComparator(\.artistName), width: 140) }
-            if selectedColumns.contains("Album") { sortButton(title: "Album", keyPath: \TrackViewModel.albumTitle, comparator: KeyPathComparator(\.albumTitle), width: 140) }
-            if selectedColumns.contains("Type") { sortButton(title: "Type", keyPath: \TrackViewModel.filePath, comparator: KeyPathComparator(\.filePath), width: 60) }
-            if selectedColumns.contains("Sample Rate") { sortButton(title: "Sample Rate", keyPath: \TrackViewModel.sampleRate, comparator: KeyPathComparator(\.sampleRate), width: 85, alignment: .trailing) }
-            if selectedColumns.contains("Bit Depth") { sortButton(title: "Bit Depth", keyPath: \TrackViewModel.bitDepth, comparator: KeyPathComparator(\.bitDepth), width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Channels") { sortButton(title: "Channels", keyPath: \TrackViewModel.channels, comparator: KeyPathComparator(\.channels), width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Bitrate") { sortButton(title: "Bitrate", keyPath: \TrackViewModel.bitrate, comparator: KeyPathComparator(\.bitrate), width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Size") { sortButton(title: "Size", keyPath: \TrackViewModel.fileSize, comparator: KeyPathComparator(\.fileSize), width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Views") { sortButton(title: "Views", keyPath: \TrackViewModel.playCount, comparator: KeyPathComparator(\.playCount), width: 50, alignment: .trailing) }
-            if selectedColumns.contains("Time") { sortButton(title: "Time", keyPath: \TrackViewModel.duration, comparator: KeyPathComparator(\.duration), width: 52, alignment: .trailing) }
+            sortButton(title: "Title", field: "title")
+            if selectedColumns.contains("Artist") { sortButton(title: "Artist", field: "artistName", width: 140) }
+            if selectedColumns.contains("Album") { sortButton(title: "Album", field: "albumTitle", width: 140) }
+            if selectedColumns.contains("Type") { sortButton(title: "Type", field: "filePath", width: 60) }
+            if selectedColumns.contains("Sample Rate") { sortButton(title: "Sample Rate", field: "sampleRate", width: 85, alignment: .trailing) }
+            if selectedColumns.contains("Bit Depth") { sortButton(title: "Bit Depth", field: "bitDepth", width: 70, alignment: .trailing) }
+            if selectedColumns.contains("Channels") { sortButton(title: "Channels", field: "channels", width: 70, alignment: .trailing) }
+            if selectedColumns.contains("Bitrate") { sortButton(title: "Bitrate", field: "bitrate", width: 70, alignment: .trailing) }
+            if selectedColumns.contains("Size") { sortButton(title: "Size", field: "fileSize", width: 70, alignment: .trailing) }
+            if selectedColumns.contains("Views") { sortButton(title: "Views", field: "playCount", width: 50, alignment: .trailing) }
+            if selectedColumns.contains("Time") { sortButton(title: "Time", field: "duration", width: 52, alignment: .trailing) }
             Text("Fav").frame(width: 30)
         }
         .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -587,10 +598,10 @@ struct TracksView: View {
                 tracks = tracks.filter { $0.filePath.hasPrefix(r.path) }
             }
 
-            tracks.sort(using: sortOrder)
+            tracks.sort(using: libraryVM.tracksSortComparator)
 
             await MainActor.run {
-                self.selectedRootFolder = root
+                self.selectedRootFolder.wrappedValue = root
                 self.folderTree = tree
                 self.allTracks = tracks
                 self.isLoading = false

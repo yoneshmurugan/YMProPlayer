@@ -30,6 +30,9 @@ void FLACDecoder_Stop(FLACDecoderWorker *worker);
 /// Free the decoder. Call only after FLACDecoder_Stop has returned.
 void FLACDecoder_Destroy(FLACDecoderWorker *worker);
 
+/// Enqueues the next file to play seamlessly when the current file ends.
+void FLACDecoder_EnqueueNext(FLACDecoderWorker *worker, const char *filePath);
+
 /// Seek to a specific frame position within the current file.
 /// Safe to call from the main thread; decoder will drain and refill the ring buffer.
 bool FLACDecoder_Seek(FLACDecoderWorker *worker, uint64_t targetFrame);

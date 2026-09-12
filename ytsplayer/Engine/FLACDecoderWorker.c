@@ -30,6 +30,9 @@ struct FLACDecoderWorker {
     _Atomic bool           isReady;     ///< true once pre-buffer is full
     uint64_t               seekTarget;  ///< 0 = no seek pending
     _Atomic bool           seekPending;
+    
+    char                   nextFilePath[4096];
+    _Atomic bool           hasNextFile;
 };
 
 // ── libFLAC Callbacks ──────────────────────────────────────────────────────
@@ -174,6 +177,8 @@ FLACDecoderWorker *FLACDecoder_Create(const char *filePath, AudioEngineContext *
     atomic_store_explicit(&worker->shouldStop, false, memory_order_relaxed);
     atomic_store_explicit(&worker->isReady,    false, memory_order_relaxed);
     atomic_store_explicit(&worker->seekPending, false, memory_order_relaxed);
+    atomic_store_explicit(&worker->hasNextFile, false, memory_order_relaxed);
+    memset(worker->nextFilePath, 0, sizeof(worker->nextFilePath));
 
     // Decode STREAMINFO metadata block immediately (synchronous, cheap)
     FLAC__stream_decoder_process_until_end_of_metadata(worker->decoder);
@@ -191,6 +196,7 @@ void FLACDecoder_Start(FLACDecoderWorker *worker) {
     atomic_store_explicit(&w->isReady,         false,   memory_order_relaxed);
     atomic_store_explicit(&w->shouldStop,      false,   memory_order_relaxed);
     atomic_store_explicit(&w->seekPending,     false,   memory_order_relaxed);
+    atomic_store_explicit(&w->hasNextFile,     false,   memory_order_relaxed);
 
     dispatch_async(w->queue, ^{
         while (!atomic_load_explicit(&w->shouldStop, memory_order_relaxed)) {
@@ -209,8 +215,31 @@ void FLACDecoder_Start(FLACDecoderWorker *worker) {
             }
             
             if (FLAC__stream_decoder_get_state(w->decoder) == FLAC__STREAM_DECODER_END_OF_STREAM) {
-                // Track ended naturally — ensure isPlaying is false
-                atomic_store_explicit(&w->ctx->isPlaying, false, memory_order_release);
+                if (atomic_exchange_explicit(&w->hasNextFile, false, memory_order_acquire)) {
+                    // Gapless transition: load the next file!
+                    strncpy(w->filePath, w->nextFilePath, sizeof(w->filePath) - 1);
+                    
+                    FLAC__stream_decoder_finish(w->decoder);
+                    FLAC__stream_decoder_init_file(
+                        w->decoder,
+                        w->filePath,
+                        flac_write_callback,
+                        flac_metadata_callback,
+                        flac_error_callback,
+                        w
+                    );
+                    
+                    // Reset UI progress counters
+                    atomic_store_explicit(&w->ctx->currentFramePosition, 0, memory_order_seq_cst);
+                    
+                    // Read metadata for the new file (updates sample rate, total frames, etc.)
+                    FLAC__stream_decoder_process_until_end_of_metadata(w->decoder);
+                    continue;
+                }
+                // Track ended naturally and no next track
+                // DO NOT set isPlaying = false here! Let the ring buffer drain out 
+                // to the hardware, and let Swift's PlaybackViewModel handle the auto-advance
+                // when currentFrame >= totalFrames.
                 break;
             }
         }
@@ -248,4 +277,11 @@ bool FLACDecoder_Seek(FLACDecoderWorker *worker, uint64_t targetFrame) {
     atomic_store_explicit(&w->seekPending, true, memory_order_release);
     
     return true;
+}
+
+void FLACDecoder_EnqueueNext(FLACDecoderWorker *worker, const char *filePath) {
+    if (!worker || !filePath) return;
+    struct FLACDecoderWorker *w = (struct FLACDecoderWorker *)worker;
+    strncpy(w->nextFilePath, filePath, sizeof(w->nextFilePath) - 1);
+    atomic_store_explicit(&w->hasNextFile, true, memory_order_release);
 }

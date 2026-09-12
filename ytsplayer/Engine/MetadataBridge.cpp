@@ -68,6 +68,29 @@ extern "C" bool ExtractFLACMetadata(const char *filePath, ExtractedTrackMetadata
     if (pm.contains("ALBUM") && !pm["ALBUM"].isEmpty())             copyTag(pm["ALBUM"].front(),       out->album,  sizeof(out->album));
     if (pm.contains("ALBUMARTIST") && !pm["ALBUMARTIST"].isEmpty()) copyTag(pm["ALBUMARTIST"].front(), out->albumArtist, sizeof(out->albumArtist));
     
+    if (pm.contains("GENRE") && !pm["GENRE"].isEmpty())             copyTag(pm["GENRE"].front(),       out->genre, sizeof(out->genre));
+    if (pm.contains("COMPOSER") && !pm["COMPOSER"].isEmpty())       copyTag(pm["COMPOSER"].front(),    out->composer, sizeof(out->composer));
+    if (pm.contains("COMMENT") && !pm["COMMENT"].isEmpty())         copyTag(pm["COMMENT"].front(),     out->comment, sizeof(out->comment));
+    if (pm.contains("PUBLISHER") && !pm["PUBLISHER"].isEmpty())     copyTag(pm["PUBLISHER"].front(),   out->publisher, sizeof(out->publisher));
+    if (pm.contains("ISRC") && !pm["ISRC"].isEmpty())               copyTag(pm["ISRC"].front(),        out->isrc, sizeof(out->isrc));
+    out->bpm = tagUInt(pm, "BPM");
+
+    auto extractGain = [](const TagLib::String &str) -> double {
+        std::string s = str.to8Bit(true);
+        try {
+            size_t idx = 0;
+            double val = std::stod(s, &idx);
+            return val;
+        } catch(...) { return 0.0; }
+    };
+
+    if (pm.contains("REPLAYGAIN_TRACK_GAIN") && !pm["REPLAYGAIN_TRACK_GAIN"].isEmpty()) {
+        out->replayGainTrack = extractGain(pm["REPLAYGAIN_TRACK_GAIN"].front());
+    }
+    if (pm.contains("REPLAYGAIN_ALBUM_GAIN") && !pm["REPLAYGAIN_ALBUM_GAIN"].isEmpty()) {
+        out->replayGainAlbum = extractGain(pm["REPLAYGAIN_ALBUM_GAIN"].front());
+    }
+    
     out->trackNumber = tagUInt(pm, "TRACKNUMBER");
     out->discNumber  = tagUInt(pm, "DISCNUMBER");
     out->year        = tagUInt(pm, "DATE"); // TagLib exposes Year as DATE in PropertyMap
@@ -91,6 +114,8 @@ extern "C" bool ExtractFLACMetadata(const char *filePath, ExtractedTrackMetadata
         if (out->title[0] == '\0')  copyTag(tag->title(),  out->title,  sizeof(out->title));
         if (out->artist[0] == '\0') copyTag(tag->artist(), out->artist, sizeof(out->artist));
         if (out->album[0] == '\0')  copyTag(tag->album(),  out->album,  sizeof(out->album));
+        if (out->comment[0] == '\0') copyTag(tag->comment(), out->comment, sizeof(out->comment));
+        if (out->genre[0] == '\0')   copyTag(tag->genre(), out->genre, sizeof(out->genre));
         if (out->trackNumber == 0)  out->trackNumber = static_cast<uint32_t>(tag->track());
         if (out->year == 0)         out->year = static_cast<uint32_t>(tag->year());
     }
@@ -183,6 +208,78 @@ extern "C" bool EmbedLyricsToFLAC(const char *filePath, const char *lyricsText) 
     
     // Add new lyrics
     comment->addField("LYRICS", lyricsString);
+    
+    return file.save();
+}
+
+extern "C" bool UpdateFLACMetadata(const char *filePath, const char *title, const char *artist, const char *album, const char *albumArtist, uint32_t year, uint32_t trackNumber, uint32_t discNumber, const char *genre, const char *composer, const char *comment, const char *publisher, const char *isrc, uint32_t bpm) {
+    if (!filePath) return false;
+    
+    TagLib::FileRef fileRef(filePath, false, TagLib::AudioProperties::Average);
+    if (fileRef.isNull() || !fileRef.file() || !fileRef.file()->isValid()) return false;
+    
+    TagLib::Tag *tag = fileRef.tag();
+    if (!tag) return false;
+    
+    if (title) tag->setTitle(TagLib::String(title, TagLib::String::UTF8));
+    if (artist) tag->setArtist(TagLib::String(artist, TagLib::String::UTF8));
+    if (album) tag->setAlbum(TagLib::String(album, TagLib::String::UTF8));
+    if (genre) tag->setGenre(TagLib::String(genre, TagLib::String::UTF8));
+    if (comment) tag->setComment(TagLib::String(comment, TagLib::String::UTF8));
+    tag->setYear(year);
+    tag->setTrack(trackNumber);
+    
+    // For AlbumArtist and DiscNumber, we need format-specific tags.
+    // Assuming FLAC for now since YM Pro is FLAC-focused.
+    if (auto *flacFile = dynamic_cast<TagLib::FLAC::File*>(fileRef.file())) {
+        TagLib::Ogg::XiphComment *xiph = flacFile->xiphComment(true);
+        if (xiph) {
+            if (albumArtist) {
+                xiph->removeFields("ALBUMARTIST");
+                xiph->addField("ALBUMARTIST", TagLib::String(albumArtist, TagLib::String::UTF8));
+            }
+            if (discNumber > 0) {
+                xiph->removeFields("DISCNUMBER");
+                xiph->addField("DISCNUMBER", TagLib::String(std::to_string(discNumber), TagLib::String::UTF8));
+            }
+            if (composer) {
+                xiph->removeFields("COMPOSER");
+                xiph->addField("COMPOSER", TagLib::String(composer, TagLib::String::UTF8));
+            }
+            if (publisher) {
+                xiph->removeFields("PUBLISHER");
+                xiph->addField("PUBLISHER", TagLib::String(publisher, TagLib::String::UTF8));
+            }
+            if (isrc) {
+                xiph->removeFields("ISRC");
+                xiph->addField("ISRC", TagLib::String(isrc, TagLib::String::UTF8));
+            }
+            if (bpm > 0) {
+                xiph->removeFields("BPM");
+                xiph->addField("BPM", TagLib::String(std::to_string(bpm), TagLib::String::UTF8));
+            }
+        }
+    }
+    
+    return fileRef.save();
+}
+
+extern "C" bool UpdateFLACArtwork(const char *filePath, const uint8_t *imageData, size_t imageSize, const char *mimeType) {
+    if (!filePath || !imageData || imageSize == 0 || !mimeType) return false;
+    
+    TagLib::FLAC::File file(filePath);
+    if (!file.isValid()) return false;
+    
+    // Remove existing pictures to avoid duplicates
+    file.removePictures();
+    
+    // Create new picture
+    TagLib::FLAC::Picture *picture = new TagLib::FLAC::Picture();
+    picture->setData(TagLib::ByteVector((const char *)imageData, (unsigned int)imageSize));
+    picture->setType(TagLib::FLAC::Picture::FrontCover);
+    picture->setMimeType(TagLib::String(mimeType, TagLib::String::UTF8));
+    
+    file.addPicture(picture);
     
     return file.save();
 }

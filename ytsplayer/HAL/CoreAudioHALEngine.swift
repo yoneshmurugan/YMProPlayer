@@ -46,7 +46,15 @@ final class CoreAudioHALEngine {
 
     init() {
         context = AudioEngineContext_Create(ringBufferCapacity)
-        currentDeviceID = discoverDefaultOutputDevice()
+        
+        if let storedDeviceID = UserDefaults.standard.string(forKey: "outputDeviceID"),
+           let devId = UInt32(storedDeviceID),
+           isValidOutputDevice(AudioDeviceID(devId)) {
+            currentDeviceID = AudioDeviceID(devId)
+        } else {
+            currentDeviceID = discoverDefaultOutputDevice()
+        }
+        
         registerDeviceChangeListener()
     }
 
@@ -115,6 +123,28 @@ final class CoreAudioHALEngine {
         NSLog("[ytsplayer] Selected output device: \(deviceID)")
         return deviceID
     }
+    
+    private func isValidOutputDevice(_ deviceID: AudioDeviceID) -> Bool {
+        var streamAddr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreams,
+            mScope:    kAudioDevicePropertyScopeOutput,
+            mElement:  kAudioObjectPropertyElementMain
+        )
+        var streamSize: UInt32 = 0
+        let status = AudioObjectGetPropertyDataSize(deviceID, &streamAddr, 0, nil, &streamSize)
+        return status == noErr && streamSize > 0
+    }
+    
+    func setOutputDevice(to deviceID: AudioDeviceID) {
+        if currentDeviceID == deviceID { return }
+        stopPlayback()
+        isHogMode = false
+        currentDeviceID = deviceID
+        UserDefaults.standard.set(String(deviceID), forKey: "outputDeviceID")
+        
+        // Let the ViewModel restart playback if needed
+        NotificationCenter.default.post(name: .audioDeviceDidChange, object: nil)
+    }
 
     // MARK: - Hog Mode
 
@@ -170,8 +200,7 @@ final class CoreAudioHALEngine {
 
     @discardableResult
     func setHogModeSafe(_ enable: Bool) -> Bool {
-        let wasPlaying = isPlayingValue
-        if wasPlaying { stopPlayback() }
+        if isPlayingValue { stopPlayback() }
         
         // We MUST destroy the IOProc before changing Hog Mode. 
         // Core Audio caches device exclusivity on the IOProc itself.
@@ -181,14 +210,10 @@ final class CoreAudioHALEngine {
         }
         
         let result = enable ? acquireHogMode() : releaseHogMode()
-        usleep(100_000) // 100ms for Core Audio to settle route changes
         
-        if wasPlaying {
-            _ = registerIOProc()
-            usleep(50_000)
-            _ = startPlayback()
-            AEC_SetIsPlaying(context, true)
-        }
+        // Let the ViewModel reflect the pause state so the user can manually resume
+        NotificationCenter.default.post(name: .audioDeviceDidChange, object: nil)
+        
         return result
     }
 
@@ -309,6 +334,17 @@ final class CoreAudioHALEngine {
         return AudioDeviceStart(currentDeviceID, id) == noErr
     }
 
+    @discardableResult
+    func resumePlayback() -> Bool {
+        if ioProcID == nil {
+            guard registerIOProc() else { return false }
+            usleep(50_000)
+            guard startPlayback() else { return false }
+        }
+        AEC_SetIsPlaying(context, true)
+        return true
+    }
+
     func stopPlayback() {
         AEC_SetIsPlaying(context, false)
         if let id = ioProcID {
@@ -426,6 +462,20 @@ final class CoreAudioHALEngine {
         return true
     }
 
+    // MARK: - Gapless Playback
+
+    func enqueueNextTrack(filePath: String) {
+        let ext = (filePath as NSString).pathExtension.lowercased()
+        if ext == "flac" {
+            if let w = decoderWorker {
+                FLACDecoder_EnqueueNext(w, filePath)
+                NSLog("[ytsplayer] Enqueued next track for gapless playback: \(filePath)")
+            }
+        } else {
+            NSLog("[ytsplayer] Gapless playback not supported for AVDecoder yet.")
+        }
+    }
+
     // MARK: - Seek
 
     func seek(to frame: UInt64) {
@@ -460,6 +510,137 @@ final class CoreAudioHALEngine {
             self.isHogMode = false
             self.currentDeviceID = self.discoverDefaultOutputDevice()
             NotificationCenter.default.post(name: .audioDeviceDidChange, object: nil)
+        }
+    }
+}
+import Foundation
+import CoreAudio
+import AudioToolbox
+
+struct AudioDevice: Identifiable, Hashable {
+    let id: AudioDeviceID
+    let name: String
+    let manufacturer: String
+    let uid: String
+}
+
+class CoreAudioController {
+    static let shared = CoreAudioController()
+    
+    private init() {}
+    
+    /// Retrieves a list of all available audio output devices (excluding purely input devices).
+    func getAvailableOutputDevices() -> [AudioDevice] {
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        
+        var dataSize: UInt32 = 0
+        let status = AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &propertyAddress, 0, nil, &dataSize)
+        guard status == noErr else { return [] }
+        
+        let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+        var deviceIDs = [AudioDeviceID](repeating: 0, count: deviceCount)
+        
+        let status2 = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &propertyAddress, 0, nil, &dataSize, &deviceIDs)
+        guard status2 == noErr else { return [] }
+        
+        var outputDevices: [AudioDevice] = []
+        
+        for id in deviceIDs {
+            // Check if device has output channels
+            var streamAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyStreams,
+                mScope: kAudioDevicePropertyScopeOutput,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var streamDataSize: UInt32 = 0
+            AudioObjectGetPropertyDataSize(id, &streamAddress, 0, nil, &streamDataSize)
+            if streamDataSize == 0 { continue } // Input only device
+            
+            // Get name
+            var nameAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceNameCFString,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var nameCF: CFString? = nil
+            var nameSize = UInt32(MemoryLayout<CFString?>.size)
+            AudioObjectGetPropertyData(id, &nameAddress, 0, nil, &nameSize, &nameCF)
+            let name = (nameCF as String?) ?? "Unknown Device"
+            
+            // Get UID
+            var uidAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceUID,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var uidCF: CFString? = nil
+            var uidSize = UInt32(MemoryLayout<CFString?>.size)
+            AudioObjectGetPropertyData(id, &uidAddress, 0, nil, &uidSize, &uidCF)
+            let uid = (uidCF as String?) ?? ""
+            
+            // Get manufacturer
+            var mfgAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceManufacturerCFString,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var mfgCF: CFString? = nil
+            var mfgSize = UInt32(MemoryLayout<CFString?>.size)
+            AudioObjectGetPropertyData(id, &mfgAddress, 0, nil, &mfgSize, &mfgCF)
+            let mfg = (mfgCF as String?) ?? "Unknown"
+            
+            outputDevices.append(AudioDevice(id: id, name: name, manufacturer: mfg, uid: uid))
+        }
+        
+        return outputDevices
+    }
+    
+    /// Gets the default system output device ID
+    func getDefaultOutputDevice() -> AudioDeviceID? {
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID: AudioDeviceID = 0
+        var dataSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        
+        let status = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &propertyAddress, 0, nil, &dataSize, &deviceID)
+        if status == noErr && deviceID != kAudioObjectUnknown {
+            return deviceID
+        }
+        return nil
+    }
+    
+    /// Switches the hardware nominal sample rate for the given device
+    func setSampleRate(for deviceID: AudioDeviceID, to rate: Double) {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyNominalSampleRate,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        
+        // First check if it's already at this rate
+        var currentRate: Float64 = 0
+        var size = UInt32(MemoryLayout<Float64>.size)
+        AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &currentRate)
+        
+        if abs(currentRate - rate) < 1.0 {
+            return // Already at requested rate
+        }
+        
+        // Attempt to set
+        var newRate: Float64 = rate
+        let status = AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &newRate)
+        
+        if status != noErr {
+            print("[CoreAudioController] Failed to set sample rate \(rate)Hz on device \(deviceID)")
+        } else {
+            print("[CoreAudioController] Successfully switched device \(deviceID) to \(rate)Hz")
         }
     }
 }

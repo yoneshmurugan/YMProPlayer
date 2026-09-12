@@ -44,6 +44,13 @@ struct TrackRecord: Codable, FetchableRecord, PersistableRecord {
     var playCount: Int = 0
     var lastPlayedAt: Double?
     var isFavorite: Bool = false
+    
+    var genre: String?
+    var composer: String?
+    var comment: String?
+    var publisher: String?
+    var isrc: String?
+    var bpm: Int?
 }
 
 // MARK: - Rich DTO for UI display
@@ -65,6 +72,13 @@ struct TrackViewModel: Identifiable, Equatable {
     let channels: Int
     var playCount: Int
     var isFavorite: Bool
+    
+    var genre: String?
+    var composer: String?
+    var comment: String?
+    var publisher: String?
+    var isrc: String?
+    var bpm: Int?
     
     // Computed properties for Table sorting (Optionals are not Comparable in Swift)
     var sortArtist: String { artistName ?? "" }
@@ -237,6 +251,17 @@ enum AppDatabase {
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_albums_artistId ON albums(artistId)")
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_tracks_isFavorite ON tracks(isFavorite)")
         }
+        m.registerMigration("v8_extra_metadata") { db in
+            try db.alter(table: "tracks") { t in
+                t.add(column: "genre", .text)
+                t.add(column: "composer", .text)
+                t.add(column: "comment", .text)
+                t.add(column: "publisher", .text)
+                t.add(column: "isrc", .text)
+                t.add(column: "bpm", .integer)
+            }
+        }
+
 
         return m
     }
@@ -272,7 +297,13 @@ extension DatabasePool {
                     bitrate:          $0["bitrate"],
                     channels:         $0["channels"],
                     playCount:        $0["playCount"] ?? 0,
-                    isFavorite:       $0["isFavorite"] ?? false
+                    isFavorite:       $0["isFavorite"] ?? false,
+                    genre:            $0["genre"],
+                    composer:         $0["composer"],
+                    comment:          $0["comment"],
+                    publisher:        $0["publisher"],
+                    isrc:             $0["isrc"],
+                    bpm:              $0["bpm"]
                 )
             }
         }
@@ -282,15 +313,15 @@ extension DatabasePool {
     func fetchAlbumViewModels() throws -> [AlbumViewModel] {
         try read { db in
             let rows = try Row.fetchAll(db, sql: """
-                SELECT albums.id, albums.title, artists.name AS artistName,
-                       albums.year, albums.artworkCachePath,
+                SELECT MIN(albums.id) AS id, albums.title, artists.name AS artistName,
+                       MAX(albums.year) AS year, MAX(albums.artworkCachePath) AS artworkCachePath,
                        COUNT(tracks.id) AS trackCount,
                        MAX(tracks.bitDepth) AS maxBitDepth
                 FROM albums
                 LEFT JOIN artists ON artists.id = albums.artistId
                 LEFT JOIN tracks  ON tracks.albumId = albums.id
-                GROUP BY albums.id
-                ORDER BY artistName COLLATE NOCASE, albums.year, albums.title COLLATE NOCASE
+                GROUP BY albums.title COLLATE NOCASE
+                ORDER BY albums.title COLLATE NOCASE, year
             """)
             return rows.map {
                 let maxBitDepth: Int = $0["maxBitDepth"] ?? 0
@@ -307,7 +338,7 @@ extension DatabasePool {
         }
     }
 
-    // Fetch all tracks for an album, sorted by disc + track number
+    // Fetch all tracks for an album (including all sub-versions of a composite album)
     func fetchTracks(forAlbumId albumId: Int64) throws -> [TrackViewModel] {
         try read { db in
             let rows = try Row.fetchAll(db, sql: """
@@ -316,9 +347,19 @@ extension DatabasePool {
                 FROM tracks
                 LEFT JOIN artists ON artists.id = tracks.artistId
                 LEFT JOIN albums  ON albums.id  = tracks.albumId
-                WHERE tracks.albumId = ?
+                WHERE tracks.albumId IN (
+                    SELECT a.id FROM albums a
+                    LEFT JOIN artists ar ON ar.id = a.artistId
+                    WHERE a.title = (SELECT title FROM albums WHERE id = ?)
+                    AND IFNULL(a.albumArtist, ar.name) = (
+                        SELECT IFNULL(al.albumArtist, art.name) 
+                        FROM albums al 
+                        LEFT JOIN artists art ON art.id = al.artistId 
+                        WHERE al.id = ?
+                    )
+                )
                 ORDER BY tracks.discNumber, tracks.trackNumber, tracks.title COLLATE NOCASE
-            """, arguments: [albumId])
+            """, arguments: [albumId, albumId])
             return rows.map {
                 TrackViewModel(
                     id:               $0["id"],
@@ -336,7 +377,13 @@ extension DatabasePool {
                     bitrate:          $0["bitrate"],
                     channels:         $0["channels"],
                     playCount:        $0["playCount"] ?? 0,
-                    isFavorite:       $0["isFavorite"] ?? false
+                    isFavorite:       $0["isFavorite"] ?? false,
+                    genre:            $0["genre"],
+                    composer:         $0["composer"],
+                    comment:          $0["comment"],
+                    publisher:        $0["publisher"],
+                    isrc:             $0["isrc"],
+                    bpm:              $0["bpm"]
                 )
             }
         }
@@ -371,7 +418,13 @@ extension DatabasePool {
                     bitrate:          $0["bitrate"],
                     channels:         $0["channels"],
                     playCount:        $0["playCount"] ?? 0,
-                    isFavorite:       $0["isFavorite"] ?? false
+                    isFavorite:       $0["isFavorite"] ?? false,
+                    genre:            $0["genre"],
+                    composer:         $0["composer"],
+                    comment:          $0["comment"],
+                    publisher:        $0["publisher"],
+                    isrc:             $0["isrc"],
+                    bpm:              $0["bpm"]
                 )
             }
         }
@@ -412,7 +465,13 @@ extension DatabasePool {
                     bitrate:          $0["bitrate"],
                     channels:         $0["channels"],
                     playCount:        $0["playCount"] ?? 0,
-                    isFavorite:       $0["isFavorite"] ?? false
+                    isFavorite:       $0["isFavorite"] ?? false,
+                    genre:            $0["genre"],
+                    composer:         $0["composer"],
+                    comment:          $0["comment"],
+                    publisher:        $0["publisher"],
+                    isrc:             $0["isrc"],
+                    bpm:              $0["bpm"]
                 )
             }
         }
@@ -510,7 +569,13 @@ extension DatabasePool {
                     channels:         r["channels"],
                     playCount:        r["playCount"]
                 ,
-                    isFavorite: r["isFavorite"] ?? false
+                    isFavorite: r["isFavorite"] ?? false,
+                    genre:            r["genre"],
+                    composer:         r["composer"],
+                    comment:          r["comment"],
+                    publisher:        r["publisher"],
+                    isrc:             r["isrc"],
+                    bpm:              r["bpm"]
                 )
             }
         }
@@ -547,7 +612,13 @@ extension DatabasePool {
                     channels:         r["channels"],
                     playCount:        r["playCount"]
                 ,
-                    isFavorite: r["isFavorite"] ?? false
+                    isFavorite: r["isFavorite"] ?? false,
+                    genre:            r["genre"],
+                    composer:         r["composer"],
+                    comment:          r["comment"],
+                    publisher:        r["publisher"],
+                    isrc:             r["isrc"],
+                    bpm:              r["bpm"]
                 )
             }
         }
@@ -716,7 +787,13 @@ extension DatabasePool {
                 channels:         r["channels"],
                 playCount:        r["playCount"]
             ,
-                    isFavorite: r["isFavorite"] ?? false
+                    isFavorite: r["isFavorite"] ?? false,
+                    genre:            r["genre"],
+                    composer:         r["composer"],
+                    comment:          r["comment"],
+                    publisher:        r["publisher"],
+                    isrc:             r["isrc"],
+                    bpm:              r["bpm"]
                 )
         }
     }
@@ -806,7 +883,13 @@ extension DatabasePool {
                     bitrate:          r["bitrate"],
                     channels:         r["channels"],
                     playCount:        r["playCount"],
-                    isFavorite:       r["isFavorite"] ?? false
+                    isFavorite:       r["isFavorite"] ?? false,
+                    genre:            r["genre"],
+                    composer:         r["composer"],
+                    comment:          r["comment"],
+                    publisher:        r["publisher"],
+                    isrc:             r["isrc"],
+                    bpm:              r["bpm"]
                 )
             }
         }
@@ -843,7 +926,13 @@ extension DatabasePool {
                 channels:         r["channels"],
                 playCount:        r["playCount"]
             ,
-                    isFavorite: r["isFavorite"] ?? false
+                    isFavorite: r["isFavorite"] ?? false,
+                    genre:            r["genre"],
+                    composer:         r["composer"],
+                    comment:          r["comment"],
+                    publisher:        r["publisher"],
+                    isrc:             r["isrc"],
+                    bpm:              r["bpm"]
                 )
         }
     }
@@ -858,6 +947,45 @@ extension DatabasePool {
                     lastPlayedAt = ?
                 WHERE id = ?
             """, arguments: [Date().timeIntervalSince1970, trackId])
+        }
+    }
+    
+    // Updates basic metadata in the database without needing a full rescan
+    func updateTrackMetadata(trackId: Int64, title: String, artist: String, album: String, albumArtist: String, year: Int, trackNumber: Int, genre: String?, composer: String?, comment: String?, publisher: String?, isrc: String?, bpm: Int?, artworkCachePath: String?) throws {
+        try write { db in
+            // 1. Ensure artist exists
+            var artistId: Int64?
+            if let existingArtist = try ArtistRecord.filter(Column("name") == artist).fetchOne(db) {
+                artistId = existingArtist.id
+            } else {
+                var newArtist = ArtistRecord(name: artist)
+                try newArtist.insert(db)
+                artistId = try ArtistRecord.filter(Column("name") == artist).fetchOne(db)?.id
+            }
+            
+            // 2. Ensure album exists
+            var albumId: Int64?
+            if let existingAlbum = try AlbumRecord.filter(Column("title") == album && Column("artistId") == artistId).fetchOne(db) {
+                albumId = existingAlbum.id
+                // Update album metadata if needed
+                if let newArtwork = artworkCachePath {
+                    try db.execute(sql: "UPDATE albums SET albumArtist = ?, year = ?, artworkCachePath = ? WHERE id = ?", arguments: [albumArtist, year, newArtwork, albumId])
+                } else {
+                    try db.execute(sql: "UPDATE albums SET albumArtist = ?, year = ? WHERE id = ?", arguments: [albumArtist, year, albumId])
+                }
+            } else {
+                var newAlbum = AlbumRecord(title: album, artistId: artistId, albumArtist: albumArtist, year: year, artworkCachePath: artworkCachePath)
+                try newAlbum.insert(db)
+                albumId = try AlbumRecord.filter(Column("title") == album && Column("artistId") == artistId).fetchOne(db)?.id
+            }
+            
+            // 3. Update track
+            try db.execute(sql: """
+                UPDATE tracks 
+                SET title = ?, artistId = ?, albumId = ?, trackNumber = ?,
+                    genre = ?, composer = ?, comment = ?, publisher = ?, isrc = ?, bpm = ?
+                WHERE id = ?
+            """, arguments: [title, artistId, albumId, trackNumber, genre, composer, comment, publisher, isrc, bpm, trackId])
         }
     }
 
@@ -974,7 +1102,13 @@ extension DatabasePool {
                     channels:         r["channels"],
                     playCount:        r["playCount"]
                 ,
-                    isFavorite: r["isFavorite"] ?? false
+                    isFavorite: r["isFavorite"] ?? false,
+                    genre:            r["genre"],
+                    composer:         r["composer"],
+                    comment:          r["comment"],
+                    publisher:        r["publisher"],
+                    isrc:             r["isrc"],
+                    bpm:              r["bpm"]
                 )
             }
         }
@@ -1082,7 +1216,13 @@ extension DatabasePool {
                 bitrate:          r["bitrate"],
                 channels:         r["channels"],
                 playCount:        r["playCount"],
-                isFavorite:       r["isFavorite"] ?? false
+                isFavorite:       r["isFavorite"] ?? false,
+                    genre:            r["genre"],
+                    composer:         r["composer"],
+                    comment:          r["comment"],
+                    publisher:        r["publisher"],
+                    isrc:             r["isrc"],
+                    bpm:              r["bpm"]
             )
         }
     }

@@ -26,7 +26,17 @@ typedef struct {
     uint32_t sampleRate;
     uint32_t bitDepth;
     uint32_t channels;
+    uint32_t bpm;
     double   duration;          ///< Seconds
+    
+    char     genre[256];
+    char     composer[256];
+    char     comment[1024];
+    char     publisher[256];
+    char     isrc[64];
+    
+    double   replayGainTrack;   ///< In dB, 0.0 if not present
+    double   replayGainAlbum;   ///< In dB, 0.0 if not present
 
     /// Raw embedded artwork bytes (owned by the caller — must free with ExtractedMetadata_FreeArtwork)
     uint8_t *artworkData;
@@ -43,6 +53,14 @@ bool ExtractFLACMetadata(const char *filePath, ExtractedTrackMetadata *outMetada
 
 /// Free the artwork buffer allocated by ExtractFLACMetadata.
 void ExtractedMetadata_FreeArtwork(ExtractedTrackMetadata *metadata);
+
+/// Updates the metadata of a FLAC file on disk using TagLib.
+/// Returns true if successful.
+bool UpdateFLACMetadata(const char *filePath, const char *title, const char *artist, const char *album, const char *albumArtist, uint32_t year, uint32_t trackNumber, uint32_t discNumber, const char *genre, const char *composer, const char *comment, const char *publisher, const char *isrc, uint32_t bpm);
+
+/// Replaces the embedded artwork of a FLAC file on disk.
+/// Returns true if successful.
+bool UpdateFLACArtwork(const char *filePath, const uint8_t *imageData, size_t imageSize, const char *mimeType);
 
 /// Embeds lyrics directly into the FLAC file's Vorbis Comment block.
 /// Returns true if successful.

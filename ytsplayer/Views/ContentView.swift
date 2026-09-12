@@ -30,7 +30,8 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var showFullScreenPlayer = false
     @State private var showSettings = false
-    @State private var showLogoPopover = false
+    @State private var showFolderPicker = false
+
     @AppStorage("introFinished") private var introFinished = false
     init(halEngine: CoreAudioHALEngine, db: DatabasePool, playbackVM: PlaybackViewModel) {
         self.halEngine = halEngine
@@ -127,26 +128,29 @@ struct ContentView: View {
                     Divider()
                         .background(Color.white.opacity(0.1))
                     
-                    HStack {
-                        Spacer()
-                        Button(action: { showLogoPopover = true }) {
-                            Image("Logo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 90, height: 90)
-                                .cornerRadius(12)
-                                .shadow(radius: 4)
+                    VStack(spacing: 12) {
+                        Button(action: {
+                            showFolderPicker = true
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "folder.badge.plus")
+                                Text("Add Folders")
+                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.8))
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 12)
+                            .background(Color.white.opacity(0.1))
+                            .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
-                        .popover(isPresented: $showLogoPopover, arrowEdge: .trailing) {
-                            Image("Logo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 300, height: 300)
-                                .padding()
-                                .background(Color.black.opacity(0.8))
+                        .onHover { hovering in
+                            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
                         }
-                        Spacer()
+                        
+                        Text("YM Pro v2.0")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.3))
                     }
                     .padding(.bottom, 20)
                     .background(Color.clear)
@@ -289,6 +293,19 @@ struct ContentView: View {
             .tint(playbackVM.isBitPerfect ? .gray : .purple)
             .grayscale(playbackVM.isBitPerfect ? 1.0 : 0.0)
             .disabled(playbackVM.isBitPerfect)
+        }
+        .fileImporter(
+            isPresented: $showFolderPicker,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: true
+        ) { result in
+            if case .success(let urls) = result {
+                for url in urls {
+                    _ = url.startAccessingSecurityScopedResource()
+                    libraryVM.addFolder(url: url)
+                }
+                libraryVM.startScan()
+            }
         }
     }
     

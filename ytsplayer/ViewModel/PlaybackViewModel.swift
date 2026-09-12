@@ -35,17 +35,17 @@ final class PlaybackViewModel: ObservableObject {
     var onQueueEnded: (() -> Void)?
     var onTrackPlayed: ((Int64) -> Void)?
 
-    @Published var isBitPerfect: Bool = true {
+    @Published var isBitPerfect: Bool = UserDefaults.standard.object(forKey: "isBitPerfect") as? Bool ?? true {
         didSet {
             halEngine.isBitPerfect = isBitPerfect
-            _ = halEngine.setHogModeSafe(isBitPerfect)
         }
     }
     @Published var volume: Double = 1.0 {
         didSet { halEngine.softwareVolume = Float(volume) }
     }
-
+    
     let halEngine: CoreAudioHALEngine
+    private var gaplessTrackEnqueued: Bool = false
     private var pollerCancellable: AnyCancellable?
     private var deviceCancellable: AnyCancellable?
 
@@ -54,9 +54,10 @@ final class PlaybackViewModel: ObservableObject {
         startPoller()
         observeDeviceChanges()
         
-        // Sync initial Bit-Perfect state to hardware Hog Mode
+        // Sync initial states
         self.halEngine.isBitPerfect = self.isBitPerfect
-        _ = self.halEngine.setHogModeSafe(self.isBitPerfect)
+        let defaultHog = UserDefaults.standard.object(forKey: "hogModeEnabled") as? Bool ?? true
+        _ = self.halEngine.setHogModeSafe(defaultHog)
         
         setupRemoteCommandCenter()
     }
@@ -103,8 +104,14 @@ final class PlaybackViewModel: ObservableObject {
             AEC_SetIsPlaying(ctx, false)
             isPlaying = false
         } else {
-            AEC_SetIsPlaying(ctx, true)
-            isPlaying = true
+            if currentTrack == nil {
+                if !queue.isEmpty {
+                    play(track: queue[queueIndex], queue: queue, startIndex: queueIndex, context: currentContext)
+                }
+            } else {
+                halEngine.resumePlayback()
+                isPlaying = true
+            }
         }
         updateNowPlayingInfo()
     }
@@ -158,6 +165,7 @@ final class PlaybackViewModel: ObservableObject {
         currentTrack      = track
         currentSampleRate = track.sampleRate
         currentBitDepth   = track.bitDepth
+        gaplessTrackEnqueued = false
 
         // Let CoreAudioHALEngine re-assert Hog Mode internally after stream setup
 
@@ -168,8 +176,45 @@ final class PlaybackViewModel: ObservableObject {
             errorMessage = "File not found or drive disconnected."
             return
         }
+        
+        var effectivePath = track.filePath
+        
+        // Smart Cloud Pre-buffering
+        if effectivePath.contains("pCloud Drive") && track.sortSize > 50_000_000 { // > 50MB
+            if let cached = await bufferTrackToLocalCache(path: effectivePath) {
+                effectivePath = cached
+            }
+        }
+        
+        // Apply ReplayGain based on settings
+        let rgMode = UserDefaults.standard.string(forKey: "replayGainMode") ?? "album"
+        var gainScalar: Float = 1.0
+        if rgMode != "off" {
+            var meta = ExtractedTrackMetadata()
+            if ExtractFLACMetadata((effectivePath as NSString).utf8String, &meta) {
+                let trackGain = meta.replayGainTrack
+                let albumGain = meta.replayGainAlbum
+                
+                var targetGain = 0.0
+                if rgMode == "album" && albumGain != 0.0 {
+                    targetGain = albumGain
+                } else if trackGain != 0.0 {
+                    targetGain = trackGain
+                }
+                
+                // Convert dB to linear scalar (10^(dB/20))
+                if targetGain != 0.0 {
+                    gainScalar = Float(pow(10.0, targetGain / 20.0))
+                }
+                ExtractedMetadata_FreeArtwork(&meta)
+            }
+        }
+        AEC_SetTrackReplayGain(halEngine.context, gainScalar)
+        
+        // Auto-Sample Rate is fundamentally required by the HAL engine architecture (no software resampler)
+        let targetSR = Double(track.sampleRate)
 
-        let ok = await halEngine.loadTrack(filePath: track.filePath, expectedSampleRate: Double(track.sampleRate))
+        let ok = await halEngine.loadTrack(filePath: effectivePath, expectedSampleRate: targetSR)
         isBuffering = false
         isPlaying   = ok
         updateNowPlayingInfo()
@@ -197,7 +242,7 @@ final class PlaybackViewModel: ObservableObject {
         let sampleRate    = max(1, halEngine.context.pointee.sampleRate)
 
         // Auto-advance queue on track end
-        if isPlaying && !enginePlaying && totalFrames > 0 && currentFrame >= totalFrames {
+        if isPlaying && totalFrames > 0 && currentFrame >= totalFrames {
             isPlaying = false
             skipNext()
             return
@@ -216,6 +261,38 @@ final class PlaybackViewModel: ObservableObject {
         let available = RingBuffer_AvailableToRead(halEngine.context.pointee.ringBuffer)
         let capacity  = halEngine.context.pointee.ringBuffer?.pointee.capacityFrames ?? 1
         isBuffering   = enginePlaying && available < capacity / 10
+        
+        // Gapless Playback Logic
+        if enginePlaying && !isScrubbing && totalFrames > 0 {
+            let isGaplessEnabled = UserDefaults.standard.bool(forKey: "isGaplessEnabled")
+            
+            // 1. Detect if we just crossed the gapless boundary
+            if gaplessTrackEnqueued && playbackProgress < 0.1 {
+                // The C engine seamlessly looped back to 0 frame count for the new track
+                gaplessTrackEnqueued = false
+                let nextIndex = queueIndex + 1
+                if nextIndex < queue.count {
+                    queueIndex = nextIndex
+                    currentTrack = queue[nextIndex]
+                    // Trigger UI updates
+                    updateNowPlayingInfo()
+                    onTrackPlayed?(queue[nextIndex].id)
+                }
+            }
+            
+            // 2. Enqueue next track when approaching end
+            if isGaplessEnabled && !gaplessTrackEnqueued && playbackProgress > 0.95 {
+                let nextIndex = queueIndex + 1
+                if nextIndex < queue.count {
+                    let next = queue[nextIndex]
+                    // Gapless requires same sample rate for true seamlessness
+                    if next.sampleRate == currentSampleRate {
+                        halEngine.enqueueNextTrack(filePath: next.filePath)
+                        gaplessTrackEnqueued = true
+                    }
+                }
+            }
+        }
     }
 
     private func observeDeviceChanges() {
@@ -241,8 +318,12 @@ final class PlaybackViewModel: ObservableObject {
         
         commandCenter.playCommand.addTarget { [weak self] _ in
             guard let self = self, !self.isPlaying else { return .commandFailed }
-            self.togglePlayPause()
-            return .success
+            if self.currentTrack != nil {
+                self.halEngine.resumePlayback()
+                self.isPlaying = true
+                return .success
+            }
+            return .commandFailed
         }
         
         commandCenter.pauseCommand.addTarget { [weak self] _ in
@@ -278,34 +359,92 @@ final class PlaybackViewModel: ObservableObject {
     }
     
     private func updateNowPlayingInfo() {
-        guard let track = currentTrack else {
+        guard currentTrack != nil else {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-            if let defaults = UserDefaults(suiteName: "group.com.ytsplayer.YMPro") {
+            if let defaults = UserDefaults(suiteName: "group.com.yonesh.ympro.mac") {
                 defaults.set(false, forKey: "isPlaying")
                 WidgetCenter.shared.reloadAllTimelines()
             }
             return
         }
         
-        var nowPlayingInfo = [String: Any]()
-        nowPlayingInfo[MPMediaItemPropertyTitle] = track.title
-        nowPlayingInfo[MPMediaItemPropertyArtist] = track.artistName ?? "Unknown Artist"
-        nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = track.albumTitle ?? "Unknown Album"
-        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = track.duration
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = playbackProgress * track.duration
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
-        
-        if let cachePath = track.albumArtworkPath {
-            let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("ytsplayer/artwork")
-            let url = cacheDir.appendingPathComponent(cachePath)
-            if let image = NSImage(contentsOf: url) {
-                let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-                nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork
+        var info = [String: Any]()
+        if let t = currentTrack {
+            info[MPMediaItemPropertyTitle] = t.title
+            info[MPMediaItemPropertyArtist] = t.artistName ?? "Unknown Artist"
+            if let album = t.albumTitle {
+                info[MPMediaItemPropertyAlbumTitle] = album
+            }
+            info[MPMediaItemPropertyPlaybackDuration] = t.duration
+            if let artworkPath = t.albumArtworkPath {
+                let fullPath = URL(fileURLWithPath: NSSearchPathForDirectoriesInDomains(.cachesDirectory, .userDomainMask, true)[0])
+                    .appendingPathComponent("ytsplayer/artwork")
+                    .appendingPathComponent(artworkPath).path
+                if let nsImage = NSImage(contentsOfFile: fullPath) {
+                    info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: nsImage.size) { _ in nsImage }
+                }
             }
         }
-        
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = halEngine.currentFrameValue > 0 ? (Double(halEngine.currentFrameValue) / Double(max(1, currentSampleRate))) : 0.0
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         updateWidget()
+    }
+    
+    // MARK: - Smart Cloud Buffering
+    
+    private func bufferTrackToLocalCache(path: String) async -> String? {
+        let fm = FileManager.default
+        let cacheDir = fm.temporaryDirectory.appendingPathComponent("ytsplayer_cloud_cache")
+        
+        do {
+            if !fm.fileExists(atPath: cacheDir.path) {
+                try fm.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+            }
+            
+            // Cleanup old cache files to prevent disk bloat
+            cleanupOldCache(in: cacheDir)
+            
+            let originalURL = URL(fileURLWithPath: path)
+            let cachedURL = cacheDir.appendingPathComponent(originalURL.lastPathComponent)
+            
+            if fm.fileExists(atPath: cachedURL.path) {
+                // Already cached
+                return cachedURL.path
+            }
+            
+            // Asynchronously copy file
+            try await Task.detached(priority: .userInitiated) {
+                try fm.copyItem(at: originalURL, to: cachedURL)
+            }.value
+            
+            return cachedURL.path
+            
+        } catch {
+            print("Failed to buffer cloud track: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    private func cleanupOldCache(in cacheDir: URL) {
+        Task.detached(priority: .background) {
+            let fm = FileManager.default
+            guard let files = try? fm.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: [.creationDateKey]) else { return }
+            
+            // Keep only the most recent 5 tracks
+            let sortedFiles = files.sorted {
+                let date1 = (try? $0.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date.distantPast
+                let date2 = (try? $1.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date.distantPast
+                return date1 > date2
+            }
+            
+            if sortedFiles.count > 5 {
+                let toDelete = sortedFiles.dropFirst(5)
+                for file in toDelete {
+                    try? fm.removeItem(at: file)
+                }
+            }
+        }
     }
 
     private func updateWidget() {

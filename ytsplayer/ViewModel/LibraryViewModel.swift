@@ -7,6 +7,34 @@ import Combine
 
 @MainActor
 final class LibraryViewModel: ObservableObject {
+    // MARK: - Tracks Page Persistent State
+    @AppStorage("TracksSortField") var tracksSortField: String = "title"
+    @AppStorage("TracksSortAscending") var tracksSortAscending: Bool = true
+    @AppStorage("isFSEventsEnabled") var isFSEventsEnabled: Bool = true {
+        didSet { updateWatcherStatus() }
+    }
+    
+    var tracksSortComparator: [KeyPathComparator<TrackViewModel>] {
+        let order: Foundation.SortOrder = tracksSortAscending ? .forward : .reverse
+        switch tracksSortField {
+        case "title": return [KeyPathComparator(\.title, order: order)]
+        case "artistName": return [KeyPathComparator(\.artistName, order: order)]
+        case "albumTitle": return [KeyPathComparator(\.albumTitle, order: order)]
+        case "filePath": return [KeyPathComparator(\.filePath, order: order)]
+        case "sampleRate": return [KeyPathComparator(\.sampleRate, order: order)]
+        case "bitDepth": return [KeyPathComparator(\.bitDepth, order: order)]
+        case "channels": return [KeyPathComparator(\.channels, order: order)]
+        case "bitrate": return [KeyPathComparator(\.bitrate, order: order)]
+        case "fileSize": return [KeyPathComparator(\.fileSize, order: order)]
+        case "playCount": return [KeyPathComparator(\.playCount, order: order)]
+        case "duration": return [KeyPathComparator(\.duration, order: order)]
+        default: return [KeyPathComparator(\.title, order: order)]
+        }
+    }
+    @Published var tracksSelectedRootFolder: URL? = nil
+    @Published var tracksExpandedFolders: Set<URL> = []
+    @Published var tracksFolderSearchQuery = ""
+
     @Published var albums: [AlbumViewModel] = []
     @Published var artists: [ArtistViewModel] = []
     @Published var quickPicks: [TrackViewModel] = []
@@ -18,7 +46,9 @@ final class LibraryViewModel: ObservableObject {
     @Published var isLoading: Bool          = true
     @Published var scanProgress: Double     = 0.0
     @Published var isScanning: Bool         = false
-    @Published var libraryFolders: [URL]    = []
+    @Published var libraryFolders: [URL]    = [] {
+        didSet { updateWatcherStatus() }
+    }
 
     let scanner: LibraryScanner
     private let db: DatabasePool
@@ -30,6 +60,27 @@ final class LibraryViewModel: ObservableObject {
         loadFoldersFromUserDefaults()
         loadAlbums()
         observeScanner()
+        observeWatcher()
+    }
+    
+    private func updateWatcherStatus() {
+        if isFSEventsEnabled {
+            LibraryWatcher.shared.startWatching(folders: libraryFolders)
+        } else {
+            LibraryWatcher.shared.stopWatching()
+        }
+    }
+    
+    private func observeWatcher() {
+        LibraryWatcher.shared.folderDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                if !self.isScanning {
+                    self.startScan()
+                }
+            }
+            .store(in: &scannerCancellables)
     }
 
     enum SortOrder: String, CaseIterable {
@@ -306,6 +357,90 @@ final class SearchViewModel: ObservableObject {
                 self.artistResults = arResults
                 self.playlistResults = pResults
                 self.isSearching = false
+            }
+        }
+    }
+}
+import Foundation
+import Combine
+
+class LibraryWatcher {
+    static let shared = LibraryWatcher()
+    
+    private var streamRef: FSEventStreamRef?
+    private var isWatching: Bool = false
+    
+    /// Publisher that emits whenever a change is detected in watched folders.
+    let folderDidChange = PassthroughSubject<Void, Never>()
+    
+    // Throttler for scan requests
+    private var throttlerTask: Task<Void, Never>?
+    
+    private init() {}
+    
+    func startWatching(folders: [URL]) {
+        stopWatching()
+        
+        let pathsToWatch = folders.map { $0.path as CFString }
+        guard !pathsToWatch.isEmpty else { return }
+        
+        let pathsArray = pathsToWatch as CFArray
+        
+        var context = FSEventStreamContext(
+            version: 0,
+            info: Unmanaged.passUnretained(self).toOpaque(),
+            retain: nil,
+            release: nil,
+            copyDescription: nil
+        )
+        
+        // FSEvents callback
+        let callback: FSEventStreamCallback = { (streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIds) in
+            guard let clientInfo = clientCallBackInfo else { return }
+            let watcher = Unmanaged<LibraryWatcher>.fromOpaque(clientInfo).takeUnretainedValue()
+            
+            // We debounce the actual scan trigger to prevent spamming if many files change at once
+            watcher.triggerScan()
+        }
+        
+        // Create the stream
+        streamRef = FSEventStreamCreate(
+            kCFAllocatorDefault,
+            callback,
+            &context,
+            pathsArray,
+            FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
+            1.0, // 1 second latency
+            FSEventStreamCreateFlags(kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents)
+        )
+        
+        if let streamRef = streamRef {
+            FSEventStreamSetDispatchQueue(streamRef, DispatchQueue.global(qos: .background))
+            FSEventStreamStart(streamRef)
+            isWatching = true
+            print("[LibraryWatcher] Started watching \(pathsToWatch.count) folders.")
+        }
+    }
+    
+    func stopWatching() {
+        if let streamRef = streamRef {
+            FSEventStreamStop(streamRef)
+            FSEventStreamInvalidate(streamRef)
+            FSEventStreamRelease(streamRef)
+            self.streamRef = nil
+            isWatching = false
+            print("[LibraryWatcher] Stopped watching folders.")
+        }
+    }
+    
+    private func triggerScan() {
+        throttlerTask?.cancel()
+        throttlerTask = Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s debounce
+            guard !Task.isCancelled else { return }
+            
+            DispatchQueue.main.async {
+                self.folderDidChange.send()
             }
         }
     }

@@ -60,8 +60,9 @@ OSStatus AudioDevice_RenderCallback(
     }
 
     // ── Apply gain in-place ─────────────────────────────────────────────────
-    float finalGain = gain * softwareVolume;
-    if (finalGain < 1.0f) {
+    float replayGain = atomic_load_explicit(&ctx->trackReplayGain, memory_order_relaxed);
+    float finalGain = gain * softwareVolume * replayGain;
+    if (finalGain != 1.0f) {
         UInt32 samples = frameCount * 2; // stereo
         for (UInt32 i = 0; i < samples; i++) {
             outputBuffer[i] *= finalGain;
@@ -75,11 +76,8 @@ OSStatus AudioDevice_RenderCallback(
         memory_order_relaxed
     );
 
-    // ── Detect end of track: signal isPlaying = false ────────────────────────
-    uint64_t total = atomic_load_explicit(&ctx->totalFrames, memory_order_relaxed);
-    if (total > 0 && (prev + framesRead) >= total) {
-        atomic_store_explicit(&ctx->isPlaying, false, memory_order_relaxed);
-    }
+    // (We no longer force isPlaying = false based on totalFrames to allow gapless transitions.
+    // The swift layer or the decoder worker will manage EOF).
 
     return noErr;
 }
