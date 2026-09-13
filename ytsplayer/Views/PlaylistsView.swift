@@ -25,7 +25,7 @@ struct PlaylistsView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(Capsule().fill(Color.purple))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
                     .shadow(color: .purple.opacity(0.3), radius: 8, y: 4)
@@ -116,31 +116,31 @@ struct PlaylistCard: View {
                 
                 if isHovered {
                     Rectangle()
-                        .fill(Color.black.opacity(0.4))
+                        .fill(Color.primary.opacity(0.4))
                         .transition(.opacity)
                     
                     Image(systemName: "play.circle.fill")
                         .font(.system(size: 48))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                         .shadow(radius: 10)
                         .scaleEffect(isHovered ? 1.0 : 0.8)
                         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isHovered)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: Color.black.opacity(isHovered ? 0.5 : 0.2), radius: isHovered ? 12 : 8, y: isHovered ? 8 : 4)
+            .shadow(color: Color.primary.opacity(isHovered ? 0.5 : 0.2), radius: isHovered ? 12 : 8, y: isHovered ? 8 : 4)
             .scaleEffect(isHovered ? 1.03 : 1.0)
             .animation(.easeOut(duration: 0.2), value: isHovered)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(playlist.name)
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
                 
                 Text("\(playlist.trackCount) tracks • \(formatTotalDuration(playlist.totalDuration))")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(.primary.opacity(0.5))
             }
             .padding(.horizontal, 4)
         }
@@ -169,11 +169,11 @@ struct SmartPlaylistCard: View {
                 
                 if isHovered {
                     Rectangle()
-                        .fill(Color.black.opacity(0.2))
+                        .fill(Color.primary.opacity(0.2))
                         .transition(.opacity)
                     Image(systemName: "play.circle.fill")
                         .font(.system(size: 48))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                         .shadow(radius: 10)
                         .scaleEffect(isHovered ? 1.0 : 0.8)
                 }
@@ -186,12 +186,12 @@ struct SmartPlaylistCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
                 
                 Text("Smart Playlist")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(.primary.opacity(0.5))
             }
             .padding(.horizontal, 4)
         }

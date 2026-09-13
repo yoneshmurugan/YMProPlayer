@@ -36,11 +36,11 @@ struct ArtistDetailView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(artist.name)
                                 .font(.system(size: 32, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
                             
                             Text("\(artist.albumCount) Album\(artist.albumCount == 1 ? "" : "s") • \(tracks.count) Track\(tracks.count == 1 ? "" : "s")")
                                 .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.6))
+                                .foregroundStyle(.primary.opacity(0.6))
                             
                             Button(action: {
                                 if let first = tracks.first {
@@ -54,7 +54,7 @@ struct ArtistDetailView: View {
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 12)
                                 .background(Color.purple)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
                                 .clipShape(Capsule())
                             }
                             .buttonStyle(.plain)
@@ -79,7 +79,7 @@ struct ArtistDetailView: View {
                     }
                 }
             }
-            .background(Color.black.opacity(0.9))
+            .background(Color.primary.opacity(0.9))
         }
         .onAppear {
             self.tracks = libraryVM.fetchTracks(for: artist)
@@ -98,7 +98,7 @@ struct ArtistDetailView: View {
             .overlay(
                 Text(String(artist.name.prefix(1)).uppercased())
                     .font(.system(size: 60, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(.primary.opacity(0.8))
             )
     }
 }
@@ -119,7 +119,7 @@ struct ArtistTrackRowWrapper: View {
                 HStack {
                     Text(tracks[index].albumTitle ?? "Unknown Album")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
                     Spacer()
                 }
@@ -127,7 +127,7 @@ struct ArtistTrackRowWrapper: View {
                 .padding(.top, 24)
                 .padding(.bottom, 8)
                 
-                Divider().background(Color.white.opacity(0.1))
+                Divider().background(Color.primary.opacity(0.1))
                     .padding(.horizontal, 24)
             }
             

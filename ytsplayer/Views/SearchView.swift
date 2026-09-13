@@ -48,7 +48,7 @@ struct SearchView: View {
                                 .font(.system(size: 13, weight: .medium))
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(searchVM.selectedFilter == filter ? Color.purple : Color.white.opacity(0.1))
+                                .background(searchVM.selectedFilter == filter ? Color.purple : Color.primary.opacity(0.1))
                                 .foregroundStyle(searchVM.selectedFilter == filter ? .white : .primary)
                                 .clipShape(Capsule())
                         }

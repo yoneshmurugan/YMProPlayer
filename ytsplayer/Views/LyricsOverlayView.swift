@@ -57,7 +57,7 @@ struct LyricsOverlayView: View {
     var body: some View {
         ZStack(alignment: .top) {
             // Transparent background (parent has the full blur)
-            Color.black.opacity(0.4)
+            Color.primary.opacity(0.4)
             
             VStack {
                 Picker("", selection: $selectedTab) {
@@ -88,10 +88,10 @@ struct LyricsOverlayView: View {
                 VStack(spacing: 16) {
                     Image(systemName: "music.mic")
                         .font(.system(size: 48))
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.primary.opacity(0.5))
                     Text("No Lyrics Found")
                         .font(.title2.bold())
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     Button("Fetch Online") {
                         Task { await fetchLyrics() }
                     }
@@ -108,7 +108,7 @@ struct LyricsOverlayView: View {
                                 
                                 Text(line.text)
                                     .font(.system(size: isCurrent ? 36 : 28, weight: isCurrent ? .bold : .semibold))
-                                    .foregroundColor(isCurrent ? .white : .white.opacity(isPast ? 0.3 : 0.6))
+                                    .foregroundColor(isCurrent ? .white : .primary.opacity(isPast ? 0.3 : 0.6))
                                     .multilineTextAlignment(.center)
                                     .scaleEffect(isCurrent ? 1.05 : 1.0)
                                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCurrent)
@@ -150,7 +150,7 @@ struct LyricsOverlayView: View {
                 HStack {
                     Text(isEditingMetadata ? "Edit Track Metadata" : "Track Metadata")
                         .font(.title2.bold())
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     Spacer()
                     Button(action: {
                         withAnimation { isEditingMetadata.toggle() }
@@ -183,23 +183,23 @@ struct LyricsOverlayView: View {
                                 .scaledToFill()
                         } else {
                             Rectangle()
-                                .fill(Color.white.opacity(0.1))
+                                .fill(Color.primary.opacity(0.1))
                             Image(systemName: "music.note")
                                 .font(.system(size: 40))
-                                .foregroundColor(.white.opacity(0.3))
+                                .foregroundColor(.primary.opacity(0.3))
                         }
                         
                         if isEditingMetadata {
                             Rectangle()
-                                .fill(Color.black.opacity(0.4))
+                                .fill(Color.primary.opacity(0.4))
                             Image(systemName: "camera.fill")
                                 .font(.system(size: 30))
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                         }
                     }
                     .frame(width: 150, height: 150)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.2), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary.opacity(0.2), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
                 .disabled(!isEditingMetadata)
@@ -456,11 +456,11 @@ extension LyricsOverlayView {
             VStack(spacing: 0) {
                 content()
             }
-            .background(Color.white.opacity(0.05))
+            .background(Color.primary.opacity(0.05))
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
             )
         }
     }
@@ -469,17 +469,17 @@ extension LyricsOverlayView {
         VStack(spacing: 0) {
             HStack {
                 Text(placeholder)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.primary.opacity(0.8))
                     .frame(width: 120, alignment: .leading)
                 
                 TextField(placeholder, text: text)
                     .textFieldStyle(.plain)
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
             }
             .padding()
             
             Divider()
-                .background(Color.white.opacity(0.1))
+                .background(Color.primary.opacity(0.1))
                 .padding(.leading, 120 + 16)
         }
     }

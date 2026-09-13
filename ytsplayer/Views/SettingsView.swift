@@ -21,10 +21,112 @@ struct SettingsView: View {
     
     @State private var outputDevices: [AudioDevice] = CoreAudioController.shared.getAvailableOutputDevices()
     @AppStorage("outputDeviceID") private var selectedDeviceID: String = ""
+    @EnvironmentObject var themeManager: ThemeManager
+
+    @State private var selectedTab: String = "appearance"
 
     var body: some View {
-        NavigationStack {
-            Form {
+        VStack(spacing: 0) {
+            // Header
+            ZStack {
+                Text("Settings")
+                    .font(.headline)
+                
+                HStack {
+                    Spacer()
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Close Settings")
+                }
+            }
+            .padding()
+            
+            Picker("", selection: $selectedTab) {
+                Text("Appearance").tag("appearance")
+                Text("Library").tag("library")
+                Text("Audio").tag("audio")
+                Text("About").tag("about")
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 60)
+            .padding(.bottom, 16)
+            
+            Divider()
+            
+            Group {
+                switch selectedTab {
+                case "appearance": appearanceTab
+                case "library": libraryTab
+                case "audio": audioTab
+                case "about": aboutTab
+                default: appearanceTab
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(Color(NSColor.windowBackgroundColor))
+        .onAppear {
+            hogModeEnabled  = halEngine.isHogMode
+            availableRates  = halEngine.availableSampleRates()
+            
+            outputDevices = CoreAudioController.shared.getAvailableOutputDevices()
+            if selectedDeviceID.isEmpty {
+                selectedDeviceID = String(halEngine.currentDeviceID)
+            }
+
+            // Restore saved library paths
+            libraryVM.loadFoldersFromUserDefaults()
+        }
+        .fileImporter(
+            isPresented: $showFolderPicker,
+            allowedContentTypes: [.folder]
+        ) { result in
+            if case .success(let url) = result {
+                _ = url.startAccessingSecurityScopedResource()
+                libraryVM.addFolder(url: url)
+                libraryVM.startScan()
+            }
+        }
+    }
+    
+    // MARK: - Tabs
+    
+    private var appearanceTab: some View {
+        Form {
+            Section("UI & Theming") {
+                Picker("Theme Mode", selection: $themeManager.themeMode) {
+                    ForEach(AppThemeMode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                
+                Picker("Accent Color", selection: $themeManager.accentColor) {
+                    ForEach(AppAccentColor.allCases) { color in
+                        HStack {
+                            Circle()
+                                .fill(color.color)
+                                .frame(width: 12, height: 12)
+                            Text(color.rawValue)
+                        }.tag(color)
+                    }
+                }
+                
+                Picker("Glassmorphism Blur", selection: $themeManager.glassIntensity) {
+                    ForEach(GlassIntensity.allCases) { intensity in
+                        Text(intensity.rawValue).tag(intensity)
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+    
+    private var libraryTab: some View {
+        Form {
             Section("Library Folders") {
                 if libraryVM.libraryFolders.isEmpty {
                     Text("No folders selected")
@@ -83,7 +185,12 @@ struct SettingsView: View {
                     }
                 }
             }
-            
+        }
+        .formStyle(.grouped)
+    }
+    
+    private var audioTab: some View {
+        Form {
             Section("Audio Engine & Devices") {
                 Picker("Output Device", selection: $selectedDeviceID) {
                     ForEach(outputDevices) { device in
@@ -142,9 +249,6 @@ struct SettingsView: View {
                     }
                 }
                 
-                // Auto-Sample Rate Switching is inherently required by the HAL engine architecture
-                // since there is no software resampler. The toggle has been removed.
-                
                 Toggle(isOn: $allowDownsampling) {
                     HStack {
                         Text("Auto-Downsample Unsupported Hi-Res")
@@ -169,44 +273,18 @@ struct SettingsView: View {
                     }
                 }
             }
-
+        }
+        .formStyle(.grouped)
+    }
+    
+    private var aboutTab: some View {
+        Form {
             Section("About") {
                 LabeledContent("Version", value: "1.0.0")
                 LabeledContent("Build", value: "BitPerfect·FLAC·CoreAudio HAL")
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("Settings")
-        .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-        .onAppear {
-            hogModeEnabled  = halEngine.isHogMode
-            availableRates  = halEngine.availableSampleRates()
-            
-            outputDevices = CoreAudioController.shared.getAvailableOutputDevices()
-            if selectedDeviceID.isEmpty {
-                selectedDeviceID = String(halEngine.currentDeviceID)
-            }
-
-            // Restore saved library paths
-            libraryVM.loadFoldersFromUserDefaults()
-        }
-        .fileImporter(
-            isPresented: $showFolderPicker,
-            allowedContentTypes: [.folder]
-        ) { result in
-            if case .success(let url) = result {
-                _ = url.startAccessingSecurityScopedResource()
-                libraryVM.addFolder(url: url)
-                libraryVM.startScan()
-            }
-        }
     }
 
     private func deviceName(for deviceID: AudioObjectID) -> String {

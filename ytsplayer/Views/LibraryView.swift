@@ -28,7 +28,7 @@ struct LibraryView: View {
                         Image(systemName: "square.grid.2x2")
                             .font(.system(size: 14))
                             .frame(width: 32, height: 26)
-                            .background(isGridView ? Color.white.opacity(0.15) : Color.clear)
+                            .background(isGridView ? Color.primary.opacity(0.15) : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
@@ -37,21 +37,21 @@ struct LibraryView: View {
                         Image(systemName: "list.bullet")
                             .font(.system(size: 14))
                             .frame(width: 32, height: 26)
-                            .background(!isGridView ? Color.white.opacity(0.15) : Color.clear)
+                            .background(!isGridView ? Color.primary.opacity(0.15) : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
                 }
                 .padding(4)
-                .background(Color.white.opacity(0.05))
+                .background(Color.primary.opacity(0.05))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(.primary.opacity(0.8))
                 
                 Spacer()
                 
                 Text("\(libraryVM.albums.count) albums")
                     .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(.primary.opacity(0.4))
                     .padding(.trailing, 8)
                 
                 HStack(spacing: 24) {
@@ -73,7 +73,7 @@ struct LibraryView: View {
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 10, weight: .bold))
                         }
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(.primary.opacity(0.9))
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
@@ -83,7 +83,7 @@ struct LibraryView: View {
                         Button(action: onSearchTapped) {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 16))
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(.primary.opacity(0.7))
                         }
                         .buttonStyle(.plain)
                     }
@@ -270,18 +270,18 @@ struct AlbumCard: View, Equatable {
             VStack(alignment: .leading, spacing: 3) {
                 Text(album.title)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                 if let artist = album.artistName {
                     Text(artist)
                         .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.primary.opacity(0.7))
                         .lineLimit(1)
                 }
                 if let year = album.year {
                     Text(String(year))
                         .font(.system(size: 10))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.primary.opacity(0.5))
                 }
             }
             .padding(.horizontal, 4)
@@ -319,7 +319,7 @@ struct AlbumCard: View, Equatable {
             .overlay(
                 Image(systemName: "music.note")
                     .font(.system(size: 36))
-                    .foregroundStyle(.white.opacity(0.2))
+                    .foregroundStyle(.primary.opacity(0.2))
             )
     }
 }
@@ -394,22 +394,22 @@ struct AlbumListRow: View, Equatable {
             VStack(alignment: .leading, spacing: 4) {
                 Text(album.title)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                 
                 HStack(spacing: 8) {
                     if let artist = album.artistName {
                         Text(artist)
                             .font(.system(size: 13))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(.primary.opacity(0.7))
                             .lineLimit(1)
                     }
                     if let year = album.year {
                         Text("•")
-                            .foregroundStyle(.white.opacity(0.4))
+                            .foregroundStyle(.primary.opacity(0.4))
                         Text(String(year))
                             .font(.system(size: 13))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(.primary.opacity(0.5))
                     }
                 }
             }
@@ -430,7 +430,7 @@ struct AlbumListRow: View, Equatable {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(isHovered ? 0.08 : (isSelected ? 0.05 : 0.02)))
+                .fill(Color.primary.opacity(isHovered ? 0.08 : (isSelected ? 0.05 : 0.02)))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -475,7 +475,7 @@ struct AlbumListRow: View, Equatable {
             .overlay(
                 Image(systemName: "music.note")
                     .font(.system(size: 20))
-                    .foregroundStyle(.white.opacity(0.2))
+                    .foregroundStyle(.primary.opacity(0.2))
             )
     }
 }

@@ -31,6 +31,7 @@ struct ContentView: View {
     @State private var showFullScreenPlayer = false
     @State private var showSettings = false
     @State private var showFolderPicker = false
+    @EnvironmentObject var themeManager: ThemeManager
 
     @AppStorage("introFinished") private var introFinished = false
     init(halEngine: CoreAudioHALEngine, db: DatabasePool, playbackVM: PlaybackViewModel) {
@@ -126,7 +127,7 @@ struct ContentView: View {
                     .tint(.purple)
                     
                     Divider()
-                        .background(Color.white.opacity(0.1))
+                        .background(Color.primary.opacity(0.1))
                     
                     VStack(spacing: 12) {
                         Button(action: {
@@ -134,13 +135,15 @@ struct ContentView: View {
                         }) {
                             HStack(spacing: 6) {
                                 Image(systemName: "folder.badge.plus")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(.primary)
+                                
                                 Text("Add Folders")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.primary)
                             }
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.8))
-                            .padding(.vertical, 6)
-                            .padding(.horizontal, 12)
-                            .background(Color.white.opacity(0.1))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
                             .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -150,7 +153,7 @@ struct ContentView: View {
                         
                         Text("YM Pro v2.0")
                             .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.3))
+                            .foregroundStyle(.tertiary)
                     }
                     .padding(.bottom, 20)
                     .background(Color.clear)
@@ -193,7 +196,7 @@ struct ContentView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black.opacity(0.45))
+                .background(themeManager.glassIntensity.material)
                     // Safe area equivalent so scrollviews can scroll past the floating bar
                     .safeAreaInset(edge: .bottom) {
                         Color.clear.frame(height: 120)

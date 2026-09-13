@@ -72,6 +72,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct ytsplayerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var env = AppEnvironment.shared
+    @StateObject private var themeManager = ThemeManager()
 
     var body: some Scene {
         // Using `Window` instead of `WindowGroup` enforces a single main window
@@ -79,7 +80,9 @@ struct ytsplayerApp: App {
         Window("YM Pro", id: "main") {
             ContentView(halEngine: env.halEngine, db: env.db, playbackVM: env.playbackVM)
                 .environmentObject(env.playlistManager)
-                .preferredColorScheme(.dark)
+                .environmentObject(themeManager)
+                .preferredColorScheme(themeManager.themeMode.colorScheme)
+                .tint(themeManager.accentColor.color)
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
@@ -159,6 +162,9 @@ struct ytsplayerApp: App {
                 PlaylistEditorView(playlistId: playlistId, db: env.db)
                     .environmentObject(env.playlistManager)
                     .environmentObject(env.playbackVM)
+                    .environmentObject(themeManager)
+                    .preferredColorScheme(themeManager.themeMode.colorScheme)
+                    .tint(themeManager.accentColor.color)
             }
         }
         .windowStyle(.titleBar) // Let Playlist windows have a title bar!
@@ -171,6 +177,9 @@ struct ytsplayerApp: App {
             MiniPlayerView()
                 .environmentObject(env.playbackVM)
                 .environmentObject(env.playlistManager)
+                .environmentObject(themeManager)
+                .preferredColorScheme(themeManager.themeMode.colorScheme)
+                .tint(themeManager.accentColor.color)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)

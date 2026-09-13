@@ -62,16 +62,16 @@ struct FullScreenPlayerContent: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(track?.title ?? "Nothing Playing")
                         .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                         .lineLimit(2)
 
                     Text(track?.artistName ?? "Unknown Artist")
                         .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.primary.opacity(0.7))
 
                     Text(track?.albumTitle ?? "Unknown Album")
                         .font(.system(size: 15))
-                        .foregroundColor(.white.opacity(0.45))
+                        .foregroundColor(.primary.opacity(0.45))
                 }
 
                 Spacer().frame(height: 20)
@@ -92,13 +92,13 @@ struct FullScreenPlayerContent: View {
                 HStack {
                     Text("Lyrics")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     Spacer()
                     Button(action: { dismiss() }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 28))
-                            .foregroundColor(.white.opacity(0.8))
-                            .background(Color.black.opacity(0.4))
+                            .foregroundColor(.primary.opacity(0.8))
+                            .background(Color.primary.opacity(0.4))
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
@@ -129,7 +129,7 @@ struct FullScreenPlayerContent: View {
             }
             .scaledToFill()
             .blur(radius: 80)
-            .overlay(Color.black.opacity(0.55))
+            .overlay(Color.primary.opacity(0.55))
             .ignoresSafeArea()
         } else {
             LinearGradient(
@@ -153,14 +153,14 @@ struct FullScreenPlayerContent: View {
                 if let path = track?.albumArtworkPath,
                    let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                     CachedAsyncImage(url: cacheDir.appendingPathComponent(path)) {
-                        RoundedRectangle(cornerRadius: 24).fill(Color.white.opacity(0.1))
-                            .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.25)))
+                        RoundedRectangle(cornerRadius: 24).fill(Color.primary.opacity(0.1))
+                            .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.primary.opacity(0.25)))
                     }
                     .scaledToFit()
                 } else {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Color.white.opacity(0.1))
-                        .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.white.opacity(0.25)))
+                        .fill(Color.primary.opacity(0.1))
+                        .overlay(Image(systemName: "music.note").font(.system(size: 60)).foregroundColor(.primary.opacity(0.25)))
                 }
 
                 if (track?.bitDepth ?? 0) >= 24,
@@ -182,10 +182,10 @@ struct FullScreenPlayerContent: View {
         if let err = errorMessage {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                 Text(err)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
@@ -236,12 +236,12 @@ struct FullScreenPlayerContent: View {
     @ViewBuilder
     private var metadataGrid: some View {
         if let t = track {
-            Divider().background(Color.white.opacity(0.15)).padding(.bottom, 12)
+            Divider().background(Color.primary.opacity(0.15)).padding(.bottom, 12)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("TRACK INFO")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white.opacity(0.35))
+                    .foregroundColor(.primary.opacity(0.35))
                     .padding(.bottom, 4)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
@@ -263,10 +263,10 @@ struct FullScreenPlayerContent: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.white.opacity(0.35))
+                .foregroundColor(.primary.opacity(0.35))
             Text(value)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.white.opacity(0.75))
+                .foregroundColor(.primary.opacity(0.75))
                 .lineLimit(1)
         }
     }

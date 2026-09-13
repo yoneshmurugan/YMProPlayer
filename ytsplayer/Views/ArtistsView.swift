@@ -18,20 +18,20 @@ struct ArtistsView: View {
             HStack {
                 Text("Library")
                     .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.primary.opacity(0.5))
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .foregroundStyle(.primary.opacity(0.3))
                 Text("Artists")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                 Spacer()
                 
                 if let onSearchTapped = onSearchTapped {
                     Button(action: onSearchTapped) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(Color.white.opacity(0.8))
+                            .foregroundStyle(Color.primary.opacity(0.8))
                     }
                     .buttonStyle(.plain)
                     .focusable(false)
@@ -40,12 +40,12 @@ struct ArtistsView: View {
                 
                 Text("\(libraryVM.artists.count) artists")
                     .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(.primary.opacity(0.4))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
             
-            Divider().background(Color.white.opacity(0.1))
+            Divider().background(Color.primary.opacity(0.1))
             
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 24) {
@@ -93,12 +93,12 @@ struct ArtistCard: View, Equatable {
             
             Text(artist.name)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
             
             Text("\(artist.albumCount) Album\(artist.albumCount == 1 ? "" : "s") • \(artist.trackCount) Song\(artist.trackCount == 1 ? "" : "s")")
                 .font(.system(size: 12, weight: .regular))
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(.primary.opacity(0.5))
         }
     }
     
@@ -114,7 +114,7 @@ struct ArtistCard: View, Equatable {
             .overlay(
                 Text(String(artist.name.prefix(1)).uppercased())
                     .font(.system(size: 40, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(.primary.opacity(0.8))
             )
     }
 }

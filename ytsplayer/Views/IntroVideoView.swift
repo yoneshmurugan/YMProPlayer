@@ -36,9 +36,9 @@ struct IntroVideoView: View {
                     Button(action: { finishIntro() }) {
                         Text("Skip ▹")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color.white.opacity(0.6))
+                            .foregroundColor(Color.primary.opacity(0.6))
                             .padding(8)
-                            .background(Color.black.opacity(0.3))
+                            .background(Color.primary.opacity(0.3))
                             .cornerRadius(8)
                     }
                     .buttonStyle(.plain)

@@ -86,7 +86,7 @@ struct PlaylistEditorView: View {
                         }) {
                             Image(systemName: "play.fill")
                                 .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                                 .frame(width: 44, height: 44)
                                 .background(Circle().fill(Color.purple))
                                 .shadow(color: .purple.opacity(0.5), radius: 8, y: 4)
@@ -121,7 +121,7 @@ struct PlaylistEditorView: View {
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color.white.opacity(0.1))
+                        .background(Color.primary.opacity(0.1))
                         .cornerRadius(6)
                     }
                 }

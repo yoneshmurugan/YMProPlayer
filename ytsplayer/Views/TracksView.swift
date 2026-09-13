@@ -173,10 +173,10 @@ struct TracksView: View {
                 HStack(spacing: 6) {
                     Text("Library")
                         .font(.system(size: 15, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.primary.opacity(0.5))
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.3))
+                        .foregroundStyle(.primary.opacity(0.3))
                     Text("Tracks")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.primary)
@@ -187,7 +187,7 @@ struct TracksView: View {
                         Button(action: onSearchTapped) {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(Color.white.opacity(0.8))
+                                .foregroundStyle(Color.primary.opacity(0.8))
                         }
                         .buttonStyle(.plain)
                         .focusable(false)
@@ -197,18 +197,18 @@ struct TracksView: View {
                     let totalDuration = allTracks.reduce(0) { $0 + $1.duration }
                     Text("\(allTracks.count) tracks • \(formatTotalDuration(totalDuration))")
                         .font(.system(size: 12))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(.primary.opacity(0.4))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(Color.black.opacity(0.15))
+            .background(Color.primary.opacity(0.15))
             
             // Root Folder Filter
             if !libraryVM.libraryFolders.isEmpty {
                 HStack {
                     Text("Location:")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.primary.opacity(0.6))
                     
                     Button(action: {
                         isShowingFolderPicker.toggle()
@@ -218,11 +218,11 @@ struct TracksView: View {
                             Spacer()
                             Image(systemName: "chevron.up.chevron.down")
                                 .font(.system(size: 10))
-                                .foregroundStyle(.white.opacity(0.5))
+                                .foregroundStyle(.primary.opacity(0.5))
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(Color.white.opacity(0.05))
+                        .background(Color.primary.opacity(0.05))
                         .cornerRadius(6)
                     }
                     .buttonStyle(.plain)
@@ -236,7 +236,7 @@ struct TracksView: View {
                                     .textFieldStyle(.plain)
                             }
                             .padding(10)
-                            .background(Color.black.opacity(0.2))
+                            .background(Color.primary.opacity(0.2))
                             
                             Divider()
                             
@@ -298,7 +298,7 @@ struct TracksView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
-                .background(Color.white.opacity(0.02))
+                .background(Color.primary.opacity(0.02))
             }
             
             // Selection Header
@@ -313,7 +313,7 @@ struct TracksView: View {
                     }
                     .font(.system(size: 12))
                     .buttonStyle(.plain)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(.primary.opacity(0.6))
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
@@ -330,15 +330,15 @@ struct TracksView: View {
                 VStack(spacing: 16) {
                     Image(systemName: "music.note.list")
                         .font(.system(size: 60))
-                        .foregroundStyle(.white.opacity(0.2))
+                        .foregroundStyle(.primary.opacity(0.2))
                     Text("No Tracks")
                         .font(.title2)
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(.primary.opacity(0.4))
                 }
                 Spacer()
             } else {
                 headerRow
-                Divider().background(Color.white.opacity(0.1))
+                Divider().background(Color.primary.opacity(0.1))
                 
                 List(selection: $selectedTracks) {
                     ForEach(allTracks, id: \.id) { track in
@@ -512,10 +512,10 @@ struct TracksView: View {
             Text("Fav").frame(width: 30)
         }
         .font(.system(size: 11, weight: .semibold, design: .rounded))
-        .foregroundStyle(.white.opacity(0.5))
+        .foregroundStyle(.primary.opacity(0.5))
         .padding(.horizontal, 28)
         .padding(.vertical, 8)
-        .background(Color.black.opacity(0.15))
+        .background(Color.primary.opacity(0.15))
     }
     
     private func formatTotalDuration(_ duration: Double) -> String {
@@ -651,15 +651,15 @@ struct TrackRow: View, Equatable {
             // Artwork
             if let url = artworkURL {
                 CachedAsyncImage(url: url) {
-                    RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.1))
+                    RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.1))
                 }
                 .frame(width: 36, height: 36)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             } else {
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white.opacity(0.08))
+                    .fill(Color.primary.opacity(0.08))
                     .frame(width: 36, height: 36)
-                    .overlay(Image(systemName: "music.note").font(.system(size: 12)).foregroundStyle(.white.opacity(0.3)))
+                    .overlay(Image(systemName: "music.note").font(.system(size: 12)).foregroundStyle(.primary.opacity(0.3)))
             }
 
             // Title
@@ -676,7 +676,7 @@ struct TrackRow: View, Equatable {
             if isVisible("Artist") {
                 Text(track.artistName ?? "—")
                     .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(.primary.opacity(0.55))
                     .lineLimit(1)
                     .frame(width: 140, alignment: .leading)
             }
@@ -684,7 +684,7 @@ struct TrackRow: View, Equatable {
             if isVisible("Album") {
                 Text(track.albumTitle ?? "—")
                     .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(.primary.opacity(0.4))
                     .lineLimit(1)
                     .frame(width: 140, alignment: .leading)
             }
@@ -699,21 +699,21 @@ struct TrackRow: View, Equatable {
             if isVisible("Sample Rate") {
                 Text(String(format: "%.1f kHz", Double(track.sampleRate) / 1000.0))
                     .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(.primary.opacity(0.45))
                     .frame(width: 85, alignment: .trailing)
             }
             
             if isVisible("Bit Depth") {
                 Text("\(track.bitDepth)-bit")
                     .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(.primary.opacity(0.45))
                     .frame(width: 70, alignment: .trailing)
             }
             
             if isVisible("Channels") {
                 Text(track.channels == 1 ? "Mono" : (track.channels == 2 ? "Stereo" : "\(track.channels) ch"))
                     .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(.primary.opacity(0.45))
                     .frame(width: 70, alignment: .trailing)
             }
             
@@ -721,7 +721,7 @@ struct TrackRow: View, Equatable {
                 if let br = track.bitrate {
                     Text("\(br / 1000) kbps")
                         .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(.primary.opacity(0.45))
                         .frame(width: 70, alignment: .trailing)
                 } else {
                     Text("—")
@@ -733,7 +733,7 @@ struct TrackRow: View, Equatable {
                 if let size = track.fileSize {
                     Text(String(format: "%.1f MB", Double(size) / 1_048_576.0))
                         .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(.primary.opacity(0.45))
                         .frame(width: 70, alignment: .trailing)
                 } else {
                     Text("—")
@@ -744,7 +744,7 @@ struct TrackRow: View, Equatable {
             if isVisible("Views") {
                 Text("\(track.playCount)")
                     .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(.primary.opacity(0.45))
                     .frame(width: 50, alignment: .trailing)
             }
             
@@ -757,7 +757,7 @@ struct TrackRow: View, Equatable {
                 }
             }) {
                 Image(systemName: isFavoriteLocal ? "heart.fill" : "heart")
-                    .foregroundColor(isFavoriteLocal ? .red : .white.opacity(isHovered ? 0.4 : 0))
+                    .foregroundColor(isFavoriteLocal ? .red : .primary.opacity(isHovered ? 0.4 : 0))
             }
             .buttonStyle(.plain)
             .frame(width: 30)
@@ -765,7 +765,7 @@ struct TrackRow: View, Equatable {
             if isVisible("Time") {
                 Text(formatDuration(track.duration))
                     .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(.primary.opacity(0.4))
                     .frame(width: 52, alignment: .trailing)
                     .padding(.trailing, 20)
             }
@@ -774,7 +774,7 @@ struct TrackRow: View, Equatable {
             if showDragHandle {
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 14))
-                    .foregroundStyle(isHovered ? .white.opacity(0.6) : .white.opacity(0.2))
+                    .foregroundStyle(isHovered ? Color.primary.opacity(0.6) : Color.primary.opacity(0.2))
                     .padding(.leading, 8)
                     .contentShape(Rectangle())
                     .onDrag {
@@ -783,7 +783,7 @@ struct TrackRow: View, Equatable {
             }
         }
         .frame(height: 48)
-        .background(isHovered || isSelected ? Color.white.opacity(isSelected ? 0.15 : 0.05) : Color.clear)
+        .background(isHovered || isSelected ? Color.primary.opacity(isSelected ? 0.15 : 0.05) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .onHover { isHovered = $0 }
         .onAppear {

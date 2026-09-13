@@ -223,6 +223,7 @@ final class PlaybackViewModel: ObservableObject {
             // Track play count
             onTrackPlayed?(track.id)
         } else {
+            NSLog("[ytsplayer] PlaybackViewModel: loadTrack returned false! Setting errorMessage for UI.")
             errorMessage = "Audio format not supported or hardware rejected sample rate. Enable Downsampling in Settings."
         }
     }

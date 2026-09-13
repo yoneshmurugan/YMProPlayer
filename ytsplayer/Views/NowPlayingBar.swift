@@ -46,12 +46,12 @@ struct NowPlayingBar: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(vm.currentTrack?.title ?? "Nothing Playing")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
                     if let artist = vm.currentTrack?.artistName, !artist.isEmpty {
                         Text(artist)
                             .font(.system(size: 12))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
@@ -68,7 +68,7 @@ struct NowPlayingBar: View {
                     }) {
                         Image(systemName: isFavoriteLocal ? "heart.fill" : "heart")
                             .font(.system(size: 16))
-                            .foregroundColor(isFavoriteLocal ? .red : .white.opacity(0.5))
+                            .foregroundStyle(isFavoriteLocal ? Color.red : Color.primary.opacity(0.5))
                     }
                     .buttonStyle(.plain)
                     .padding(.leading, 8)
@@ -105,7 +105,7 @@ struct NowPlayingBar: View {
                 HStack(spacing: 8) {
                     Text(vm.currentTimeString)
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.secondary)
                         .frame(width: 36, alignment: .trailing)
 
                     GeometryReader { geo in
@@ -113,7 +113,7 @@ struct NowPlayingBar: View {
                             if waveform.peaks.isEmpty {
                                 ZStack(alignment: .leading) {
                                     Capsule()
-                                        .fill(Color.white.opacity(0.1))
+                                        .fill(Color.primary.opacity(0.1))
                                         .frame(height: 4)
                                     Capsule()
                                         .fill(
@@ -153,7 +153,7 @@ struct NowPlayingBar: View {
 
                     Text("-" + vm.totalTimeString) // Mockup has negative remaining time usually, but we use total
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.secondary)
                         .frame(width: 36, alignment: .leading)
                 }
                 
@@ -162,10 +162,10 @@ struct NowPlayingBar: View {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 10))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                         Text(err)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
                     }
@@ -207,7 +207,7 @@ struct NowPlayingBar: View {
                     Button(action: { openWindow(id: "MiniPlayer") }) {
                         Image(systemName: "pip.enter")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(Color.white.opacity(0.8))
+                            .foregroundStyle(.primary.opacity(0.8))
                     }
                     .buttonStyle(.plain)
                     .focusable(false)
@@ -217,7 +217,7 @@ struct NowPlayingBar: View {
                     Button(action: { isQueuePresented.toggle() }) {
                         Image(systemName: "list.bullet")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(isQueuePresented ? Color.accentColor : Color.white.opacity(0.8))
+                            .foregroundStyle(isQueuePresented ? Color.accentColor : Color.primary.opacity(0.8))
                     }
                     .buttonStyle(.plain)
                     .focusable(false)
@@ -229,7 +229,7 @@ struct NowPlayingBar: View {
                     HStack(spacing: 8) {
                         Image(systemName: "speaker.fill")
                             .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(.primary.opacity(0.5))
                         
                         Slider(value: $vm.volume, in: 0...1)
                             .tint(Color.white)
@@ -237,7 +237,7 @@ struct NowPlayingBar: View {
                         
                         Image(systemName: "speaker.wave.3.fill")
                             .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(.primary.opacity(0.8))
                     }
                     .frame(width: 130)
                     .disabled(vm.isBitPerfect)
@@ -263,9 +263,9 @@ struct NowPlayingBar: View {
                 
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.12),
+                        Color.primary.opacity(0.12),
                         Color.clear,
-                        Color.black.opacity(0.15)
+                        Color.primary.opacity(0.15)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -275,7 +275,7 @@ struct NowPlayingBar: View {
         .overlay(
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(Color.white.opacity(0.2)),
+                .foregroundColor(Color.primary.opacity(0.1)),
             alignment: .top
         )
     }
@@ -309,7 +309,7 @@ struct NowPlayingBar: View {
             .overlay(
                 Image(systemName: "music.note")
                     .font(.system(size: 20))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.primary.opacity(0.5)) // Keep white for overlay on the dark placeholder gradient
             )
     }
 
@@ -317,10 +317,10 @@ struct NowPlayingBar: View {
         Button(action: { vm.togglePlayPause() }) {
             Image(systemName: vm.isPlaying ? "pause.fill" : "play.fill")
                 .font(.system(size: 24))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
                 .background(
-                    Circle().fill(Color.white.opacity(0.12))
+                    Circle().fill(Color.primary.opacity(0.12))
                 )
                 .scaleEffect(vm.isPlaying ? 0.95 : 1.0)
                 .animation(.spring(response: 0.25, dampingFraction: 0.6), value: vm.isPlaying)
@@ -334,14 +334,14 @@ struct NowPlayingBar: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: size + 2))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
         .focusable(false)
         .disabled(vm.currentTrack == nil)
     }
 
-    private func badge(text: String, accent: Color = .white) -> some View {
+    private func badge(text: String, accent: Color = .primary) -> some View {
         Text(text)
             .font(.system(size: 9, weight: .semibold, design: .rounded))
             .textCase(.uppercase)
@@ -371,7 +371,7 @@ struct WaveformView: View {
                     let isPlayed = (CGFloat(i) * barWidth) < playedWidth
                     
                     RoundedRectangle(cornerRadius: barWidth / 2)
-                        .fill(isPlayed ? AnyShapeStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.white.opacity(0.15)))
+                        .fill(isPlayed ? AnyShapeStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.primary.opacity(0.15)))
                         .frame(width: max(1.0, barWidth - 1), height: height)
                         .padding(.horizontal, 0.5)
                         .shadow(color: isPlayed ? .purple.opacity(0.4) : .clear, radius: 2, y: 0)

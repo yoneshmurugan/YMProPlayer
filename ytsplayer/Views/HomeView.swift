@@ -25,14 +25,14 @@ struct HomeView: View {
                 HStack {
                     Text("Listen Now")
                         .font(.system(size: 34, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                     
                     Spacer()
                     
                     Button(action: onSearchTapped) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 20))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                     }
                     .buttonStyle(.plain)
                     .focusable(false)
@@ -48,10 +48,10 @@ struct HomeView: View {
                             .foregroundStyle(.purple.opacity(0.8))
                         Text("No Music Library")
                             .font(.title2.bold())
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                         Text("Click the folder icon in the toolbar to select\nyour FLAC music directory.")
                             .multilineTextAlignment(.center)
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(.primary.opacity(0.6))
                             .font(.system(size: 14))
                         
                         Button(action: onProfileTapped) {
@@ -60,7 +60,7 @@ struct HomeView: View {
                                 .padding(.horizontal, 24)
                                 .padding(.vertical, 10)
                                 .background(Color.purple)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
                                 .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -250,7 +250,7 @@ struct HomeView: View {
         HStack {
             Text(title)
                 .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
             Spacer()
             if let action = action {
                 Button("See all") { action() }
@@ -326,11 +326,11 @@ struct RecentTrackCell: View {
                    let cacheDir = ImageDownsampler.artworkCacheDirectory() {
                     let url = cacheDir.appendingPathComponent(path)
                     CachedAsyncImage(url: url) {
-                        Color.white.opacity(0.1)
+                        Color.primary.opacity(0.1)
                     }
                     .scaledToFill()
                 } else {
-                    Color.white.opacity(0.1)
+                    Color.primary.opacity(0.1)
                 }
             }
             .frame(width: 48, height: 48)
@@ -340,11 +340,11 @@ struct RecentTrackCell: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(track.title)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text(track.artistName ?? "Unknown Artist")
                     .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.primary.opacity(0.5))
                     .lineLimit(1)
             }
             
@@ -352,14 +352,14 @@ struct RecentTrackCell: View {
             
             Button(action: {}) {
                 Image(systemName: "ellipsis")
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.primary.opacity(0.5))
                     .rotationEffect(.degrees(90))
             }
             .buttonStyle(.plain)
             .opacity(isHovered ? 1 : 0)
         }
         .padding(6)
-        .background(isHovered ? Color.white.opacity(0.1) : Color.clear)
+        .background(isHovered ? Color.primary.opacity(0.1) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .onHover { h in isHovered = h }
         .draggable(TrackDropPayload(trackIds: [track.id]))

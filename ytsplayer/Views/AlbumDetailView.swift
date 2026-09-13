@@ -22,7 +22,7 @@ struct AlbumDetailView: View {
                         .frame(height: 220)
                         .clipped()
                         .blur(radius: 40)
-                        .overlay(Color.black.opacity(0.55))
+                        .overlay(Color.primary.opacity(0.55))
                     } else {
                         LinearGradient(
                             colors: [.purple.opacity(0.4), .black],
@@ -60,22 +60,22 @@ struct AlbumDetailView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(album.title)
                                 .font(.system(size: 24, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.primary)
                                 .lineLimit(2)
                         if let artist = album.artistName {
                             Text(artist)
                                 .font(.system(size: 15))
-                                .foregroundStyle(.white.opacity(0.75))
+                                .foregroundStyle(.primary.opacity(0.75))
                         }
                         HStack(spacing: 10) {
                             if let year = album.year {
                                 Text(String(year))
                                     .font(.system(size: 12))
-                                    .foregroundStyle(.white.opacity(0.55))
+                                    .foregroundStyle(.primary.opacity(0.55))
                             }
                             Text("\(album.trackCount) tracks")
                                 .font(.system(size: 12))
-                                .foregroundStyle(.white.opacity(0.55))
+                                .foregroundStyle(.primary.opacity(0.55))
                         }
 
                         // Play all button
@@ -84,12 +84,12 @@ struct AlbumDetailView: View {
                                 .font(.system(size: 13, weight: .semibold))
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 7)
-                                .background(Color.white.opacity(0.15))
+                                .background(Color.primary.opacity(0.15))
                                 .clipShape(Capsule())
-                                .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                                .overlay(Capsule().stroke(Color.primary.opacity(0.3), lineWidth: 1))
                         }
                         .buttonStyle(.plain)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                     }
                     Spacer()
                 }
@@ -100,8 +100,8 @@ struct AlbumDetailView: View {
                 Button(action: { dismiss() }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 24))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .background(Circle().fill(Color.black.opacity(0.4)))
+                        .foregroundStyle(.primary.opacity(0.6))
+                        .background(Circle().fill(Color.primary.opacity(0.4)))
                 }
                 .buttonStyle(.plain)
                 .padding(20)
@@ -156,7 +156,7 @@ struct AlbumDetailView: View {
             .overlay(
                 Image(systemName: "music.note")
                     .font(.system(size: 40))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .foregroundStyle(.primary.opacity(0.3))
             )
     }
 
@@ -286,7 +286,7 @@ struct AlbumTrackRow: View {
                     }
                 }) {
                     Image(systemName: isFavoriteLocal ? "heart.fill" : "heart")
-                        .foregroundColor(isFavoriteLocal ? .red : .white.opacity(isHovered ? 0.4 : 0))
+                        .foregroundColor(isFavoriteLocal ? .red : .primary.opacity(isHovered ? 0.4 : 0))
                 }
                 .buttonStyle(.plain)
                 .frame(width: 24)
@@ -298,7 +298,7 @@ struct AlbumTrackRow: View {
             }
         }
         .padding(.vertical, 4)
-        .background(isHovered ? Color.white.opacity(0.05) : Color.clear)
+        .background(isHovered ? Color.primary.opacity(0.05) : Color.clear)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .onAppear {

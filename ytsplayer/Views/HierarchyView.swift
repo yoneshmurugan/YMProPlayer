@@ -37,9 +37,9 @@ struct HierarchyView: View {
                         Button(action: goBack) {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.8))
+                                .foregroundStyle(.primary.opacity(0.8))
                                 .padding(6)
-                                .background(Color.white.opacity(0.1))
+                                .background(Color.primary.opacity(0.1))
                                 .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
@@ -53,17 +53,17 @@ struct HierarchyView: View {
                     }) {
                         Text("Hierarchy")
                             .font(.system(size: 15, weight: currentPath == nil ? .bold : .regular))
-                            .foregroundStyle(currentPath == nil ? .white : .white.opacity(0.5))
+                            .foregroundStyle(currentPath == nil ? .white : .primary.opacity(0.5))
                     }
                     .buttonStyle(.plain)
                     
                     if let current = currentPath {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.3))
+                            .foregroundStyle(.primary.opacity(0.3))
                         Text(current.lastPathComponent)
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                             .lineLimit(1)
                     }
                 }
@@ -74,7 +74,7 @@ struct HierarchyView: View {
                     Button(action: onSearchTapped) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(Color.white.opacity(0.8))
+                            .foregroundStyle(Color.primary.opacity(0.8))
                     }
                     .buttonStyle(.plain)
                     .focusable(false)
@@ -87,7 +87,7 @@ struct HierarchyView: View {
                         Image(systemName: "square.grid.2x2")
                             .font(.system(size: 14))
                             .frame(width: 32, height: 26)
-                            .background(isGridView ? Color.white.opacity(0.15) : Color.clear)
+                            .background(isGridView ? Color.primary.opacity(0.15) : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
@@ -96,21 +96,21 @@ struct HierarchyView: View {
                         Image(systemName: "list.bullet")
                             .font(.system(size: 14))
                             .frame(width: 32, height: 26)
-                            .background(!isGridView ? Color.white.opacity(0.15) : Color.clear)
+                            .background(!isGridView ? Color.primary.opacity(0.15) : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(.plain)
                 }
                 .padding(4)
-                .background(Color.white.opacity(0.05))
+                .background(Color.primary.opacity(0.05))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(.primary.opacity(0.8))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(Color.black.opacity(0.15))
+            .background(Color.primary.opacity(0.15))
             
-            Divider().background(Color.white.opacity(0.1))
+            Divider().background(Color.primary.opacity(0.1))
             
             if isScanning {
                 VStack {
@@ -124,7 +124,7 @@ struct HierarchyView: View {
                     Spacer()
                     Image(systemName: "folder.badge.minus")
                         .font(.system(size: 50))
-                        .foregroundStyle(.white.opacity(0.2))
+                        .foregroundStyle(.primary.opacity(0.2))
                     Text("Folder is empty")
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -141,7 +141,7 @@ struct HierarchyView: View {
                         }
                         .font(.system(size: 12))
                         .buttonStyle(.plain)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.primary.opacity(0.6))
                     }
                     .padding(.horizontal, 24)
                     .padding(.vertical, 8)
@@ -400,7 +400,7 @@ struct HierarchyGridItem: View, Equatable {
             
             Text(item.name)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 4)
@@ -485,11 +485,11 @@ struct HierarchyGridItem: View, Equatable {
     
     private var fallbackIcon: some View {
         RoundedRectangle(cornerRadius: 12)
-            .fill(item.isDirectory ? Color.blue.opacity(0.15) : Color.white.opacity(0.05))
+            .fill(item.isDirectory ? Color.blue.opacity(0.15) : Color.primary.opacity(0.05))
             .overlay(
                 Image(systemName: item.isDirectory ? "folder.fill" : "music.note")
                     .font(.system(size: 40))
-                    .foregroundStyle(item.isDirectory ? Color.blue.opacity(0.8) : Color.white.opacity(0.3))
+                    .foregroundStyle(item.isDirectory ? Color.blue.opacity(0.8) : Color.primary.opacity(0.3))
             )
     }
 }
@@ -532,7 +532,7 @@ struct HierarchyListItem: View, Equatable {
             
             Text(item.name)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
             
             Spacer()
@@ -540,12 +540,12 @@ struct HierarchyListItem: View, Equatable {
             if item.isDirectory {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.2))
+                    .foregroundStyle(.primary.opacity(0.2))
             }
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 8)
-        .background(isHovered || isSelected ? Color.white.opacity(isSelected ? 0.15 : 0.05) : Color.clear)
+        .background(isHovered || isSelected ? Color.primary.opacity(isSelected ? 0.15 : 0.05) : Color.clear)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .contextMenu {
@@ -626,11 +626,11 @@ struct HierarchyListItem: View, Equatable {
     
     private var fallbackIcon: some View {
         RoundedRectangle(cornerRadius: 6)
-            .fill(item.isDirectory ? Color.blue.opacity(0.15) : Color.white.opacity(0.05))
+            .fill(item.isDirectory ? Color.blue.opacity(0.15) : Color.primary.opacity(0.05))
             .overlay(
                 Image(systemName: item.isDirectory ? "folder.fill" : "music.note")
                     .font(.system(size: 18))
-                    .foregroundStyle(item.isDirectory ? Color.blue.opacity(0.8) : Color.white.opacity(0.3))
+                    .foregroundStyle(item.isDirectory ? Color.blue.opacity(0.8) : Color.primary.opacity(0.3))
             )
     }
 }
@@ -660,7 +660,7 @@ struct HierarchyDragPreview: View {
             if count > 1 {
                 Text("\(count)")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .padding(6)
                     .background(Color.red)
                     .clipShape(Circle())
@@ -671,11 +671,11 @@ struct HierarchyDragPreview: View {
     
     private var fallbackIcon: some View {
         RoundedRectangle(cornerRadius: 8)
-            .fill(item.isDirectory ? Color.blue.opacity(0.15) : Color.white.opacity(0.05))
+            .fill(item.isDirectory ? Color.blue.opacity(0.15) : Color.primary.opacity(0.05))
             .overlay(
                 Image(systemName: item.isDirectory ? "folder.fill" : "music.note")
                     .font(.system(size: 30))
-                    .foregroundStyle(item.isDirectory ? Color.blue.opacity(0.8) : Color.white.opacity(0.3))
+                    .foregroundStyle(item.isDirectory ? Color.blue.opacity(0.8) : Color.primary.opacity(0.3))
             )
     }
 }

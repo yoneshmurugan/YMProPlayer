@@ -37,9 +37,9 @@ struct MiniPlayerView: View {
                         Button(action: { dismiss() }) {
                             Image(systemName: "xmark")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(.primary.opacity(0.8))
                                 .padding(8)
-                                .background(Color.black.opacity(0.4))
+                                .background(Color.primary.opacity(0.4))
                                 .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
@@ -49,9 +49,9 @@ struct MiniPlayerView: View {
                         Button(action: { showQueue.toggle() }) {
                             Image(systemName: "list.bullet")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(showQueue ? .green : .white.opacity(0.8))
+                                .foregroundColor(showQueue ? .green : .primary.opacity(0.8))
                                 .padding(8)
-                                .background(Color.black.opacity(0.4))
+                                .background(Color.primary.opacity(0.4))
                                 .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
@@ -68,12 +68,12 @@ struct MiniPlayerView: View {
                     VStack(spacing: 4) {
                         Text(vm.currentTrack?.title ?? "YM Pro")
                             .font(.system(size: 16, weight: .heavy))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                             .lineLimit(1)
                         
                         Text(vm.currentTrack?.artistName ?? "No Track Playing")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(.primary.opacity(0.7))
                             .lineLimit(1)
                     }
                     .padding(.horizontal, 16)
@@ -85,14 +85,14 @@ struct MiniPlayerView: View {
                         Button(action: { vm.skipPrevious() }) {
                             Image(systemName: "backward.end.fill")
                                 .font(.system(size: 20))
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
                         
                         Button(action: { vm.togglePlayPause() }) {
                             Image(systemName: vm.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                                 .font(.system(size: 44))
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                         }
                         .buttonStyle(.plain)
@@ -100,7 +100,7 @@ struct MiniPlayerView: View {
                         Button(action: { vm.skipNext() }) {
                             Image(systemName: "forward.end.fill")
                                 .font(.system(size: 20))
-                                .foregroundColor(.white)
+                                .foregroundColor(.primary)
                         }
                         .buttonStyle(.plain)
                     }

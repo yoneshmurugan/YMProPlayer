@@ -247,7 +247,11 @@ final class CoreAudioHALEngine {
         
         // Release Hog Mode safely before changing the sample rate route
         let hadHogMode = isHogMode
-        if hadHogMode { _ = releaseHogMode() }
+        if hadHogMode { 
+            _ = releaseHogMode() 
+            // Give CoreAudio a moment to release the exclusivity lock before changing rate
+            try? await Task.sleep(nanoseconds: 50_000_000) 
+        }
 
         var availAddr = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyAvailableNominalSampleRates,
@@ -257,11 +261,14 @@ final class CoreAudioHALEngine {
         var rangeSize: UInt32 = 0
         AudioObjectGetPropertyDataSize(currentDeviceID, &availAddr, 0, nil, &rangeSize)
         let count = Int(rangeSize) / MemoryLayout<AudioValueRange>.size
-        var ranges = [AudioValueRange](repeating: AudioValueRange(), count: max(1, count))
-        AudioObjectGetPropertyData(currentDeviceID, &availAddr, 0, nil, &rangeSize, &ranges)
-        guard ranges.contains(where: { rate >= $0.mMinimum && rate <= $0.mMaximum }) else {
-            NSLog("[ytsplayer] Sample rate \(rate) Hz not supported")
-            return false
+        
+        if count > 0 {
+            var ranges = [AudioValueRange](repeating: AudioValueRange(), count: count)
+            AudioObjectGetPropertyData(currentDeviceID, &availAddr, 0, nil, &rangeSize, &ranges)
+            let rangeStrings = ranges.map { "\($0.mMinimum)-\($0.mMaximum)" }.joined(separator: ", ")
+            NSLog("[ytsplayer] Reported ranges: \(rangeStrings)")
+        } else {
+            NSLog("[ytsplayer] Device did not report supported sample rates, attempting anyway...")
         }
 
         // Ramp down → set rate → ramp up
@@ -282,6 +289,11 @@ final class CoreAudioHALEngine {
         if status == noErr {
             context.pointee.sampleRate = UInt32(rate)
         }
+        
+        if hadHogMode {
+            _ = acquireHogMode()
+        }
+        
         return status == noErr
     }
 
@@ -314,32 +326,50 @@ final class CoreAudioHALEngine {
 
     // MARK: - IOProc
 
-    func registerIOProc() -> Bool {
-        guard ioProcID == nil else { return true }
-        var procID: AudioDeviceIOProcID?
-        let status = AudioEngine_CreateIOProc(
-            currentDeviceID,
-            context,
-            &procID
-        )
-        if status == noErr {
-            ioProcID = procID
-            return true
+    private func setupAndStartIOProc() -> Bool {
+        if ioProcID != nil {
+            stopPlayback()
         }
-        return false
-    }
 
-    func startPlayback() -> Bool {
-        guard let id = ioProcID else { return false }
-        return AudioDeviceStart(currentDeviceID, id) == noErr
+        var status: OSStatus = -1
+        let maxRetries = 5
+
+        for i in 1...maxRetries {
+            var procID: AudioDeviceIOProcID? = nil
+            status = AudioEngine_CreateIOProc(currentDeviceID, context, &procID)
+            
+            if status == noErr, let p = procID {
+                ioProcID = p
+                
+                // Allow a brief settling time before starting
+                usleep(50_000) // 50ms
+                
+                let startStatus = AudioDeviceStart(currentDeviceID, p)
+                if startStatus == noErr {
+                    NSLog("[ytsplayer] IOProc created and started successfully on attempt \(i).")
+                    return true
+                } else {
+                    NSLog("[ytsplayer] AudioDeviceStart failed (status: \(startStatus)). Destroying IOProc and retrying \(i)/\(maxRetries)...")
+                    AudioDeviceStop(currentDeviceID, p)
+                    AudioEngine_DestroyIOProc(currentDeviceID, p)
+                    ioProcID = nil
+                }
+            } else {
+                NSLog("[ytsplayer] AudioEngine_CreateIOProc failed (status: \(status)). Retrying \(i)/\(maxRetries)...")
+            }
+            
+            // Sleep longer on subsequent failures to let CoreAudio unwedge
+            usleep(useconds_t(200_000 * i)) 
+        }
+
+        NSLog("[ytsplayer] setupAndStartIOProc completely failed after \(maxRetries) attempts.")
+        return false
     }
 
     @discardableResult
     func resumePlayback() -> Bool {
         if ioProcID == nil {
-            guard registerIOProc() else { return false }
-            usleep(50_000)
-            guard startPlayback() else { return false }
+            guard setupAndStartIOProc() else { return false }
         }
         AEC_SetIsPlaying(context, true)
         return true
@@ -399,13 +429,8 @@ final class CoreAudioHALEngine {
             if !ok {
                 let allowDownsampling = UserDefaults.standard.bool(forKey: "allowDownsampling")
                 
-                if !allowDownsampling {
-                    NSLog("[ytsplayer] Hardware rejected sample rate \(originalRate) and downsampling is disabled.")
-                    return false
-                }
-                
                 // Integer downsampling fallback
-                if originalRate >= 176400 {
+                if allowDownsampling && originalRate >= 176400 {
                     let ok2x = await setHardwareSampleRate(originalRate / 2.0)
                     if ok2x {
                         ratio = 2
@@ -424,8 +449,19 @@ final class CoreAudioHALEngine {
                 }
                 
                 if ratio == 1 {
-                    NSLog("[ytsplayer] Hardware rejected sample rate \(originalRate)")
-                    return false
+                    NSLog("[ytsplayer] Hardware rejected all preferred sample rates. Falling back to current hardware rate to prevent playback failure.")
+                    // Do not return false here! Just accept whatever rate the device is currently stuck at.
+                    // The audio might be pitch-shifted, but it will at least play on restricted virtual/aggregate devices.
+                    var addr = AudioObjectPropertyAddress(
+                        mSelector: kAudioDevicePropertyNominalSampleRate,
+                        mScope:    kAudioObjectPropertyScopeGlobal,
+                        mElement:  kAudioObjectPropertyElementMain
+                    )
+                    var current = Float64(0)
+                    var size = UInt32(MemoryLayout<Float64>.size)
+                    if AudioObjectGetPropertyData(currentDeviceID, &addr, 0, nil, &size, &current) == noErr {
+                        hardwareRate = current
+                    }
                 }
             }
         }
@@ -449,9 +485,10 @@ final class CoreAudioHALEngine {
             _ = releaseHogMode()
         }
 
-        guard registerIOProc() else { return false }
-        try? await Task.sleep(nanoseconds: 50_000_000)
-        guard startPlayback() else { return false }
+        guard setupAndStartIOProc() else { 
+            NSLog("[ytsplayer] loadTrack failed: setupAndStartIOProc returned false")
+            return false 
+        }
 
         // Start whichever worker was created
         if let w = decoderWorker {
