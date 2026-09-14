@@ -387,6 +387,27 @@ struct SettingsView: View {
                     .padding(.horizontal, 24)
                     .padding(.vertical, 20)
                 
+                // ── App Store Feedback ────────────────────────────────────
+                Button(action: {
+                    if let url = URL(string: "macappstore://apps.apple.com/app/id6804453207?action=write-review") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "star.bubble.fill")
+                        Text("Rate on the App Store")
+                    }
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(themeManager.accentColor.color)
+                
+                Divider()
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                
                 // ── Footer ────────────────────────────────────────────────
                 VStack(spacing: 6) {
                     Text("Crafted with love ♥")
