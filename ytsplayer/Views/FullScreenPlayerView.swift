@@ -9,9 +9,6 @@ struct FullScreenPlayerView: View {
     let database: DatabasePool
     @Environment(\.dismiss) var dismiss
 
-    @State private var isFetchingLyrics = false
-    @State private var lyricsError: String?
-
     var body: some View {
         FullScreenPlayerContent(
             track: vm.currentTrack,
@@ -39,9 +36,6 @@ struct FullScreenPlayerContent: View {
     let database: DatabasePool
     let dismiss: DismissAction
     let onLyricsFetched: (String) -> Void
-    
-    @State private var isFetchingLyrics = false
-    @State private var lyricsError: String?
 
     var body: some View {
         HStack(alignment: .top, spacing: 50) {
@@ -129,7 +123,7 @@ struct FullScreenPlayerContent: View {
             }
             .scaledToFill()
             .blur(radius: 80)
-            .overlay(Color.primary.opacity(0.55))
+            .overlay(.regularMaterial)
             .ignoresSafeArea()
         } else {
             LinearGradient(
@@ -271,26 +265,5 @@ struct FullScreenPlayerContent: View {
         }
     }
 
-    // MARK: - Lyrics Fetch
 
-    private func fetchLyrics() {
-        guard let t = track else { return }
-        isFetchingLyrics = true
-        lyricsError = nil
-
-        Task {
-            do {
-                let fetchedLyrics = try await LyricsService.shared.fetchAndEmbedLyrics(for: t, database: database)
-                await MainActor.run {
-                    onLyricsFetched(fetchedLyrics)
-                    isFetchingLyrics = false
-                }
-            } catch {
-                await MainActor.run {
-                    lyricsError = "Could not find lyrics online."
-                    isFetchingLyrics = false
-                }
-            }
-        }
-    }
 }

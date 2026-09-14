@@ -10,12 +10,11 @@ struct SettingsView: View {
     let halEngine: CoreAudioHALEngine
 
     @State private var showFolderPicker = false
-    @State private var hogModeEnabled   = false
     @State private var availableRates: [Double] = []
     @AppStorage("allowDownsampling") private var allowDownsampling = false
     @AppStorage("isGaplessEnabled") private var isGaplessEnabled = false
     @AppStorage("isBitPerfect") private var isBitPerfect = true
-    @AppStorage("hogModeEnabled") private var savedHogModeEnabled = true
+    @AppStorage("hogModeEnabled") private var hogModeEnabled = false
     @AppStorage("replayGainMode") private var replayGainMode = "off"
     @Environment(\.dismiss) var dismiss
     
@@ -219,6 +218,9 @@ struct SettingsView: View {
                         )
                     }
                 }
+                .disabled(playbackVM.eqEnabled || playbackVM.crossfeedEnabled)
+                .grayscale((playbackVM.eqEnabled || playbackVM.crossfeedEnabled) ? 1.0 : 0.0)
+                .opacity((playbackVM.eqEnabled || playbackVM.crossfeedEnabled) ? 0.5 : 1.0)
                 .onChange(of: hogModeEnabled) { enabled in
                     _ = halEngine.setHogModeSafe(enabled)
                     DispatchQueue.main.async {
@@ -235,6 +237,9 @@ struct SettingsView: View {
                         )
                     }
                 }
+                .disabled(playbackVM.eqEnabled || playbackVM.crossfeedEnabled)
+                .grayscale((playbackVM.eqEnabled || playbackVM.crossfeedEnabled) ? 1.0 : 0.0)
+                .opacity((playbackVM.eqEnabled || playbackVM.crossfeedEnabled) ? 0.5 : 1.0)
                 .onChange(of: isBitPerfect) { enabled in
                     playbackVM.isBitPerfect = enabled
                 }
@@ -278,27 +283,130 @@ struct SettingsView: View {
     }
     
     private var aboutTab: some View {
-        Form {
-            Section("About") {
-                LabeledContent("Version", value: "1.0.0")
-                LabeledContent("Build", value: "BitPerfect·FLAC·CoreAudio HAL")
+        ScrollView {
+            VStack(spacing: 0) {
+                
+                // ── Hero ──────────────────────────────────────────────────
+                ZStack {
+                    LinearGradient(
+                        colors: [
+                            themeManager.accentColor.color.opacity(0.3),
+                            themeManager.accentColor.color.opacity(0.05),
+                            Color.clear
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .frame(height: 220)
+                    
+                    VStack(spacing: 14) {
+                        if let icon = NSImage(named: "AppIcon") {
+                            Image(nsImage: icon)
+                                .resizable()
+                                .frame(width: 96, height: 96)
+                                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                .shadow(color: themeManager.accentColor.color.opacity(0.5), radius: 20, x: 0, y: 8)
+                        }
+                        
+                        VStack(spacing: 4) {
+                            Text("YM Pro")
+                                .font(.system(size: 26, weight: .black, design: .rounded))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.primary, .primary.opacity(0.7)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                            
+                            Text("Version 2.1  ·  Build 11")
+                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 4)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }
+                    }
+                    .padding(.top, 24)
+                }
+                
+                // ── Tagline ───────────────────────────────────────────────
+                Text("Bit-Perfect Audio. No Compromises.")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
+                
+                // ── Feature Cards ─────────────────────────────────────────
+                VStack(spacing: 10) {
+                    Text("What's Under the Hood")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                    
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                        AboutFeatureCard(icon: "waveform",                         title: "CoreAudio HAL",    subtitle: "Direct hardware I/O",    accent: themeManager.accentColor.color)
+                        AboutFeatureCard(icon: "music.note",                       title: "FLAC + ALAC",      subtitle: "Lossless decoding",        accent: themeManager.accentColor.color)
+                        AboutFeatureCard(icon: "infinity",                         title: "Gapless Playback", subtitle: "Zero-gap transitions",     accent: themeManager.accentColor.color)
+                        AboutFeatureCard(icon: "slider.horizontal.3",              title: "Parametric EQ",    subtitle: "10-band precision",        accent: themeManager.accentColor.color)
+                        AboutFeatureCard(icon: "gauge.with.dots.needle.67percent", title: "ReplayGain",       subtitle: "Album & track gain",       accent: themeManager.accentColor.color)
+                        AboutFeatureCard(icon: "sparkles",                         title: "Liquid Glass UI",  subtitle: "Native macOS design",      accent: themeManager.accentColor.color)
+                    }
+                    .padding(.horizontal, 16)
+                }
+                
+                Divider()
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                
+                // ── Tech Stack ────────────────────────────────────────────
+                VStack(spacing: 10) {
+                    Text("Technologies")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                    
+                    HStack(spacing: 8) {
+                        ForEach(["Swift 5", "SwiftUI", "CoreAudio", "GRDB", "libFLAC"], id: \.self) { tech in
+                            Text(tech)
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(themeManager.accentColor.color)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(themeManager.accentColor.color.opacity(0.12), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                
+                Divider()
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                
+                // ── Footer ────────────────────────────────────────────────
+                VStack(spacing: 6) {
+                    Text("Crafted with love ♥")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    Text("© 2026 YM Pro. All rights reserved.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                    Text("Made for audiophiles, by an audiophile.")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(.quaternary)
+                        .padding(.top, 2)
+                }
+                .padding(.bottom, 28)
             }
         }
-        .formStyle(.grouped)
     }
 
-    private func deviceName(for deviceID: AudioObjectID) -> String {
-        guard deviceID != AudioObjectID(kAudioObjectUnknown) else { return "Unknown" }
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioDevicePropertyDeviceNameCFString,
-            mScope:    kAudioObjectPropertyScopeGlobal,
-            mElement:  kAudioObjectPropertyElementMain
-        )
-        var name: CFString = "" as CFString
-        var size = UInt32(MemoryLayout<CFString>.size)
-        AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &name)
-        return name as String
-    }
+
+
+
 }
 
 struct InfoButton: View {
@@ -326,5 +434,44 @@ struct InfoButton: View {
             .padding()
             .frame(width: 320)
         }
+    }
+}
+
+// MARK: - About Feature Card
+
+struct AboutFeatureCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let accent: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(accent.opacity(0.15))
+                    .frame(width: 38, height: 38)
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(accent)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(accent.opacity(0.2), lineWidth: 1)
+        )
     }
 }

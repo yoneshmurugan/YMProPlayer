@@ -51,6 +51,25 @@ typedef struct {
 
     /// Ratio for integer downsampling (e.g. 2 for 192kHz -> 96kHz, 1 for no downsampling)
     uint32_t downsampleRatio;
+
+    // ── DSP: EQ ─────────────────────────────────────────────────────────────
+    _Atomic bool eqEnabled;
+    _Atomic float eqGains[10]; // Gains for 10 bands (-12dB to +12dB)
+    
+    // Internal state for 10 Stereo Biquad filters
+    float eq_b0[10], eq_b1[10], eq_b2[10], eq_a1[10], eq_a2[10];
+    float eq_xl1[10], eq_xl2[10], eq_yl1[10], eq_yl2[10];
+    float eq_xr1[10], eq_xr2[10], eq_yr1[10], eq_yr2[10];
+    float eq_lastGains[10]; // To detect changes and recalculate coefficients
+
+    // ── DSP: Crossfeed ──────────────────────────────────────────────────────
+    _Atomic bool crossfeedEnabled;
+    float cf_delayL[128]; // Circular buffer for crossfeed delay
+    float cf_delayR[128];
+    int cf_delayIdx;
+    float cf_xl1, cf_yl1; // Lowpass for L->R bleed
+    float cf_xr1, cf_yr1; // Lowpass for R->L bleed
+    bool cf_initialized;
 } AudioEngineContext;
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -66,6 +85,14 @@ static inline AudioEngineContext *AudioEngineContext_Create(size_t ringBufferCap
     atomic_store_explicit(&ctx->isBitPerfect,         true,  memory_order_relaxed);
     atomic_store_explicit(&ctx->softwareVolume,       1.0f,  memory_order_relaxed);
     ctx->downsampleRatio = 1;
+    
+    atomic_store_explicit(&ctx->eqEnabled, false, memory_order_relaxed);
+    atomic_store_explicit(&ctx->crossfeedEnabled, false, memory_order_relaxed);
+    for (int i = 0; i < 10; i++) {
+        atomic_store_explicit(&ctx->eqGains[i], 0.0f, memory_order_relaxed);
+        ctx->eq_lastGains[i] = -999.0f; // Force initial calc
+    }
+    
     return ctx;
 }
 
@@ -90,6 +117,35 @@ static inline uint64_t AEC_GetCurrentFrame(AudioEngineContext *ctx) {
 }
 static inline void     AEC_SetCurrentFrame(AudioEngineContext *ctx, uint64_t v) {
     atomic_store_explicit(&ctx->currentFramePosition, v, memory_order_release);
+}
+
+static inline uint32_t AEC_GetDownsampleRatio(AudioEngineContext *ctx) {
+    return ctx->downsampleRatio;
+}
+
+// ── DSP Accessors ──────────────────────────────────────────────────────────
+
+static inline bool AEC_GetEQEnabled(AudioEngineContext *ctx) {
+    return atomic_load_explicit(&ctx->eqEnabled, memory_order_relaxed);
+}
+static inline void AEC_SetEQEnabled(AudioEngineContext *ctx, bool v) {
+    atomic_store_explicit(&ctx->eqEnabled, v, memory_order_relaxed);
+}
+
+static inline float AEC_GetEQBandGain(AudioEngineContext *ctx, int bandIndex) {
+    if (bandIndex < 0 || bandIndex >= 10) return 0.0f;
+    return atomic_load_explicit(&ctx->eqGains[bandIndex], memory_order_relaxed);
+}
+static inline void AEC_SetEQBandGain(AudioEngineContext *ctx, int bandIndex, float gainDB) {
+    if (bandIndex < 0 || bandIndex >= 10) return;
+    atomic_store_explicit(&ctx->eqGains[bandIndex], gainDB, memory_order_relaxed);
+}
+
+static inline bool AEC_GetCrossfeedEnabled(AudioEngineContext *ctx) {
+    return atomic_load_explicit(&ctx->crossfeedEnabled, memory_order_relaxed);
+}
+static inline void AEC_SetCrossfeedEnabled(AudioEngineContext *ctx, bool v) {
+    atomic_store_explicit(&ctx->crossfeedEnabled, v, memory_order_relaxed);
 }
 
 static inline uint64_t AEC_GetTotalFrames(AudioEngineContext *ctx) {

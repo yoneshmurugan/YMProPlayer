@@ -29,6 +29,26 @@ final class CoreAudioHALEngine {
         get { AEC_GetSoftwareVolume(context) }
         set { AEC_SetSoftwareVolume(context, max(0.0, min(1.0, newValue))) }
     }
+    
+    // ── DSP Properties ─────────────────────────────────────────────────────────
+    
+    var crossfeedEnabled: Bool {
+        get { AEC_GetCrossfeedEnabled(context) }
+        set { AEC_SetCrossfeedEnabled(context, newValue) }
+    }
+    
+    var eqEnabled: Bool {
+        get { AEC_GetEQEnabled(context) }
+        set { AEC_SetEQEnabled(context, newValue) }
+    }
+    
+    func setEQBandGain(index: Int, gainDB: Float) {
+        AEC_SetEQBandGain(context, Int32(index), gainDB)
+    }
+    
+    func getEQBandGain(index: Int) -> Float {
+        return AEC_GetEQBandGain(context, Int32(index))
+    }
 
     // ── Device Discovery ───────────────────────────────────────────────────────
     private(set) var currentDeviceID: AudioObjectID = AudioObjectID(kAudioObjectUnknown)

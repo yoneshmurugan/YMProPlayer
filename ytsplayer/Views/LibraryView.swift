@@ -10,7 +10,6 @@ struct LibraryView: View {
     @State private var showFolderPicker = false
     @AppStorage("albumsIsGridView") private var isGridView = true
     var onSearchTapped: (() -> Void)? = nil
-    var onProfileTapped: (() -> Void)? = nil
     
     @EnvironmentObject var playlistManager: PlaylistManager
     @Environment(\.openWindow) var openWindow

@@ -2,7 +2,7 @@ name: YM Pro
 options:
   bundleIdPrefix: com.ytsplayer
   deploymentTarget:
-    macOS: "13.0"
+    macOS: "14.0"
   xcodeVersion: "16.0"
   generateEmptyDirectories: true
   createIntermediateGroups: true
@@ -35,7 +35,7 @@ targets:
         NSHighResolutionCapable: true
         NSSupportsAutomaticTermination: false
         NSRequiresAquaSystemAppearance: false
-        LSMinimumSystemVersion: "13.0"
+        LSMinimumSystemVersion: "14.0"
         NSMicrophoneUsageDescription: "YM Pro requires audio device access for bit-perfect playback."
         LSApplicationCategoryType: "public.app-category.music"
         ITSAppUsesNonExemptEncryption: false
@@ -65,10 +65,10 @@ targets:
         DEVELOPMENT_TEAM: 7C4RH6695J
         GCC_C_LANGUAGE_STANDARD: c11
         SWIFT_VERSION: "5"
-        MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "10"
+        MARKETING_VERSION: "2.1.0"
+        CURRENT_PROJECT_VERSION: "11"
         PRODUCT_BUNDLE_IDENTIFIER: com.yonesh.ympro.mac
-        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
         LD_RUNPATH_SEARCH_PATHS:
           - "$(inherited)"
           - "@executable_path/../Frameworks"
@@ -134,7 +134,7 @@ targets:
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "2"
         PRODUCT_BUNDLE_IDENTIFIER: com.yonesh.ympro.mac.widget
-        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
         SWIFT_VERSION: "5"
         ENABLE_APP_SANDBOX: YES
         CODE_SIGN_STYLE: Automatic

@@ -41,4 +41,11 @@ ytsplayer.xcodeproj/
 plan.md
 .gemini/
 
+# Scratch / one-off scripts
+scratch.swift
+scratch.py
+update_track*.py
+update_track*.swift
+*.scratch.*
+
 GRDB/

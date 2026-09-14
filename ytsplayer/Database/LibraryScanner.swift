@@ -80,27 +80,32 @@ final class LibraryScanner: ObservableObject {
                             $0.withMemoryRebound(to: CChar.self, capacity: 512) { String(cString: $0) }
                         }.trimmingCharacters(in: .whitespacesAndNewlines)
                         
-                        // Clean up multiple artists: keep only the main artist
-                        var artist = rawArtist
-                        let delimiters = [";", "/", " feat.", " ft.", " feat ", " ft ", ", ", " & ", "&"]
-                        for d in delimiters {
-                            if let first = artist.components(separatedBy: d).first, !first.isEmpty {
-                                // Exclude splitting by comma or ampersand for known special cases if needed, but usually 
-                                // it's better to aggressively split for clean artist sections.
-                                if (d == ", " || d == " & " || d == "&") && (artist.contains("The Creator") || artist.contains("Wind & Fire") || artist.contains("Hall & Oates") || artist.contains("Crosby, Stills")) {
-                                    continue
+                        // Helper to clean up multiple artists and keep only the main artist
+                        let cleanArtistName: (String) -> String = { name in
+                            var cleaned = name
+                            let delimiters = [";", "/", " feat.", " ft.", " feat ", " ft ", ", ", " & ", "&"]
+                            for d in delimiters {
+                                if let first = cleaned.components(separatedBy: d).first, !first.isEmpty {
+                                    if (d == ", " || d == " & " || d == "&") && (cleaned.contains("The Creator") || cleaned.contains("Wind & Fire") || cleaned.contains("Hall & Oates") || cleaned.contains("Crosby, Stills")) {
+                                        continue
+                                    }
+                                    cleaned = String(first).trimmingCharacters(in: .whitespacesAndNewlines)
                                 }
-                                artist = String(first).trimmingCharacters(in: .whitespacesAndNewlines)
                             }
+                            return cleaned
                         }
+                        
+                        let artist = cleanArtistName(rawArtist)
                         
                         let album = withUnsafePointer(to: meta.album) {
                             $0.withMemoryRebound(to: CChar.self, capacity: 512) { String(cString: $0) }
                         }.trimmingCharacters(in: .whitespacesAndNewlines)
                         
-                        let albumArtist = withUnsafePointer(to: meta.albumArtist) {
+                        let rawAlbumArtist = withUnsafePointer(to: meta.albumArtist) {
                             $0.withMemoryRebound(to: CChar.self, capacity: 512) { String(cString: $0) }
                         }.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        let albumArtist = cleanArtistName(rawAlbumArtist)
 
                         var finalLyrics: String? = nil
                         if let lyricsC = meta.lyricsData {
@@ -188,23 +193,65 @@ final class LibraryScanner: ObservableObject {
                 try? await Task.detached(priority: .utility) { [db = self.db] in
                     try db.write { dbConn in
                         for (artistRec, albumRec, trackRec, _) in records {
-                            // Upsert artist
-                            var artist = artistRec
-                            try artist.insert(dbConn)
-                            let artistId = try ArtistRecord.filter(Column("name") == artist.name).fetchOne(dbConn)?.id
+                            // 1. Upsert Track Artist
+                            let normTrackArtist = artistRec.name.lowercased().replacingOccurrences(of: " ", with: "").replacingOccurrences(of: ".", with: "")
+                            let trackArtistId: Int64
+                            
+                            if let existing = try Int64.fetchOne(dbConn, sql: "SELECT id FROM artists WHERE name = ? OR REPLACE(REPLACE(LOWER(name), ' ', ''), '.', '') = ? LIMIT 1", arguments: [artistRec.name, normTrackArtist]) {
+                                trackArtistId = existing
+                            } else {
+                                var trackArtist = artistRec
+                                try trackArtist.insert(dbConn)
+                                trackArtistId = dbConn.lastInsertedRowID
+                            }
 
-                            // Upsert album
-                            var album = albumRec
-                            album.artistId = artistId
-                            try album.insert(dbConn)
-                            let albumId = try AlbumRecord
-                                .filter(Column("title") == album.title && Column("artistId") == artistId)
-                                .fetchOne(dbConn)?.id
+                            let folderPath = URL(fileURLWithPath: trackRec.filePath).deletingLastPathComponent().path
+                            
+                            // 2. Try to find an existing album in the same folder with the same title
+                            // This smartly groups untagged compilation albums (like "Baasha") into a single album
+                            let existingAlbumId = try Int64.fetchOne(dbConn, sql: """
+                                SELECT a.id FROM albums a
+                                JOIN tracks t ON t.albumId = a.id
+                                WHERE a.title = ? 
+                                AND t.filePath LIKE ?
+                                LIMIT 1
+                            """, arguments: [albumRec.title, "\(folderPath)/%"])
 
-                            // Upsert track
+                            let finalAlbumId: Int64
+                            if let id = existingAlbumId {
+                                finalAlbumId = id
+                            } else {
+                                // 3. Resolve and Upsert Album Artist for NEW album
+                                let resolvedAlbumArtistName = albumRec.albumArtist ?? artistRec.name
+                                let normAlbumArtist = resolvedAlbumArtistName.lowercased().replacingOccurrences(of: " ", with: "").replacingOccurrences(of: ".", with: "")
+                                let albumArtistId: Int64
+                                
+                                if let existing = try Int64.fetchOne(dbConn, sql: "SELECT id FROM artists WHERE name = ? OR REPLACE(REPLACE(LOWER(name), ' ', ''), '.', '') = ? LIMIT 1", arguments: [resolvedAlbumArtistName, normAlbumArtist]) {
+                                    albumArtistId = existing
+                                } else {
+                                    var albumArtist = ArtistRecord(name: resolvedAlbumArtistName)
+                                    try albumArtist.insert(dbConn)
+                                    albumArtistId = dbConn.lastInsertedRowID
+                                }
+
+                                // 4. Upsert Album (linked to albumArtistId)
+                                var album = albumRec
+                                album.artistId = albumArtistId
+                                try album.insert(dbConn)
+                                finalAlbumId = dbConn.lastInsertedRowID
+                            }
+
+                            // 5. Upsert Track (linked to trackArtistId and finalAlbumId)
                             var track = trackRec
-                            track.albumId  = albumId
-                            track.artistId = artistId
+                            track.albumId  = finalAlbumId
+                            track.artistId = trackArtistId
+                            
+                            if let existingTrack = try TrackRecord.fetchOne(dbConn, sql: "SELECT * FROM tracks WHERE filePath = ?", arguments: [track.filePath]) {
+                                track.playCount = existingTrack.playCount
+                                track.lastPlayedAt = existingTrack.lastPlayedAt
+                                track.isFavorite = existingTrack.isFavorite
+                            }
+                            
                             try track.insert(dbConn)
                         }
                     }

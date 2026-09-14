@@ -14,6 +14,7 @@ struct NowPlayingBar: View {
     
     @State private var isFavoriteLocal = false
     @State private var isQueuePresented = false
+    @State private var isDSPPresented = false
     @StateObject private var waveform = WaveformGenerator()
     var onArtworkTap: (() -> Void)? = nil
 
@@ -48,14 +49,16 @@ struct NowPlayingBar: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     if let artist = vm.currentTrack?.artistName, !artist.isEmpty {
                         Text(artist)
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                 }
-                .frame(minWidth: 160, alignment: .leading)
+                .frame(minWidth: 60, alignment: .leading)
                 
                 // Favorite Button
                 if let track = vm.currentTrack {
@@ -74,7 +77,7 @@ struct NowPlayingBar: View {
                     .padding(.leading, 8)
                 }
             }
-            .frame(minWidth: 150, idealWidth: 240, maxWidth: 280, alignment: .leading)
+            .frame(minWidth: 100, idealWidth: 200, maxWidth: 280, alignment: .leading)
             .padding(.leading, 20)
             .onChange(of: vm.currentTrack?.id) { _ in
                 isFavoriteLocal = vm.currentTrack?.isFavorite ?? false
@@ -203,6 +206,20 @@ struct NowPlayingBar: View {
                 HStack(spacing: 16) {
 
                         
+                    // DSP Button
+                    Button(action: { isDSPPresented.toggle() }) {
+                        Image(systemName: "dial.max")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle((vm.eqEnabled || vm.crossfeedEnabled) ? Color.accentColor : Color.primary.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .focusable(false)
+                    .help("DSP Settings (EQ & Crossfeed)")
+                    .popover(isPresented: $isDSPPresented, arrowEdge: .top) {
+                        DSPSettingsView()
+                            .environmentObject(vm)
+                    }
+                    
                     // Mini-Player Toggle
                     Button(action: { openWindow(id: "MiniPlayer") }) {
                         Image(systemName: "pip.enter")
@@ -233,13 +250,13 @@ struct NowPlayingBar: View {
                         
                         Slider(value: $vm.volume, in: 0...1)
                             .tint(Color.white)
-                            .frame(width: 80)
+                            .frame(minWidth: 40, idealWidth: 80, maxWidth: 100)
                         
                         Image(systemName: "speaker.wave.3.fill")
                             .font(.system(size: 12))
                             .foregroundColor(.primary.opacity(0.8))
                     }
-                    .frame(width: 130)
+                    .frame(minWidth: 70, idealWidth: 130, maxWidth: 130)
                     .disabled(vm.isBitPerfect)
                     .opacity(vm.isBitPerfect ? 0.3 : 1.0)
                     .grayscale(vm.isBitPerfect ? 1.0 : 0.0)
@@ -432,5 +449,124 @@ final class WaveformGenerator: ObservableObject {
                 self.peaks = normalized
             }
         }
+    }
+}
+
+// MARK: - DSP Settings View
+struct DSPSettingsView: View {
+    @EnvironmentObject var playbackVM: PlaybackViewModel
+    
+    let eqLabels = ["31.5", "63", "125", "250", "500", "1K", "2K", "4K", "8K", "16K"]
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Text("DSP Settings")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding(.bottom, 10)
+            
+            // Crossfeed Toggle
+            Toggle(isOn: $playbackVM.crossfeedEnabled) {
+                VStack(alignment: .leading) {
+                    Text("Bauer Crossfeed")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Text("Reduces headphone listening fatigue by simulating stereo speaker crosstalk.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .toggleStyle(SwitchToggleStyle())
+            
+            Divider()
+            
+            // EQ Toggle
+            HStack {
+                Toggle(isOn: $playbackVM.eqEnabled) {
+                    Text("10-Band Graphic Equalizer")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                .toggleStyle(SwitchToggleStyle())
+                
+                Spacer()
+                
+                Button("Reset") {
+                    playbackVM.eqGains = Array(repeating: 0.0, count: 10)
+                }
+                .font(.caption)
+                .foregroundColor(.accentColor)
+                .disabled(!playbackVM.eqEnabled)
+            }
+            
+            // EQ Sliders
+            HStack(spacing: 12) {
+                ForEach(0..<10, id: \.self) { index in
+                    VStack {
+                        Text(String(format: "%+d", Int(playbackVM.eqGains[index])))
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundColor(.secondary)
+                            .frame(height: 12)
+                        
+                        // Custom vertical slider approach
+                        GeometryReader { proxy in
+                            ZStack(alignment: .bottom) {
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(width: 4)
+                                    .cornerRadius(2)
+                                
+                                let normalized = (playbackVM.eqGains[index] + 12.0) / 24.0
+                                
+                                Rectangle()
+                                    .fill(playbackVM.eqEnabled ? Color.accentColor : Color.gray)
+                                    .frame(width: 4, height: CGFloat(normalized) * proxy.size.height)
+                                    .cornerRadius(2)
+                                
+                                Circle()
+                                    .fill(Color.white)
+                                    .shadow(radius: 1)
+                                    .frame(width: 14, height: 14)
+                                    .offset(y: -CGFloat(normalized) * proxy.size.height + 7)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .gesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onChanged { value in
+                                        guard playbackVM.eqEnabled else { return }
+                                        let percent = 1.0 - (value.location.y / proxy.size.height)
+                                        let clampedPercent = max(0.0, min(1.0, percent))
+                                        let db = Float(clampedPercent * 24.0 - 12.0)
+                                        // Snap to 0 if close
+                                        playbackVM.eqGains[index] = abs(db) < 0.5 ? 0.0 : db
+                                    }
+                            )
+                        }
+                        
+                        Text(eqLabels[index])
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+                }
+            }
+            .frame(height: 150)
+            .opacity(playbackVM.eqEnabled ? 1.0 : 0.5)
+            
+            if playbackVM.eqEnabled || playbackVM.crossfeedEnabled {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundColor(.yellow)
+                    Text("DSP is active. Output is no longer Bit-Perfect.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 10)
+            }
+        }
+        .padding()
+        .frame(width: 380)
     }
 }

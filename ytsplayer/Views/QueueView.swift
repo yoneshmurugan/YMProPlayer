@@ -2,7 +2,7 @@ import SwiftUI
 
 struct QueueView: View {
     @EnvironmentObject var playbackVM: PlaybackViewModel
-    @State private var draggedItem: TrackViewModel?
+    @State private var draggedItem: QueueItem?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -32,7 +32,8 @@ struct QueueView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(playbackVM.queue.enumerated()), id: \.element.id) { index, track in
+                        ForEach(Array(playbackVM.queue.enumerated()), id: \.element.id) { index, queueItem in
+                            let track = queueItem.track
                             let isPlaying = (index == playbackVM.queueIndex)
                             let isPast = (index < playbackVM.queueIndex)
                             
@@ -45,15 +46,16 @@ struct QueueView: View {
                                 showDragHandle: true,
                                 enableExportDrag: false,
                                 onDragStarted: {
-                                    self.draggedItem = track
-                                    return NSItemProvider(object: track.id.description as NSString)
+                                    self.draggedItem = queueItem
+                                    return NSItemProvider(object: queueItem.id.uuidString as NSString)
                                 }
                             )
                                 .opacity(isPast ? 0.4 : 1.0)
                                 .onTapGesture {
-                                    playbackVM.play(track: track, queue: playbackVM.queue, startIndex: index)
+                                    // Map QueueItems back to tracks for play()
+                                    playbackVM.play(track: track, queue: playbackVM.queue.map { $0.track }, startIndex: index)
                                 }
-                                .onDrop(of: [.plainText], delegate: QueueDropDelegate(item: track, items: playbackVM.queue, playbackVM: playbackVM, draggedItem: $draggedItem))
+                                .onDrop(of: [.plainText], delegate: QueueDropDelegate(item: queueItem, items: playbackVM.queue, playbackVM: playbackVM, draggedItem: $draggedItem))
                         }
                     }
                     .padding(.vertical, 8)
@@ -66,10 +68,10 @@ struct QueueView: View {
 }
 
 struct QueueDropDelegate: DropDelegate {
-    let item: TrackViewModel
-    let items: [TrackViewModel]
+    let item: QueueItem
+    let items: [QueueItem]
     let playbackVM: PlaybackViewModel
-    @Binding var draggedItem: TrackViewModel?
+    @Binding var draggedItem: QueueItem?
 
     func dropEntered(info: DropInfo) {
         guard let draggedItem,

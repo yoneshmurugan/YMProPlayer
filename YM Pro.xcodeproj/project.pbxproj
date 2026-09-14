@@ -16,6 +16,7 @@
 		1FC70BE261A45B11C25C49E0 /* RingBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508CF27A2C0534D5FF3D735F /* RingBufferTests.swift */; };
 		23646CF20DA3E59042CA1259 /* LyricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEAD1B2C830993710DCA4EC /* LyricsService.swift */; };
 		2DE7E071312657B02E418664 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19336B470E0B0A5C2301A125 /* MiniPlayerView.swift */; };
+		2FA997D76EF11BD39A674F98 /* NowPlayingInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7181C26579F2D13DA3DCF2 /* NowPlayingInspectorView.swift */; };
 		31ADDFCFBE189A17EDB2A3C9 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C791A112211C8CF803620F /* ThemeManager.swift */; };
 		3492A26B16DD2B945C1CAD0A /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18EA526B232720C482FAE9E6 /* QueueView.swift */; };
 		41E1C60B065B899C958FCE4E /* PlaylistManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A82CB847C27B8ABF1A3687 /* PlaylistManager.swift */; };
@@ -121,6 +122,7 @@
 		508CF27A2C0534D5FF3D735F /* RingBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingBufferTests.swift; sourceTree = "<group>"; };
 		5524CB3D8EA4F5EB83DA2C8B /* YM Pro Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "YM Pro Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		58B7B810E184692F5DEC06B2 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
+		5A7181C26579F2D13DA3DCF2 /* NowPlayingInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingInspectorView.swift; sourceTree = "<group>"; };
 		5B80D908EC8C1C8AB5AFC551 /* MetadataBridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MetadataBridge.cpp; sourceTree = "<group>"; };
 		61919E47E4C262214B089F45 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		6216C1D3B9E4934554DF1F2D /* HierarchyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HierarchyView.swift; sourceTree = "<group>"; };
@@ -296,6 +298,7 @@
 				638AD7A33CC5D709B00D5C56 /* LyricsOverlayView.swift */,
 				19336B470E0B0A5C2301A125 /* MiniPlayerView.swift */,
 				6E9C6B988AF723304392485D /* NowPlayingBar.swift */,
+				5A7181C26579F2D13DA3DCF2 /* NowPlayingInspectorView.swift */,
 				7DF3D3D3A207FC447666D895 /* PlaylistEditorView.swift */,
 				C9E253DD5EF5D3481CB96115 /* PlaylistsView.swift */,
 				18EA526B232720C482FAE9E6 /* QueueView.swift */,
@@ -536,6 +539,7 @@
 				747B5B47324B31689AA6428C /* MetadataBridge.cpp in Sources */,
 				2DE7E071312657B02E418664 /* MiniPlayerView.swift in Sources */,
 				5F77955916BBC4ACDC9184B0 /* NowPlayingBar.swift in Sources */,
+				2FA997D76EF11BD39A674F98 /* NowPlayingInspectorView.swift in Sources */,
 				00810469676C045B440BDDC6 /* PlaybackViewModel.swift in Sources */,
 				87F8D15FD137E14FCF158020 /* PlaylistEditorView.swift in Sources */,
 				41E1C60B065B899C958FCE4E /* PlaylistManager.swift in Sources */,
@@ -628,7 +632,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -690,7 +694,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -719,7 +723,7 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yonesh.ympro.mac.widget;
 				SDKROOT = macosx;
@@ -738,7 +742,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 7C4RH6695J;
 				ENABLE_APP_SANDBOX = YES;
@@ -763,8 +767,8 @@
 					"$(inherited)",
 					ytsplayer/Dependencies,
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 2.1.0;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-I/opt/homebrew/include",
@@ -817,7 +821,7 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yonesh.ympro.mac.widget;
 				SDKROOT = macosx;
@@ -836,7 +840,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 7C4RH6695J;
 				ENABLE_APP_SANDBOX = YES;
@@ -861,8 +865,8 @@
 					"$(inherited)",
 					ytsplayer/Dependencies,
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 2.1.0;
 				OTHER_CFLAGS = (
 					"$(inherited)",
 					"-I/opt/homebrew/include",

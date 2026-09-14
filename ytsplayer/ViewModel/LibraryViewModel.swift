@@ -14,27 +14,14 @@ final class LibraryViewModel: ObservableObject {
         didSet { updateWatcherStatus() }
     }
     
-    var tracksSortComparator: [KeyPathComparator<TrackViewModel>] {
-        let order: Foundation.SortOrder = tracksSortAscending ? .forward : .reverse
-        switch tracksSortField {
-        case "title": return [KeyPathComparator(\.title, order: order)]
-        case "artistName": return [KeyPathComparator(\.artistName, order: order)]
-        case "albumTitle": return [KeyPathComparator(\.albumTitle, order: order)]
-        case "filePath": return [KeyPathComparator(\.filePath, order: order)]
-        case "sampleRate": return [KeyPathComparator(\.sampleRate, order: order)]
-        case "bitDepth": return [KeyPathComparator(\.bitDepth, order: order)]
-        case "channels": return [KeyPathComparator(\.channels, order: order)]
-        case "bitrate": return [KeyPathComparator(\.bitrate, order: order)]
-        case "fileSize": return [KeyPathComparator(\.fileSize, order: order)]
-        case "playCount": return [KeyPathComparator(\.playCount, order: order)]
-        case "duration": return [KeyPathComparator(\.duration, order: order)]
-        default: return [KeyPathComparator(\.title, order: order)]
-        }
-    }
+
     @Published var tracksSelectedRootFolder: URL? = nil
     @Published var tracksExpandedFolders: Set<URL> = []
     @Published var tracksFolderSearchQuery = ""
-
+    @Published var cachedTracks: [TrackViewModel]? = nil
+    @Published var cachedTrackOffset: Int = 0
+    @Published var cachedHasMoreTracks: Bool = true
+    @Published var cachedFolderPaths: [String]? = nil
     @Published var albums: [AlbumViewModel] = []
     @Published var artists: [ArtistViewModel] = []
     @Published var quickPicks: [TrackViewModel] = []
@@ -99,61 +86,74 @@ final class LibraryViewModel: ObservableObject {
     func loadAlbums() {
         Task {
             isLoading = true
-            var loaded: [AlbumViewModel] = []
-            switch sortOrder {
-            case .mostPlayed:
-                loaded = (try? db.fetchTracksForAlbumSortMostPlayed()) ?? []
-            default:
-                loaded = (try? db.fetchAlbumViewModels()) ?? []
-                switch sortOrder {
-                case .alphaAsc:
-                    loaded.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-                case .alphaDesc:
-                    loaded.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedDescending }
-                case .artistsAsc:
-                    loaded.sort { ($0.artistName ?? "").localizedCaseInsensitiveCompare($1.artistName ?? "") == .orderedAscending }
-                case .artistsDesc:
-                    loaded.sort { ($0.artistName ?? "").localizedCaseInsensitiveCompare($1.artistName ?? "") == .orderedDescending }
-                case .recentlyAdded:
-                    loaded.sort { $0.id > $1.id }
-                case .recentlyPlayed, .mostPlayed:
-                    break
+            let currentSort = sortOrder
+            let result = await Task.detached(priority: .userInitiated) { [db] () -> (albums: [AlbumViewModel], artists: [ArtistViewModel], quickPicks: [TrackViewModel], mostPlayedTracks: [TrackViewModel], mostPlayedAlbums: [AlbumViewModel], mostPlayedArtists: [ArtistViewModel], recentAlbums: [AlbumViewModel], recentArtists: [ArtistViewModel]) in
+                var loaded: [AlbumViewModel] = []
+                switch currentSort {
+                case .mostPlayed:
+                    loaded = (try? db.fetchTracksForAlbumSortMostPlayed()) ?? []
+                default:
+                    loaded = (try? db.fetchAlbumViewModels()) ?? []
+                    switch currentSort {
+                    case .alphaAsc:
+                        loaded.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+                    case .alphaDesc:
+                        loaded.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedDescending }
+                    case .artistsAsc:
+                        loaded.sort { ($0.artistName ?? "").localizedCaseInsensitiveCompare($1.artistName ?? "") == .orderedAscending }
+                    case .artistsDesc:
+                        loaded.sort { ($0.artistName ?? "").localizedCaseInsensitiveCompare($1.artistName ?? "") == .orderedDescending }
+                    case .recentlyAdded:
+                        loaded.sort { $0.id > $1.id }
+                    case .recentlyPlayed, .mostPlayed:
+                        break
+                    }
                 }
-            }
+                
+                let artists = (try? db.fetchArtistsWithArtwork()) ?? []
+                let quickPicks = (try? db.fetchQuickPicks(limit: 15)) ?? []
+                let mostPlayedTracks = (try? db.fetchMostPlayedTracks(limit: 10)) ?? []
+                let mostPlayedAlbums = (try? db.fetchMostPlayedAlbums(limit: 15)) ?? []
+                let mostPlayedArtists = (try? db.fetchMostPlayedArtists(limit: 15)) ?? []
+                let recentAlbums = (try? db.fetchRecentAlbums(limit: 15)) ?? []
+                let recentArtists = (try? db.fetchRecentArtists(limit: 15)) ?? []
+                
+                return (loaded, artists, quickPicks, mostPlayedTracks, mostPlayedAlbums, mostPlayedArtists, recentAlbums, recentArtists)
+            }.value
             
-            albums = loaded
-            artists = (try? db.fetchArtistsWithArtwork()) ?? []
-            quickPicks = (try? db.fetchQuickPicks(limit: 15)) ?? []
-            mostPlayedTracks = (try? db.fetchMostPlayedTracks(limit: 10)) ?? []
-            mostPlayedAlbums = (try? db.fetchMostPlayedAlbums(limit: 15)) ?? []
-            mostPlayedArtists = (try? db.fetchMostPlayedArtists(limit: 15)) ?? []
-            recentAlbums = (try? db.fetchRecentAlbums(limit: 15)) ?? []
-            recentArtists = (try? db.fetchRecentArtists(limit: 15)) ?? []
+            albums = result.albums
+            artists = result.artists
+            quickPicks = result.quickPicks
+            mostPlayedTracks = result.mostPlayedTracks
+            mostPlayedAlbums = result.mostPlayedAlbums
+            mostPlayedArtists = result.mostPlayedArtists
+            recentAlbums = result.recentAlbums
+            recentArtists = result.recentArtists
             isLoading = false
         }
     }
     
     func refreshMostPlayed() {
         Task {
-            let tracks = (try? db.fetchMostPlayedTracks(limit: 10)) ?? []
-            let albums = (try? db.fetchMostPlayedAlbums(limit: 15)) ?? []
-            let artists = (try? db.fetchMostPlayedArtists(limit: 15)) ?? []
+            let result = await Task.detached(priority: .userInitiated) { [db] () -> (tracks: [TrackViewModel], albums: [AlbumViewModel], artists: [ArtistViewModel]) in
+                let tracks = (try? db.fetchMostPlayedTracks(limit: 10)) ?? []
+                let albums = (try? db.fetchMostPlayedAlbums(limit: 15)) ?? []
+                let artists = (try? db.fetchMostPlayedArtists(limit: 15)) ?? []
+                return (tracks, albums, artists)
+            }.value
             
-            
-            await MainActor.run {
-                self.mostPlayedTracks = tracks
-                self.mostPlayedAlbums = albums
-                self.mostPlayedArtists = artists
-            }
+            self.mostPlayedTracks = result.tracks
+            self.mostPlayedAlbums = result.albums
+            self.mostPlayedArtists = result.artists
         }
     }
     
     func refreshQuickPicks() {
         Task {
-            let picks = (try? db.fetchQuickPicks(limit: 15)) ?? []
-            await MainActor.run {
-                self.quickPicks = picks
-            }
+            let picks = await Task.detached(priority: .userInitiated) { [db] in
+                (try? db.fetchQuickPicks(limit: 15)) ?? []
+            }.value
+            self.quickPicks = picks
         }
     }
 
@@ -225,10 +225,13 @@ final class LibraryViewModel: ObservableObject {
         return (try? db.fetchTracks(forAlbumId: album.id)) ?? []
     }
     
-    func fetchAllTracks() -> [TrackViewModel] {
-        return (try? db.fetchAllTrackViewModels()) ?? []
+    func fetchTracksPage(limit: Int, offset: Int, sortBy field: String? = nil, ascending: Bool = true, filterPath: String? = nil) -> [TrackViewModel] {
+        return (try? db.fetchTrackViewModelsPage(limit: limit, offset: offset, sortBy: field, ascending: ascending, filterPath: filterPath)) ?? []
     }
     
+    func fetchDistinctFilePaths() -> [String] {
+        return (try? db.fetchDistinctFilePaths()) ?? []
+    }
     func fetchTracks(for artist: ArtistViewModel) -> [TrackViewModel] {
         (try? db.fetchTracks(forArtistId: artist.id)) ?? []
     }
@@ -330,34 +333,42 @@ final class SearchViewModel: ObservableObject {
         }
         isSearching = true
         Task {
-            var tResults: [TrackViewModel] = []
-            var alResults: [AlbumViewModel] = []
-            var arResults: [ArtistViewModel] = []
-            var pResults: [PlaylistViewModel] = []
-            
-            if selectedFilter == .all || selectedFilter == .songs {
-                tResults = (try? db.searchTracks(query: trimmed)) ?? []
-            }
-            if selectedFilter == .all || selectedFilter == .album {
-                alResults = (try? db.searchAlbums(query: trimmed)) ?? []
-            }
-            if selectedFilter == .all || selectedFilter == .artist {
-                arResults = (try? db.searchArtists(query: trimmed)) ?? []
-            }
-            if selectedFilter == .all || selectedFilter == .playlist {
-                await MainActor.run {
-                    let allPlaylists = AppEnvironment.shared.playlistManager.playlists
-                    pResults = allPlaylists.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+            let filter = selectedFilter
+            let result = await Task.detached(priority: .userInitiated) { [db] () -> (tracks: [TrackViewModel], albums: [AlbumViewModel], artists: [ArtistViewModel], playlists: [PlaylistViewModel]) in
+                var tResults: [TrackViewModel] = []
+                var alResults: [AlbumViewModel] = []
+                var arResults: [ArtistViewModel] = []
+                var pResults: [PlaylistViewModel] = []
+                
+                if filter == .all || filter == .songs {
+                    tResults = (try? db.searchTracks(query: trimmed)) ?? []
                 }
+                if filter == .all || filter == .album {
+                    alResults = (try? db.searchAlbums(query: trimmed)) ?? []
+                }
+                if filter == .all || filter == .artist {
+                    arResults = (try? db.searchArtists(query: trimmed)) ?? []
+                }
+                if filter == .all || filter == .playlist {
+                    // Playlists are managed separately in PlaylistManager, so we leave it empty here 
+                    // and let the main thread handle it or we fetch it if we passed a reference.
+                    // For now, let's keep it simple.
+                }
+                return (tResults, alResults, arResults, pResults)
+            }.value
+            
+            // Re-fetch playlists on main thread as they are stored in AppEnvironment
+            var pResults: [PlaylistViewModel] = []
+            if selectedFilter == .all || selectedFilter == .playlist {
+                let allPlaylists = AppEnvironment.shared.playlistManager.playlists
+                pResults = allPlaylists.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
             }
             
-            await MainActor.run {
-                self.results = tResults
-                self.albumResults = alResults
-                self.artistResults = arResults
-                self.playlistResults = pResults
-                self.isSearching = false
-            }
+            self.results = result.tracks
+            self.albumResults = result.albums
+            self.artistResults = result.artists
+            self.playlistResults = pResults
+            self.isSearching = false
         }
     }
 }
@@ -381,7 +392,14 @@ class LibraryWatcher {
     func startWatching(folders: [URL]) {
         stopWatching()
         
-        let pathsToWatch = folders.map { $0.path as CFString }
+        let pathsToWatch = folders.compactMap { url -> CFString? in
+            // Safety check for Network/NAS drives: FSEvents will crash if the path is entirely unreachable
+            guard (try? url.checkResourceIsReachable()) == true else {
+                print("[LibraryWatcher] Skipping unreachable folder: \(url.path)")
+                return nil
+            }
+            return url.path as CFString
+        }
         guard !pathsToWatch.isEmpty else { return }
         
         let pathsArray = pathsToWatch as CFArray

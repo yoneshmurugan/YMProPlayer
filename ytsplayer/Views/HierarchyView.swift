@@ -337,6 +337,7 @@ struct HierarchyView: View {
                 filePath: url.path,
                 title: url.deletingPathExtension().lastPathComponent,
                 trackNumber: nil,
+                discNumber: nil,
                 duration: 0,
                 sampleRate: 0,
                 bitDepth: 0,
@@ -471,8 +472,8 @@ struct HierarchyGridItem: View, Equatable {
                 trackIds.append(tId)
             } else if i.isDirectory {
                 let prefix = i.url.path
-                let allTracks = (try? AppEnvironment.shared.db.fetchAllTrackViewModels()) ?? []
-                let matching = allTracks.filter { $0.filePath.hasPrefix(prefix) }.map { $0.id }
+                let allTracks = (try? AppEnvironment.shared.db.fetchTrackViewModelsPage(limit: 999999, offset: 0, filterPath: prefix)) ?? []
+                let matching = allTracks.map { $0.id }
                 trackIds.append(contentsOf: matching)
             }
         }
@@ -612,8 +613,8 @@ struct HierarchyListItem: View, Equatable {
                 trackIds.append(tId)
             } else if i.isDirectory {
                 let prefix = i.url.path
-                let allTracks = (try? AppEnvironment.shared.db.fetchAllTrackViewModels()) ?? []
-                let matching = allTracks.filter { $0.filePath.hasPrefix(prefix) }.map { $0.id }
+                let allTracks = (try? AppEnvironment.shared.db.fetchTrackViewModelsPage(limit: 999999, offset: 0, filterPath: prefix)) ?? []
+                let matching = allTracks.map { $0.id }
                 trackIds.append(contentsOf: matching)
             }
         }

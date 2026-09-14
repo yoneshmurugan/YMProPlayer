@@ -4,7 +4,6 @@ import UniformTypeIdentifiers
 
 struct LyricsOverlayView: View {
     @EnvironmentObject var playbackVM: PlaybackViewModel
-    @State private var lyrics: String?
     @State private var cachedParsedLyrics: [LyricLine] = []
     @State private var isLoading = false
     @State private var isEditingMetadata = false
@@ -56,8 +55,8 @@ struct LyricsOverlayView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            // Transparent background (parent has the full blur)
-            Color.primary.opacity(0.4)
+            Rectangle()
+                .fill(.regularMaterial)
             
             VStack {
                 Picker("", selection: $selectedTab) {
@@ -404,7 +403,6 @@ struct LyricsOverlayView: View {
     }
     
     private func setLyrics(_ text: String?) {
-        self.lyrics = text
         guard let text = text else {
             self.cachedParsedLyrics = []
             return

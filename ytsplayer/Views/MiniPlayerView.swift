@@ -115,6 +115,15 @@ struct MiniPlayerView: View {
                 isHovered = h
             }
         }
+        .onAppear {
+            // macOS hack to make the mini player float on top of everything and join all spaces
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if let window = NSApp.windows.first(where: { $0.frame.width == 260 || $0.frame.height == 260 }) {
+                    window.level = .floating
+                    window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+                }
+            }
+        }
     }
 }
 // MenuBarAppView.swift

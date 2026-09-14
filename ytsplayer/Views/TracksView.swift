@@ -3,6 +3,7 @@
 
 import SwiftUI
 import GRDB
+import AppKit
 
 struct MenuFolderNode: Identifiable, Hashable {
     let id: URL
@@ -10,10 +11,10 @@ struct MenuFolderNode: Identifiable, Hashable {
     var children: [MenuFolderNode] = []
 }
 
-func buildFolderTree(tracks: [TrackViewModel], roots: [URL]) -> [MenuFolderNode] {
+func buildFolderTree(paths: [String], roots: [URL]) -> [MenuFolderNode] {
     var dirURLs = Set<URL>()
-    for track in tracks {
-        dirURLs.insert(URL(fileURLWithPath: track.filePath).deletingLastPathComponent())
+    for path in paths {
+        dirURLs.insert(URL(fileURLWithPath: path).deletingLastPathComponent())
     }
     
     var allDirs = Set<URL>()
@@ -139,8 +140,13 @@ struct TracksView: View {
     @EnvironmentObject var playlistManager: PlaylistManager
 
     @State private var allTracks: [TrackViewModel] = []
+    @State private var trackOffset: Int = 0
+    @State private var hasMoreTracks: Bool = true
+    let pageSize = 5000
     @State private var isLoading = true
     @State private var selectedTracks: Set<Int64> = []
+    @State private var isSelectionMode = false
+    @State private var lastSelectedIndex: Int? = nil
     
     @State private var currentTrackId: Int64?
     @State private var isPlaying: Bool = false
@@ -161,10 +167,9 @@ struct TracksView: View {
     @State private var isShowingFolderPicker = false
     
     // Column Customization
-    @AppStorage("selectedTracksColumns") private var selectedColumnsData: Data = Data()
-    @State private var selectedColumns: Set<String> = ["Artist", "Album", "Type", "Time"]
-    
-    let availableColumns = ["Artist", "Album", "Type", "Sample Rate", "Bit Depth", "Channels", "Bitrate", "Size", "Views", "Time"]
+    // Table State
+    @State private var sortOrder: [KeyPathComparator<TrackViewModel>] = [KeyPathComparator(\.title)]
+    @State private var columnCustomization = TableColumnCustomization<TrackViewModel>()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -183,6 +188,33 @@ struct TracksView: View {
                 }
                 Spacer()
                 
+                if isSelectionMode {
+                    Button(action: {
+                        if selectedTracks.count == allTracks.count {
+                            selectedTracks.removeAll()
+                        } else {
+                            selectedTracks = Set(allTracks.map { $0.id })
+                        }
+                    }) {
+                        Text(selectedTracks.count == allTracks.count ? "Deselect All" : "Select All")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.primary.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 8)
+                }
+                
+                Button(action: {
+                    withAnimation { isSelectionMode.toggle() }
+                    if !isSelectionMode { selectedTracks.removeAll() }
+                }) {
+                    Text(isSelectionMode ? "Done" : "Select")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(isSelectionMode ? Color.purple : Color.primary.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 16)
+                
                 if let onSearchTapped = onSearchTapped {
                         Button(action: onSearchTapped) {
                             Image(systemName: "magnifyingglass")
@@ -192,11 +224,12 @@ struct TracksView: View {
                         .buttonStyle(.plain)
                         .focusable(false)
                         .padding(.trailing, 16)
-                    }
+                }
                     
-                    let totalDuration = allTracks.reduce(0) { $0 + $1.duration }
-                    Text("\(allTracks.count) tracks • \(formatTotalDuration(totalDuration))")
-                        .font(.system(size: 12))
+                let totalDuration = allTracks.reduce(0) { $0 + $1.duration }
+                let totalSize = allTracks.reduce(0) { $0 + ($1.fileSize ?? 0) }
+                Text("\(allTracks.count) tracks • \(formatTotalDuration(totalDuration)) • \(formatSize(totalSize))")
+                    .font(.system(size: 12))
                         .foregroundStyle(.primary.opacity(0.4))
             }
             .padding(.horizontal, 20)
@@ -337,124 +370,21 @@ struct TracksView: View {
                 }
                 Spacer()
             } else {
-                headerRow
-                Divider().background(Color.primary.opacity(0.1))
-                
-                List(selection: $selectedTracks) {
-                    ForEach(allTracks, id: \.id) { track in
-                        TracksTableRow(
-                            track: track,
-                            selectedColumns: selectedColumns,
-                            isCurrentTrack: currentTrackId == track.id,
-                            isPlaying: currentTrackId == track.id && isPlaying,
-                            onToggleFavorite: {
-                                if let isFav = try? playlistManager.toggleFavorite(forTrackId: track.id) {
-                                    if let idx = allTracks.firstIndex(where: { $0.id == track.id }) {
-                                        var updatedTrack = track
-                                        updatedTrack.isFavorite = isFav
-                                        allTracks[idx] = updatedTrack
-                                    }
-                                }
-                            }
-                        )
-                        .equatable()
-                        .padding(.vertical, 4)
-                        .contentShape(Rectangle())
-                        .tag(track.id)
-                    }
-                }
-                .listStyle(.inset(alternatesRowBackgrounds: true))
-                .contextMenu(forSelectionType: TrackViewModel.ID.self) { items in
-                    Button(selectedTracks.isEmpty ? "Select" : "Deselect All") {
-                        if selectedTracks.isEmpty {
-                            for item in items { selectedTracks.insert(item) }
-                        } else {
-                            selectedTracks.removeAll()
-                        }
-                    }
-                    Divider()
-                    Button("Play Next") {
-                        for trackId in items {
-                            if let track = allTracks.first(where: { $0.id == trackId }) {
-                                playbackVM.playNext(track)
-                            }
-                        }
-                    }
-                    Button("Add to Queue") {
-                        for trackId in items {
-                            if let track = allTracks.first(where: { $0.id == trackId }) {
-                                playbackVM.enqueue(track)
-                            }
-                        }
-                    }
-                    Divider()
-                    Menu("Add to Playlist") {
-                        Button("New Playlist...") {
-                            if let id = playlistManager.createPlaylist(name: "New Playlist") {
-                                playlistManager.addTracks(to: id, trackIds: Array(items))
-                                openWindow(id: "PlaylistEditor", value: id)
-                            }
-                        }
-                        if !playlistManager.playlists.isEmpty {
-                            Divider()
-                            ForEach(playlistManager.playlists) { playlist in
-                                Button(playlist.name) {
-                                    playlistManager.addTracks(to: playlist.id, trackIds: Array(items))
-                                }
-                            }
-                        }
-                    }
-                } primaryAction: { items in
-                    if let firstId = items.first, let idx = allTracks.firstIndex(where: { $0.id == firstId }) {
-                        let queueEnd = min(idx + 10, allTracks.count - 1)
-                        let slice = allTracks[idx...queueEnd]
-                        let queuedTracks = Array(slice)
-                        playbackVM.play(track: allTracks[idx], queue: queuedTracks, startIndex: 0, context: .allTracks)
-                    }
-                }
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    ForEach(availableColumns, id: \.self) { col in
-                        Button(action: {
-                            if selectedColumns.contains(col) {
-                                selectedColumns.remove(col)
-                            } else {
-                                selectedColumns.insert(col)
-                            }
-                            saveColumns()
-                        }) {
-                            if selectedColumns.contains(col) {
-                                Label(col, systemImage: "checkmark")
-                            } else {
-                                Text(col)
-                            }
-                        }
-                    }
-                } label: {
-                    Label("Columns", systemImage: "tablecells")
-                }
-                .help("Manage Columns")
+                tracksTableView
             }
         }
         .onAppear {
-            loadColumns()
-            loadTracks(for: selectedRootFolder.wrappedValue)
+            loadTracks(for: selectedRootFolder.wrappedValue, forceRefresh: false)
         }
-        .onChange(of: libraryVM.tracksSortField) { _ in
-            loadTracks(for: selectedRootFolder.wrappedValue)
+        .onChange(of: sortOrder) { _ in
+            loadTracks(for: selectedRootFolder.wrappedValue, forceRefresh: true)
         }
-        .onChange(of: libraryVM.tracksSortAscending) { _ in
-            loadTracks(for: selectedRootFolder.wrappedValue)
-        }
-        .onChange(of: libraryVM.albums.count) { _ in loadTracks(for: selectedRootFolder.wrappedValue) }
+        .onChange(of: libraryVM.albums.count) { _ in loadTracks(for: selectedRootFolder.wrappedValue, forceRefresh: true) }
         .onChange(of: selectedRootFolder.wrappedValue) { newRoot in
-            loadTracks(for: newRoot)
+            loadTracks(for: newRoot, forceRefresh: true)
         }
         .onChange(of: folderSearchQuery.wrappedValue) { _ in
-            loadTracks(for: selectedRootFolder.wrappedValue)
+            loadTracks(for: selectedRootFolder.wrappedValue, forceRefresh: true)
         }
         .onReceive(playbackVM.$currentTrack) { track in
             currentTrackId = track?.id
@@ -471,51 +401,104 @@ struct TracksView: View {
     // MARK: - Table Cell Helpers
     
     @ViewBuilder
-    private func sortButton(title: String, field: String, width: CGFloat? = nil, alignment: Alignment = .leading) -> some View {
-        Button(action: {
-            if libraryVM.tracksSortField == field {
-                libraryVM.tracksSortAscending.toggle()
-            } else {
-                libraryVM.tracksSortField = field
-                libraryVM.tracksSortAscending = true
-            }
-        }) {
-            HStack(spacing: 4) {
-                if alignment == .trailing { Spacer() }
-                Text(title)
-                if libraryVM.tracksSortField == field {
-                    Image(systemName: libraryVM.tracksSortAscending ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 9, weight: .bold))
+    private var tracksTableView: some View {
+        Table(allTracks, selection: $selectedTracks, sortOrder: $sortOrder, columnCustomization: $columnCustomization) {
+            TableColumn("#", value: \.sortTrackNumber) { track in
+                if isSelectionMode {
+                    Image(systemName: selectedTracks.contains(track.id) ? "checkmark.square.fill" : "square")
+                        .foregroundColor(selectedTracks.contains(track.id) ? .purple : .secondary)
+                        .font(.system(size: 14))
+                        .onTapGesture {
+                            let isShiftPressed = NSEvent.modifierFlags.contains(.shift)
+                            if let currentIndex = allTracks.firstIndex(where: { $0.id == track.id }) {
+                                if isShiftPressed, let lastIdx = lastSelectedIndex {
+                                    let range = min(currentIndex, lastIdx)...max(currentIndex, lastIdx)
+                                    for i in range {
+                                        selectedTracks.insert(allTracks[i].id)
+                                    }
+                                } else {
+                                    if selectedTracks.contains(track.id) {
+                                        selectedTracks.remove(track.id)
+                                    } else {
+                                        selectedTracks.insert(track.id)
+                                    }
+                                    lastSelectedIndex = currentIndex
+                                }
+                            }
+                        }
+                } else {
+                    Text(track.trackNumber.map { String($0) } ?? "—").foregroundStyle(.secondary)
                 }
-                if alignment == .leading { Spacer() }
             }
-            .contentShape(Rectangle())
+            .width(min: 30, ideal: 40)
+            .customizationID("TrackNumber")
+            
+            TableColumn("Title", value: \.title) { track in
+                trackTitleView(for: track)
+                    .onAppear {
+                        if track.id == allTracks.last?.id {
+                            loadMoreTracks()
+                        }
+                    }
+            }
+            .width(min: 200, ideal: 300)
+            .customizationID("Title")
+            
+            TableColumn("Artist", value: \.sortArtist) { track in
+                Text(track.artistName ?? "—").foregroundStyle(.secondary)
+            }
+            .width(min: 150, ideal: 200)
+            .customizationID("Artist")
+            
+            TableColumn("Album", value: \.sortAlbum) { track in
+                Text(track.albumTitle ?? "—").foregroundStyle(.secondary)
+            }
+            .width(min: 150, ideal: 200)
+            .customizationID("Album")
+            
+            TableColumn("Type", value: \.sortType) { track in
+                trackTypeView(for: track)
+            }
+            .width(min: 60, ideal: 80)
+            .customizationID("Type")
+            
+            TableColumn("Quality", value: \.sampleRate) { track in
+                Text(String(format: "%.1f kHz / %d-bit", Double(track.sampleRate) / 1000.0, track.bitDepth))
+                    .foregroundStyle(.secondary)
+            }
+            .width(min: 100, ideal: 120)
+            .customizationID("Quality")
+            
+            TableColumn("Size", value: \.sortSize) { track in
+                Text(track.fileSize.map { formatSize($0) } ?? "—").foregroundStyle(.secondary)
+            }
+            .width(min: 60, ideal: 80)
+            .customizationID("Size")
+            
+            TableColumn("Bitrate", value: \.sortBitrate) { track in
+                Text(track.bitrate.map { "\($0 / 1000) kbps" } ?? "—").foregroundStyle(.secondary)
+            }
+            .width(min: 80, ideal: 100)
+            .customizationID("Bitrate")
+            
+            TableColumn("Time", value: \.duration) { track in
+                trackTimeView(for: track)
+            }
+            .width(min: 60, ideal: 80)
+            .customizationID("Time")
+            
+            TableColumn("Plays", value: \.playCount) { track in
+                Text("\(track.playCount)").foregroundStyle(.secondary)
+            }
+            .width(min: 50, ideal: 60)
+            .customizationID("Plays")
         }
-        .buttonStyle(.plain)
-        .frame(maxWidth: width == nil ? .infinity : nil, alignment: alignment)
-        .frame(width: width)
-    }
-    
-    private var headerRow: some View {
-        HStack(spacing: 16) {
-            sortButton(title: "Title", field: "title")
-            if selectedColumns.contains("Artist") { sortButton(title: "Artist", field: "artistName", width: 140) }
-            if selectedColumns.contains("Album") { sortButton(title: "Album", field: "albumTitle", width: 140) }
-            if selectedColumns.contains("Type") { sortButton(title: "Type", field: "filePath", width: 60) }
-            if selectedColumns.contains("Sample Rate") { sortButton(title: "Sample Rate", field: "sampleRate", width: 85, alignment: .trailing) }
-            if selectedColumns.contains("Bit Depth") { sortButton(title: "Bit Depth", field: "bitDepth", width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Channels") { sortButton(title: "Channels", field: "channels", width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Bitrate") { sortButton(title: "Bitrate", field: "bitrate", width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Size") { sortButton(title: "Size", field: "fileSize", width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Views") { sortButton(title: "Views", field: "playCount", width: 50, alignment: .trailing) }
-            if selectedColumns.contains("Time") { sortButton(title: "Time", field: "duration", width: 52, alignment: .trailing) }
-            Text("Fav").frame(width: 30)
+        .tableStyle(.inset(alternatesRowBackgrounds: true))
+        .contextMenu(forSelectionType: TrackViewModel.ID.self) { (items: Set<TrackViewModel.ID>) in
+            tracksContextMenu(for: items)
+        } primaryAction: { (items: Set<TrackViewModel.ID>) in
+            handlePrimaryAction(for: items)
         }
-        .font(.system(size: 11, weight: .semibold, design: .rounded))
-        .foregroundStyle(.primary.opacity(0.5))
-        .padding(.horizontal, 28)
-        .padding(.vertical, 8)
-        .background(Color.primary.opacity(0.15))
     }
     
     private func formatTotalDuration(_ duration: Double) -> String {
@@ -528,29 +511,109 @@ struct TracksView: View {
             return "\(minutes) min"
         }
     }
-
-    @ViewBuilder private func trackContextMenu(for track: TrackViewModel) -> some View {
+    
+    private func formatSize(_ bytes: Int64) -> String {
+        let b = Double(bytes)
+        if b > 1_073_741_824 { return String(format: "%.2f GB", b / 1_073_741_824) }
+        if b > 1_048_576 { return String(format: "%.1f MB", b / 1_048_576) }
+        return String(format: "%.0f KB", b / 1024)
+    }
+    
+    @ViewBuilder
+    private func trackTitleView(for track: TrackViewModel) -> some View {
+        HStack(spacing: 8) {
+            if let path = track.albumArtworkPath, let cacheDir = ImageDownsampler.artworkCacheDirectory() {
+                CachedAsyncImage(url: cacheDir.appendingPathComponent(path)) {
+                    RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.1))
+                }
+                .frame(width: 24, height: 24).clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                RoundedRectangle(cornerRadius: 4).fill(Color.primary.opacity(0.08))
+                    .frame(width: 24, height: 24)
+                    .overlay(Image(systemName: "music.note").font(.system(size: 10)).foregroundStyle(.primary.opacity(0.3)))
+            }
+            Text(track.title)
+                .font(.system(size: 13, weight: currentTrackId == track.id ? .semibold : .regular))
+                .foregroundStyle(currentTrackId == track.id ? Color.purple : Color.primary)
+            
+            if track.isFavorite {
+                Image(systemName: "heart.fill")
+                    .foregroundColor(.red)
+                    .font(.system(size: 11))
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func trackTypeView(for track: TrackViewModel) -> some View {
+        Text(URL(fileURLWithPath: track.filePath).pathExtension.uppercased())
+            .foregroundStyle(Color.orange.opacity(0.8))
+    }
+    
+    @ViewBuilder
+    private func trackTimeView(for track: TrackViewModel) -> some View {
+        let s = Int(track.duration)
+        Text(String(format: "%d:%02d", s / 60, s % 60)).foregroundStyle(.secondary)
+    }
+    
+    @ViewBuilder
+    private func trackFavView(for track: TrackViewModel) -> some View {
+        Button(action: {
+            if let isFav = try? playlistManager.toggleFavorite(forTrackId: track.id) {
+                if let idx = allTracks.firstIndex(where: { $0.id == track.id }) {
+                    allTracks[idx].isFavorite = isFav
+                }
+            }
+        }) {
+            Image(systemName: track.isFavorite ? "heart.fill" : "heart")
+                .foregroundColor(track.isFavorite ? .red : .gray.opacity(0.4))
+        }
+        .buttonStyle(.plain)
+    }
+    
+    @ViewBuilder
+    private func tracksContextMenu(for items: Set<TrackViewModel.ID>) -> some View {
         Button(selectedTracks.isEmpty ? "Select" : "Deselect All") {
             if selectedTracks.isEmpty {
-                selectedTracks.insert(track.id)
+                for item in items { selectedTracks.insert(item) }
             } else {
                 selectedTracks.removeAll()
             }
         }
+        Button("Toggle Favorite") {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+                for trackId in items {
+                    if let idx = allTracks.firstIndex(where: { $0.id == trackId }) {
+                        allTracks[idx].isFavorite.toggle()
+                        _ = try? playlistManager.toggleFavorite(forTrackId: trackId)
+                    }
+                }
+                libraryVM.cachedTracks = allTracks // update cache
+            }
+        }
+        Divider()
+        Button("Show in Finder") {
+            let urls = items.compactMap { id -> URL? in
+                guard let track = allTracks.first(where: { $0.id == id }) else { return nil }
+                return URL(fileURLWithPath: track.filePath)
+            }
+            if !urls.isEmpty {
+                NSWorkspace.shared.activateFileViewerSelecting(urls)
+            }
+        }
         Divider()
         Button("Play Next") {
-            let targets = selectedTracks.contains(track.id) ? Array(selectedTracks) : [track.id]
-            for trackId in targets {
-                if let t = allTracks.first(where: { $0.id == trackId }) {
-                    playbackVM.playNext(t)
+            for trackId in items {
+                if let track = allTracks.first(where: { $0.id == trackId }) {
+                    playbackVM.playNext(track)
                 }
             }
         }
         Button("Add to Queue") {
-            let targets = selectedTracks.contains(track.id) ? Array(selectedTracks) : [track.id]
-            for trackId in targets {
-                if let t = allTracks.first(where: { $0.id == trackId }) {
-                    playbackVM.enqueue(t)
+            for trackId in items {
+                if let track = allTracks.first(where: { $0.id == trackId }) {
+                    playbackVM.enqueue(track)
                 }
             }
         }
@@ -558,8 +621,7 @@ struct TracksView: View {
         Menu("Add to Playlist") {
             Button("New Playlist...") {
                 if let id = playlistManager.createPlaylist(name: "New Playlist") {
-                    let targets = selectedTracks.contains(track.id) ? Array(selectedTracks) : [track.id]
-                    playlistManager.addTracks(to: id, trackIds: targets)
+                    playlistManager.addTracks(to: id, trackIds: Array(items))
                     openWindow(id: "PlaylistEditor", value: id)
                 }
             }
@@ -567,46 +629,113 @@ struct TracksView: View {
                 Divider()
                 ForEach(playlistManager.playlists) { playlist in
                     Button(playlist.name) {
-                        let targets = selectedTracks.contains(track.id) ? Array(selectedTracks) : [track.id]
-                        playlistManager.addTracks(to: playlist.id, trackIds: targets)
+                        playlistManager.addTracks(to: playlist.id, trackIds: Array(items))
                     }
                 }
             }
         }
     }
-
-    private func saveColumns() {
-        if let data = try? JSONEncoder().encode(Array(selectedColumns)) {
-            selectedColumnsData = data
-        }
-    }
-
-    private func loadColumns() {
-        if let decoded = try? JSONDecoder().decode([String].self, from: selectedColumnsData) {
-            selectedColumns = Set(decoded)
-        }
-    }
     
-    private func loadTracks(for root: URL?) {
-        isLoading = true
-        Task {
-            let allLibraryTracks = libraryVM.fetchAllTracks()
-            let tree = buildFolderTree(tracks: allLibraryTracks, roots: libraryVM.libraryFolders)
-            
-            var tracks = allLibraryTracks
-            if let r = root {
-                tracks = tracks.filter { $0.filePath.hasPrefix(r.path) }
+    private func handlePrimaryAction(for items: Set<TrackViewModel.ID>) {
+        if let firstId = items.first, let idx = allTracks.firstIndex(where: { $0.id == firstId }) {
+            let queueEnd = min(idx + 10, allTracks.count - 1)
+            let slice = allTracks[idx...queueEnd]
+            let queuedTracks = Array(slice)
+            playbackVM.play(track: allTracks[idx], queue: queuedTracks, startIndex: 0, context: .allTracks)
+        }
+    }
+
+    
+    
+    private func sqlSortField() -> String {
+        guard let sortDesc = sortOrder.first else { return "title" }
+        switch sortDesc.keyPath {
+        case \TrackViewModel.sortArtist: return "sortArtist"
+        case \TrackViewModel.sortAlbum: return "sortAlbum"
+        case \TrackViewModel.title: return "title"
+        case \TrackViewModel.sortSize: return "sortSize"
+        case \TrackViewModel.sortType: return "sortType"
+        case \TrackViewModel.duration: return "duration"
+        case \TrackViewModel.sampleRate: return "sampleRate"
+        case \TrackViewModel.sortTrackNumber: return "sortTrackNumber"
+        default: return "title"
+        }
+    }
+
+    private func loadTracks(for root: URL?, forceRefresh: Bool = false) {
+        if !forceRefresh, let cached = libraryVM.cachedTracks, root == selectedRootFolder.wrappedValue {
+            self.allTracks = cached
+            self.trackOffset = libraryVM.cachedTrackOffset
+            self.hasMoreTracks = libraryVM.cachedHasMoreTracks
+            if let cachedPaths = libraryVM.cachedFolderPaths {
+                self.folderTree = buildFolderTree(paths: cachedPaths, roots: libraryVM.libraryFolders)
             }
-
-            tracks.sort(using: libraryVM.tracksSortComparator)
-
+            self.isLoading = false
+            return
+        }
+        
+        if forceRefresh || root != selectedRootFolder.wrappedValue {
+            trackOffset = 0
+            hasMoreTracks = true
+            allTracks = []
+        }
+        
+        guard hasMoreTracks else { return }
+        if trackOffset == 0 { isLoading = true }
+        
+        Task {
+            let field = sqlSortField()
+            var ascending = true
+            if let first = sortOrder.first {
+                ascending = first.order == .forward
+            }
+            let filterPath = root?.path
+            
+            let fetched = libraryVM.fetchTracksPage(limit: pageSize, offset: trackOffset, sortBy: field, ascending: ascending, filterPath: filterPath)
+            
+            // Build folder tree efficiently using distinct paths if we are starting fresh
+            let tree: [MenuFolderNode]?
+            let fetchedPaths: [String]?
+            if trackOffset == 0 {
+                let allPaths = libraryVM.fetchDistinctFilePaths()
+                fetchedPaths = allPaths
+                tree = buildFolderTree(paths: allPaths, roots: libraryVM.libraryFolders)
+            } else {
+                fetchedPaths = nil
+                tree = nil
+            }
+            
             await MainActor.run {
                 self.selectedRootFolder.wrappedValue = root
-                self.folderTree = tree
-                self.allTracks = tracks
+                if let tree = tree {
+                    self.folderTree = tree
+                }
+                
+                if trackOffset == 0 {
+                    self.allTracks = fetched
+                } else {
+                    self.allTracks.append(contentsOf: fetched)
+                }
+                
+                self.trackOffset += fetched.count
+                self.hasMoreTracks = fetched.count == self.pageSize
+                
+                // Update Cache
+                self.libraryVM.cachedTracks = self.allTracks
+                self.libraryVM.cachedTrackOffset = self.trackOffset
+                self.libraryVM.cachedHasMoreTracks = self.hasMoreTracks
+                if let fetchedPaths = fetchedPaths {
+                    self.libraryVM.cachedFolderPaths = fetchedPaths
+                }
+                
                 self.isLoading = false
             }
         }
+    }
+    
+    private func loadMoreTracks() {
+        guard hasMoreTracks, !isLoading else { return }
+        loadTracks(for: selectedRootFolder.wrappedValue, forceRefresh: false)
     }
 }
 
@@ -849,114 +978,4 @@ struct DraggableModifier: ViewModifier {
     }
 }
 
-// MARK: - TracksTableRow (Equatable)
 
-struct TracksTableRow: View, Equatable {
-    let track: TrackViewModel
-    let selectedColumns: Set<String>
-    let isCurrentTrack: Bool
-    let isPlaying: Bool
-    let onToggleFavorite: () -> Void
-    
-    static func == (lhs: TracksTableRow, rhs: TracksTableRow) -> Bool {
-        lhs.track == rhs.track &&
-        lhs.selectedColumns == rhs.selectedColumns &&
-        lhs.isCurrentTrack == rhs.isCurrentTrack &&
-        lhs.isPlaying == rhs.isPlaying
-    }
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            playingCell.frame(width: 30)
-            titleCell.frame(maxWidth: .infinity, alignment: .leading)
-            if selectedColumns.contains("Artist") { artistCell.frame(width: 140, alignment: .leading) }
-            if selectedColumns.contains("Album") { albumCell.frame(width: 140, alignment: .leading) }
-            if selectedColumns.contains("Type") { typeCell.frame(width: 60, alignment: .leading) }
-            if selectedColumns.contains("Sample Rate") { sampleRateCell.frame(width: 85, alignment: .trailing) }
-            if selectedColumns.contains("Bit Depth") { bitDepthCell.frame(width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Channels") { channelsCell.frame(width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Bitrate") { bitrateCell.frame(width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Size") { sizeCell.frame(width: 70, alignment: .trailing) }
-            if selectedColumns.contains("Views") { viewsCell.frame(width: 50, alignment: .trailing) }
-            if selectedColumns.contains("Time") { timeCell.frame(width: 52, alignment: .trailing) }
-            favCell.frame(width: 30)
-        }
-    }
-    
-    @ViewBuilder private var playingCell: some View {
-        if isPlaying {
-            Image(systemName: "waveform")
-                .font(.system(size: 11))
-                .foregroundStyle(.purple)
-                .frame(maxWidth: .infinity, alignment: .center)
-        } else {
-            Text(track.trackNumber.map { String($0) } ?? "–")
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .center)
-        }
-    }
-    
-    @ViewBuilder private var titleCell: some View {
-        Text(track.title)
-            .font(.system(size: 13, weight: isCurrentTrack ? .semibold : .regular))
-            .foregroundStyle(isCurrentTrack ? Color.purple : Color.primary)
-            .lineLimit(1)
-    }
-    
-    @ViewBuilder private var artistCell: some View {
-        Text(track.artistName ?? "—").font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
-    }
-    
-    @ViewBuilder private var albumCell: some View {
-        Text(track.albumTitle ?? "—").font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
-    }
-    
-    @ViewBuilder private var typeCell: some View {
-        Text(URL(fileURLWithPath: track.filePath).pathExtension.uppercased())
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(Color.orange.opacity(0.8))
-    }
-    
-    @ViewBuilder private var sampleRateCell: some View {
-        Text(String(format: "%.1f kHz", Double(track.sampleRate) / 1000.0))
-            .font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary)
-    }
-    
-    @ViewBuilder private var bitDepthCell: some View {
-        Text("\(track.bitDepth)-bit")
-            .font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary)
-    }
-    
-    @ViewBuilder private var channelsCell: some View {
-        Text(track.channels == 1 ? "Mono" : (track.channels == 2 ? "Stereo" : "\(track.channels) ch"))
-            .font(.system(size: 12)).foregroundStyle(.secondary)
-    }
-    
-    @ViewBuilder private var bitrateCell: some View {
-        if let br = track.bitrate { Text("\(br / 1000) kbps").font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary) }
-        else { Text("—") }
-    }
-    
-    @ViewBuilder private var sizeCell: some View {
-        if let size = track.fileSize { Text(String(format: "%.1f MB", Double(size) / 1_048_576.0)).font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary) }
-        else { Text("—") }
-    }
-    
-    @ViewBuilder private var viewsCell: some View {
-        Text("\(track.playCount)").font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary)
-    }
-    
-    @ViewBuilder private var timeCell: some View {
-        let s = Int(track.duration)
-        Text(String(format: "%d:%02d", s / 60, s % 60)).font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary)
-    }
-    
-    @ViewBuilder private var favCell: some View {
-        Button(action: onToggleFavorite) {
-            Image(systemName: track.isFavorite ? "heart.fill" : "heart")
-                .foregroundColor(track.isFavorite ? .red : .gray.opacity(0.4))
-        }
-        .buttonStyle(.plain)
-    }
-}

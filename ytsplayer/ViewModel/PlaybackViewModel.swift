@@ -15,6 +15,15 @@ enum PlaybackContext: Equatable {
     case allTracks
 }
 
+struct QueueItem: Identifiable, Equatable {
+    let id = UUID()
+    let track: TrackViewModel
+    
+    static func == (lhs: QueueItem, rhs: QueueItem) -> Bool {
+        return lhs.id == rhs.id
+    }
+}
+
 @MainActor
 final class PlaybackViewModel: ObservableObject {
 
@@ -25,7 +34,7 @@ final class PlaybackViewModel: ObservableObject {
     @Published var currentSampleRate: Int   = 0
     @Published var currentBitDepth: Int     = 0
     @Published var currentTrack: TrackViewModel?
-    @Published var queue: [TrackViewModel]  = []
+    @Published var queue: [QueueItem]       = []
     @Published var queueIndex: Int          = 0
     @Published var isBuffering: Bool        = false
     @Published var isScrubbing: Bool        = false
@@ -44,6 +53,43 @@ final class PlaybackViewModel: ObservableObject {
         didSet { halEngine.softwareVolume = Float(volume) }
     }
     
+    // ── DSP Settings ────────────────────────────────────────────────────────
+    
+    @Published var eqEnabled: Bool = UserDefaults.standard.bool(forKey: "dspEqEnabled") {
+        didSet {
+            halEngine.eqEnabled = eqEnabled
+            UserDefaults.standard.set(eqEnabled, forKey: "dspEqEnabled")
+            if eqEnabled {
+                self.isBitPerfect = false
+                UserDefaults.standard.set(false, forKey: "isBitPerfect")
+                _ = self.halEngine.setHogModeSafe(false)
+                UserDefaults.standard.set(false, forKey: "hogModeEnabled")
+            }
+        }
+    }
+    
+    @Published var crossfeedEnabled: Bool = UserDefaults.standard.bool(forKey: "dspCrossfeedEnabled") {
+        didSet {
+            halEngine.crossfeedEnabled = crossfeedEnabled
+            UserDefaults.standard.set(crossfeedEnabled, forKey: "dspCrossfeedEnabled")
+            if crossfeedEnabled {
+                self.isBitPerfect = false
+                UserDefaults.standard.set(false, forKey: "isBitPerfect")
+                _ = self.halEngine.setHogModeSafe(false)
+                UserDefaults.standard.set(false, forKey: "hogModeEnabled")
+            }
+        }
+    }
+    
+    @Published var eqGains: [Float] = (UserDefaults.standard.array(forKey: "dspEqGains") as? [Float]) ?? Array(repeating: 0.0, count: 10) {
+        didSet {
+            for (index, gain) in eqGains.enumerated() {
+                halEngine.setEQBandGain(index: index, gainDB: gain)
+            }
+            UserDefaults.standard.set(eqGains, forKey: "dspEqGains")
+        }
+    }
+    
     let halEngine: CoreAudioHALEngine
     private var gaplessTrackEnqueued: Bool = false
     private var pollerCancellable: AnyCancellable?
@@ -56,8 +102,14 @@ final class PlaybackViewModel: ObservableObject {
         
         // Sync initial states
         self.halEngine.isBitPerfect = self.isBitPerfect
-        let defaultHog = UserDefaults.standard.object(forKey: "hogModeEnabled") as? Bool ?? true
+        let defaultHog = UserDefaults.standard.object(forKey: "hogModeEnabled") as? Bool ?? false
         _ = self.halEngine.setHogModeSafe(defaultHog)
+        
+        self.halEngine.eqEnabled = self.eqEnabled
+        self.halEngine.crossfeedEnabled = self.crossfeedEnabled
+        for (index, gain) in self.eqGains.enumerated() {
+            self.halEngine.setEQBandGain(index: index, gainDB: gain)
+        }
         
         setupRemoteCommandCenter()
     }
@@ -65,7 +117,7 @@ final class PlaybackViewModel: ObservableObject {
     // MARK: - Transport
 
     func play(track: TrackViewModel, queue: [TrackViewModel], startIndex: Int, context: PlaybackContext = .none) {
-        self.queue      = queue
+        self.queue      = queue.map { QueueItem(track: $0) }
         self.queueIndex = startIndex
         self.currentContext = context
         Task { await loadAndPlay(track: track) }
@@ -77,7 +129,7 @@ final class PlaybackViewModel: ObservableObject {
         if queue.isEmpty {
             play(track: track, queue: [track], startIndex: 0)
         } else {
-            queue.insert(track, at: queueIndex + 1)
+            queue.insert(QueueItem(track: track), at: queueIndex + 1)
         }
     }
     
@@ -85,15 +137,16 @@ final class PlaybackViewModel: ObservableObject {
         if queue.isEmpty {
             play(track: track, queue: [track], startIndex: 0)
         } else {
-            queue.append(track)
+            queue.append(QueueItem(track: track))
         }
     }
     
     func moveInQueue(from source: IndexSet, to destination: Int) {
         // Since we are modifying the queue, we need to adjust `queueIndex` if the current playing song moves.
-        let currentTrackId = queue[queueIndex].id
+        guard queue.indices.contains(queueIndex) else { return }
+        let currentItemId = queue[queueIndex].id
         queue.move(fromOffsets: source, toOffset: destination)
-        if let newIndex = queue.firstIndex(where: { $0.id == currentTrackId }) {
+        if let newIndex = queue.firstIndex(where: { $0.id == currentItemId }) {
             queueIndex = newIndex
         }
     }
@@ -106,7 +159,7 @@ final class PlaybackViewModel: ObservableObject {
         } else {
             if currentTrack == nil {
                 if !queue.isEmpty {
-                    play(track: queue[queueIndex], queue: queue, startIndex: queueIndex, context: currentContext)
+                    play(track: queue[queueIndex].track, queue: queue.map { $0.track }, startIndex: queueIndex, context: currentContext)
                 }
             } else {
                 halEngine.resumePlayback()
@@ -132,7 +185,7 @@ final class PlaybackViewModel: ObservableObject {
         guard !queue.isEmpty else { return }
         let nextIndex = queueIndex + 1
         if nextIndex < queue.count {
-            play(track: queue[nextIndex], queue: queue, startIndex: nextIndex, context: currentContext)
+            play(track: queue[nextIndex].track, queue: queue.map { $0.track }, startIndex: nextIndex, context: currentContext)
         } else {
             onQueueEnded?()
         }
@@ -146,7 +199,7 @@ final class PlaybackViewModel: ObservableObject {
             seek(to: 0)
         } else {
             let prevIndex = queueIndex - 1
-            play(track: queue[prevIndex], queue: queue, startIndex: prevIndex, context: currentContext)
+            play(track: queue[prevIndex].track, queue: queue.map { $0.track }, startIndex: prevIndex, context: currentContext)
         }
     }
 
@@ -178,6 +231,87 @@ final class PlaybackViewModel: ObservableObject {
         }
         
         var effectivePath = track.filePath
+        
+        // CRITICAL: In a sandboxed app, C code (FLAC decoder via fopen) needs an active
+        // security-scoped resource access BEFORE it can open any file. We must resolve
+        // the stored library bookmarks and find the one that is a parent of this file.
+        var securityScopedURL: URL? = nil
+        let filePath = effectivePath
+        
+        if let bookmarks = UserDefaults.standard.dictionary(forKey: "libraryBookmarks") as? [String: Data] {
+            for (_, bookmarkData) in bookmarks {
+                var isStale = false
+                do {
+                    let resolvedURL = try URL(
+                        resolvingBookmarkData: bookmarkData,
+                        options: .withSecurityScope,
+                        relativeTo: nil,
+                        bookmarkDataIsStale: &isStale
+                    )
+                    // Check if this bookmark covers the file's location
+                    let resolvedPath = resolvedURL.path
+                    if filePath.hasPrefix(resolvedPath) {
+                        if resolvedURL.startAccessingSecurityScopedResource() {
+                            securityScopedURL = resolvedURL
+                            NSLog("[ytsplayer] Security scope granted via library bookmark: \(resolvedPath)")
+                            break
+                        }
+                    }
+                } catch {
+                    // Stale or invalid bookmark — skip it
+                }
+            }
+        }
+        
+        // Fallback: if file is NOT under any library bookmark (e.g. in a temp/cloud cache),
+        // try calling startAccessingSecurityScopedResource on the file URL itself.
+        if securityScopedURL == nil {
+            let fileURL = URL(fileURLWithPath: filePath)
+            if fileURL.startAccessingSecurityScopedResource() {
+                securityScopedURL = fileURL
+                NSLog("[ytsplayer] Security scope granted directly on file URL")
+            } else {
+                NSLog("[ytsplayer] WARNING: File is outside all library folders. Requesting user access via open panel.")
+                // The file is outside all bookmarked library folders.
+                // Show NSOpenPanel so the user can grant sandbox access to its parent folder.
+                let granted = await withCheckedContinuation { (continuation: CheckedContinuation<URL?, Never>) in
+                    DispatchQueue.main.async {
+                        let panel = NSOpenPanel()
+                        panel.message = "YM Pro needs permission to access this file's folder.\nPlease click \"Grant Access\" to allow playback."
+                        panel.prompt = "Grant Access"
+                        panel.canChooseFiles = false
+                        panel.canChooseDirectories = true
+                        panel.canCreateDirectories = false
+                        panel.directoryURL = URL(fileURLWithPath: filePath).deletingLastPathComponent()
+                        panel.begin { response in
+                            if response == .OK, let url = panel.url {
+                                continuation.resume(returning: url)
+                            } else {
+                                continuation.resume(returning: nil)
+                            }
+                        }
+                    }
+                }
+                if let grantedURL = granted {
+                    // Store a bookmark for future use
+                    if let data = try? grantedURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
+                        var bookmarks = (UserDefaults.standard.dictionary(forKey: "libraryBookmarks") as? [String: Data]) ?? [:]
+                        bookmarks[grantedURL.path] = data
+                        UserDefaults.standard.set(bookmarks, forKey: "libraryBookmarks")
+                    }
+                    if grantedURL.startAccessingSecurityScopedResource() {
+                        securityScopedURL = grantedURL
+                        NSLog("[ytsplayer] Security scope granted after user approval: \(grantedURL.path)")
+                    }
+                } else {
+                    NSLog("[ytsplayer] User denied access — cannot play: \(filePath)")
+                    isBuffering = false
+                    isPlaying = false
+                    errorMessage = "Access denied. Please grant permission to the folder containing this file."
+                    return
+                }
+            }
+        }
         
         // Smart Cloud Pre-buffering
         if effectivePath.contains("pCloud Drive") && track.sortSize > 50_000_000 { // > 50MB
@@ -226,6 +360,10 @@ final class PlaybackViewModel: ObservableObject {
             NSLog("[ytsplayer] PlaybackViewModel: loadTrack returned false! Setting errorMessage for UI.")
             errorMessage = "Audio format not supported or hardware rejected sample rate. Enable Downsampling in Settings."
         }
+        
+        // Release the security scope after the decoder has opened the file
+        // (The C decoder keeps its own file handle open, so we can release the scope now)
+        securityScopedURL?.stopAccessingSecurityScopedResource()
     }
 
     // MARK: - 30Hz Poller
@@ -274,10 +412,10 @@ final class PlaybackViewModel: ObservableObject {
                 let nextIndex = queueIndex + 1
                 if nextIndex < queue.count {
                     queueIndex = nextIndex
-                    currentTrack = queue[nextIndex]
+                    currentTrack = queue[nextIndex].track
                     // Trigger UI updates
                     updateNowPlayingInfo()
-                    onTrackPlayed?(queue[nextIndex].id)
+                    onTrackPlayed?(queue[nextIndex].track.id)
                 }
             }
             
@@ -285,7 +423,7 @@ final class PlaybackViewModel: ObservableObject {
             if isGaplessEnabled && !gaplessTrackEnqueued && playbackProgress > 0.95 {
                 let nextIndex = queueIndex + 1
                 if nextIndex < queue.count {
-                    let next = queue[nextIndex]
+                    let next = queue[nextIndex].track
                     // Gapless requires same sample rate for true seamlessness
                     if next.sampleRate == currentSampleRate {
                         halEngine.enqueueNextTrack(filePath: next.filePath)

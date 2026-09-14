@@ -15,10 +15,10 @@ class PlaylistManager: ObservableObject {
     
     func refreshPlaylists() {
         Task {
-            let fetched = (try? db.fetchPlaylists()) ?? []
-            await MainActor.run {
-                self.playlists = fetched
-            }
+            let fetched = await Task.detached(priority: .userInitiated) { [db] in
+                (try? db.fetchPlaylists()) ?? []
+            }.value
+            self.playlists = fetched
         }
     }
     

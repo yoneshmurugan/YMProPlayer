@@ -27,10 +27,12 @@ struct ContentView: View {
     private let db: DatabasePool
 
     @State private var selectedTab: AppTab? = .home
-    @State private var searchText = ""
     @State private var showFullScreenPlayer = false
     @State private var showSettings = false
     @State private var showFolderPicker = false
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @AppStorage("showNowPlayingInspector") private var showInspector = false
+    @State private var isFullScreen: Bool = false
     @EnvironmentObject var themeManager: ThemeManager
 
     @AppStorage("introFinished") private var introFinished = false
@@ -71,7 +73,7 @@ struct ContentView: View {
             }
             .ignoresSafeArea()
 
-            NavigationSplitView {
+            NavigationSplitView(columnVisibility: $columnVisibility) {
                 // ── Sidebar ────────────────────────────────────────────────────
                 VStack(spacing: 0) {
                     List(selection: $selectedTab) {
@@ -151,7 +153,7 @@ struct ContentView: View {
                             if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
                         }
                         
-                        Text("YM Pro v2.0")
+                        Text("YM Pro v2.1")
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundStyle(.tertiary)
                     }
@@ -174,9 +176,7 @@ struct ContentView: View {
                                 onNavigateToTab: { tab in selectedTab = tab }
                             )
                         case .albums:
-                            LibraryView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search }) {
-                                showSettings = true
-                            }
+                            LibraryView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search })
                         case .artists:
                             ArtistsView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search })
                         case .tracks:
@@ -213,6 +213,59 @@ struct ContentView: View {
                     )
                 }
             }
+            .background(
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear {
+                            DispatchQueue.main.async {
+                                isFullScreen = NSApplication.shared.windows.first(where: { $0.isKeyWindow })?.styleMask.contains(.fullScreen) ?? false
+                            }
+                        }
+                }
+            )
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in
+                isFullScreen = true
+                if showInspector {
+                    columnVisibility = .all
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
+                isFullScreen = false
+                if showInspector {
+                    columnVisibility = .detailOnly
+                }
+            }
+            .onChange(of: showInspector) { _ in
+                if !isFullScreen && showInspector {
+                    columnVisibility = .detailOnly
+                }
+            }
+            .onChange(of: columnVisibility) { _ in
+                if !isFullScreen && columnVisibility != .detailOnly {
+                    showInspector = false
+                }
+            }
+            .inspector(isPresented: $showInspector) {
+                NowPlayingInspectorView(vm: playbackVM) {
+                    if playbackVM.currentTrack != nil {
+                        showFullScreenPlayer = true
+                    }
+                }
+                    .inspectorColumnWidth(min: 250, ideal: 300, max: 400)
+                    .toolbar {
+                        ToolbarItem(placement: .primaryAction) {
+                            Button(action: {
+                                withAnimation {
+                                    showInspector.toggle()
+                                }
+                            }) {
+                                Image(systemName: "sidebar.right")
+                                    .foregroundStyle(showInspector ? Color.accentColor : Color.primary)
+                            }
+                            .help("Toggle Now Playing Inspector")
+                        }
+                    }
+            }
 
             // ── Intro Video Loader (plays once on launch) ──
             if !introFinished {
@@ -229,6 +282,11 @@ struct ContentView: View {
             SettingsView(libraryVM: libraryVM, playbackVM: playbackVM, halEngine: halEngine)
                 .frame(width: 500, height: 400)
         }
+        .background(
+            Button("") { showSettings = true }
+                .keyboardShortcut(",", modifiers: .command)
+                .hidden()
+        )
         .navigationTitle("YM Pro")
         .frame(minWidth: 1000, minHeight: 650)
         .preferredColorScheme(.dark)

@@ -60,6 +60,7 @@ struct TrackViewModel: Identifiable, Equatable {
     let filePath: String
     let title: String
     let trackNumber: Int?
+    let discNumber: Int?
     let duration: Double
     let sampleRate: Int
     let bitDepth: Int
@@ -83,8 +84,11 @@ struct TrackViewModel: Identifiable, Equatable {
     // Computed properties for Table sorting (Optionals are not Comparable in Swift)
     var sortArtist: String { artistName ?? "" }
     var sortAlbum: String { albumTitle ?? "" }
+    var sortDiscNumber: Int { discNumber ?? 0 }
+    var sortTrackNumber: Int { trackNumber ?? 0 }
     var sortBitrate: Int { bitrate ?? 0 }
     var sortSize: Int64 { fileSize ?? 0 }
+    var sortType: String { (filePath as NSString).pathExtension.uppercased() }
 }
 
 struct AlbumViewModel: Identifiable, Equatable {
@@ -271,41 +275,54 @@ enum AppDatabase {
 
 extension DatabasePool {
 
-    // Fetch all tracks with their album and artist names
-    func fetchAllTrackViewModels() throws -> [TrackViewModel] {
+    // Fetch paginated tracks with their album and artist names
+    func fetchTrackViewModelsPage(limit: Int, offset: Int, sortBy: String? = nil, ascending: Bool = true, filterPath: String? = nil) throws -> [TrackViewModel] {
         try read { db in
-            let rows = try Row.fetchAll(db, sql: """
+            var sql = """
                 SELECT tracks.*, albums.title AS albumTitle, artists.name AS artistName, albums.artworkCachePath
                 FROM tracks
                 LEFT JOIN albums ON tracks.albumId = albums.id
                 LEFT JOIN artists ON tracks.artistId = artists.id
-            """)
-            return rows.map {
-                TrackViewModel(
-                    id:               $0["id"],
-                    filePath:         $0["filePath"],
-                    title:            $0["title"],
-                    trackNumber:      $0["trackNumber"],
-                    duration:         $0["duration"],
-                    sampleRate:       $0["sampleRate"],
-                    bitDepth:         $0["bitDepth"],
-                    artistName:       $0["artistName"],
-                    albumTitle:       $0["albumTitle"],
-                    albumArtworkPath: $0["artworkCachePath"],
-                    lyrics:           $0["lyrics"],
-                    fileSize:         $0["fileSize"],
-                    bitrate:          $0["bitrate"],
-                    channels:         $0["channels"],
-                    playCount:        $0["playCount"] ?? 0,
-                    isFavorite:       $0["isFavorite"] ?? false,
-                    genre:            $0["genre"],
-                    composer:         $0["composer"],
-                    comment:          $0["comment"],
-                    publisher:        $0["publisher"],
-                    isrc:             $0["isrc"],
-                    bpm:              $0["bpm"]
-                )
+            """
+            
+            var arguments: [DatabaseValueConvertible] = []
+            
+            if let path = filterPath {
+                sql += " WHERE tracks.filePath LIKE ?"
+                arguments.append("\(path)%")
             }
+            
+            if let field = sortBy {
+                let order = ascending ? "ASC" : "DESC"
+                if field == "sortArtist" {
+                    sql += " ORDER BY artists.name COLLATE NOCASE \(order), albums.title COLLATE NOCASE ASC, tracks.discNumber ASC, tracks.trackNumber ASC"
+                } else if field == "sortAlbum" {
+                    sql += " ORDER BY albums.title COLLATE NOCASE \(order), tracks.discNumber ASC, tracks.trackNumber ASC"
+                } else if field == "title" {
+                    sql += " ORDER BY tracks.title COLLATE NOCASE \(order)"
+                } else if field == "sortSize" {
+                    sql += " ORDER BY tracks.fileSize \(order)"
+                } else if field == "duration" {
+                    sql += " ORDER BY tracks.duration \(order)"
+                } else if field == "sampleRate" {
+                    sql += " ORDER BY tracks.sampleRate \(order), tracks.bitDepth \(order), tracks.bitrate \(order), albums.title COLLATE NOCASE ASC, tracks.discNumber ASC, tracks.trackNumber ASC"
+                } else if field == "sortType" {
+                    // SQLite doesn't natively support easy substring from end for file extension in a simple way
+                    // But we can approximate by sorting by filePath for now, or just fallback to generic
+                    sql += " ORDER BY tracks.filePath \(order)"
+                } else {
+                    sql += " ORDER BY tracks.\(field) \(order)"
+                }
+            } else {
+                sql += " ORDER BY tracks.title COLLATE NOCASE ASC"
+            }
+            
+            sql += " LIMIT ? OFFSET ?"
+            arguments.append(limit)
+            arguments.append(offset)
+            
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
+            return mapTrackRows(rows)
         }
     }
 
@@ -337,6 +354,15 @@ extension DatabasePool {
             }
         }
     }
+    
+    // Fetch distinct file paths for building the folder tree very quickly
+    func fetchDistinctFilePaths() throws -> [String] {
+        try read { db in
+            let sql = "SELECT DISTINCT filePath FROM tracks"
+            let rows = try Row.fetchAll(db, sql: sql)
+            return rows.compactMap { $0["filePath"] as? String }
+        }
+    }
 
     // Fetch all tracks for an album (including all sub-versions of a composite album)
     func fetchTracks(forAlbumId albumId: Int64) throws -> [TrackViewModel] {
@@ -360,32 +386,7 @@ extension DatabasePool {
                 )
                 ORDER BY tracks.discNumber, tracks.trackNumber, tracks.title COLLATE NOCASE
             """, arguments: [albumId, albumId])
-            return rows.map {
-                TrackViewModel(
-                    id:               $0["id"],
-                    filePath:         $0["filePath"],
-                    title:            $0["title"],
-                    trackNumber:      $0["trackNumber"],
-                    duration:         $0["duration"],
-                    sampleRate:       $0["sampleRate"],
-                    bitDepth:         $0["bitDepth"],
-                    artistName:       $0["artistName"],
-                    albumTitle:       $0["albumTitle"],
-                    albumArtworkPath: $0["artworkCachePath"],
-                    lyrics:           $0["lyrics"],
-                    fileSize:         $0["fileSize"],
-                    bitrate:          $0["bitrate"],
-                    channels:         $0["channels"],
-                    playCount:        $0["playCount"] ?? 0,
-                    isFavorite:       $0["isFavorite"] ?? false,
-                    genre:            $0["genre"],
-                    composer:         $0["composer"],
-                    comment:          $0["comment"],
-                    publisher:        $0["publisher"],
-                    isrc:             $0["isrc"],
-                    bpm:              $0["bpm"]
-                )
-            }
+            return mapTrackRows(rows)
         }
     }
 
@@ -401,32 +402,7 @@ extension DatabasePool {
                 WHERE tracks.artistId = ?
                 ORDER BY albums.year DESC, albums.title COLLATE NOCASE, tracks.discNumber, tracks.trackNumber
             """, arguments: [artistId])
-            return rows.map {
-                TrackViewModel(
-                    id:               $0["id"],
-                    filePath:         $0["filePath"],
-                    title:            $0["title"],
-                    trackNumber:      $0["trackNumber"],
-                    duration:         $0["duration"],
-                    sampleRate:       $0["sampleRate"],
-                    bitDepth:         $0["bitDepth"],
-                    artistName:       $0["artistName"],
-                    albumTitle:       $0["albumTitle"],
-                    albumArtworkPath: $0["artworkCachePath"],
-                    lyrics:           $0["lyrics"],
-                    fileSize:         $0["fileSize"],
-                    bitrate:          $0["bitrate"],
-                    channels:         $0["channels"],
-                    playCount:        $0["playCount"] ?? 0,
-                    isFavorite:       $0["isFavorite"] ?? false,
-                    genre:            $0["genre"],
-                    composer:         $0["composer"],
-                    comment:          $0["comment"],
-                    publisher:        $0["publisher"],
-                    isrc:             $0["isrc"],
-                    bpm:              $0["bpm"]
-                )
-            }
+            return mapTrackRows(rows)
         }
     }
 
@@ -448,32 +424,7 @@ extension DatabasePool {
                 ORDER BY rank
                 LIMIT 100
             """, arguments: [ftsQuery])
-            return rows.map {
-                TrackViewModel(
-                    id:               $0["id"],
-                    filePath:         $0["filePath"],
-                    title:            $0["title"],
-                    trackNumber:      $0["trackNumber"],
-                    duration:         $0["duration"],
-                    sampleRate:       $0["sampleRate"],
-                    bitDepth:         $0["bitDepth"],
-                    artistName:       $0["artistName"],
-                    albumTitle:       $0["albumTitle"],
-                    albumArtworkPath: $0["artworkCachePath"],
-                    lyrics:           $0["lyrics"],
-                    fileSize:         $0["fileSize"],
-                    bitrate:          $0["bitrate"],
-                    channels:         $0["channels"],
-                    playCount:        $0["playCount"] ?? 0,
-                    isFavorite:       $0["isFavorite"] ?? false,
-                    genre:            $0["genre"],
-                    composer:         $0["composer"],
-                    comment:          $0["comment"],
-                    publisher:        $0["publisher"],
-                    isrc:             $0["isrc"],
-                    bpm:              $0["bpm"]
-                )
-            }
+            return mapTrackRows(rows)
         }
     }
     
@@ -551,33 +502,7 @@ extension DatabasePool {
                 LIMIT ?
             """, arguments: [limit])
             
-            return rows.map { r in
-                TrackViewModel(
-                    id:               r["id"],
-                    filePath:         r["filePath"],
-                    title:            r["title"],
-                    trackNumber:      r["trackNumber"],
-                    duration:         r["duration"],
-                    sampleRate:       r["sampleRate"],
-                    bitDepth:         r["bitDepth"],
-                    artistName:       r["artistName"],
-                    albumTitle:       r["albumTitle"],
-                    albumArtworkPath: r["artworkCachePath"],
-                    lyrics:           r["lyrics"],
-                    fileSize:         r["fileSize"],
-                    bitrate:          r["bitrate"],
-                    channels:         r["channels"],
-                    playCount:        r["playCount"]
-                ,
-                    isFavorite: r["isFavorite"] ?? false,
-                    genre:            r["genre"],
-                    composer:         r["composer"],
-                    comment:          r["comment"],
-                    publisher:        r["publisher"],
-                    isrc:             r["isrc"],
-                    bpm:              r["bpm"]
-                )
-            }
+            return mapTrackRows(rows)
         }
     }
     
@@ -594,33 +519,7 @@ extension DatabasePool {
                 LIMIT ?
             """, arguments: [limit])
             
-            return rows.map { r in
-                TrackViewModel(
-                    id:               r["id"],
-                    filePath:         r["filePath"],
-                    title:            r["title"],
-                    trackNumber:      r["trackNumber"],
-                    duration:         r["duration"],
-                    sampleRate:       r["sampleRate"],
-                    bitDepth:         r["bitDepth"],
-                    artistName:       r["artistName"],
-                    albumTitle:       r["albumTitle"],
-                    albumArtworkPath: r["artworkCachePath"],
-                    lyrics:           r["lyrics"],
-                    fileSize:         r["fileSize"],
-                    bitrate:          r["bitrate"],
-                    channels:         r["channels"],
-                    playCount:        r["playCount"]
-                ,
-                    isFavorite: r["isFavorite"] ?? false,
-                    genre:            r["genre"],
-                    composer:         r["composer"],
-                    comment:          r["comment"],
-                    publisher:        r["publisher"],
-                    isrc:             r["isrc"],
-                    bpm:              r["bpm"]
-                )
-            }
+            return mapTrackRows(rows)
         }
     }
 
@@ -714,11 +613,9 @@ extension DatabasePool {
             let rows = try Row.fetchAll(db, sql: """
                 SELECT artists.id, artists.name,
                        (SELECT artworkCachePath FROM albums WHERE albums.artistId = artists.id AND artworkCachePath IS NOT NULL ORDER BY year DESC LIMIT 1) AS artworkCachePath,
-                       COUNT(DISTINCT albums.id) AS albumCount,
-                       (SELECT COUNT(id) FROM tracks WHERE tracks.artistId = artists.id) AS trackCount
+                       (SELECT COUNT(DISTINCT albums.id) FROM albums LEFT JOIN tracks ON tracks.albumId = albums.id WHERE albums.artistId = artists.id OR tracks.artistId = artists.id) AS albumCount,
+                       (SELECT COUNT(DISTINCT tracks.id) FROM tracks LEFT JOIN albums ON tracks.albumId = albums.id WHERE tracks.artistId = artists.id OR albums.artistId = artists.id) AS trackCount
                 FROM artists
-                LEFT JOIN albums ON albums.artistId = artists.id
-                GROUP BY artists.id
                 ORDER BY artists.name COLLATE NOCASE
             """)
             return rows.map {
@@ -738,11 +635,9 @@ extension DatabasePool {
             let rows = try Row.fetchAll(db, sql: """
                 SELECT artists.id, artists.name,
                        (SELECT artworkCachePath FROM albums WHERE albums.artistId = artists.id AND artworkCachePath IS NOT NULL ORDER BY year DESC LIMIT 1) AS artworkCachePath,
-                       COUNT(DISTINCT albums.id) AS albumCount,
-                       (SELECT COUNT(id) FROM tracks WHERE tracks.artistId = artists.id) AS trackCount
+                       (SELECT COUNT(DISTINCT albums.id) FROM albums LEFT JOIN tracks ON tracks.albumId = albums.id WHERE albums.artistId = artists.id OR tracks.artistId = artists.id) AS albumCount,
+                       (SELECT COUNT(DISTINCT tracks.id) FROM tracks LEFT JOIN albums ON tracks.albumId = albums.id WHERE tracks.artistId = artists.id OR albums.artistId = artists.id) AS trackCount
                 FROM artists
-                LEFT JOIN albums ON albums.artistId = artists.id
-                GROUP BY artists.id
                 ORDER BY artists.id DESC
                 LIMIT ?
             """, arguments: [limit])
@@ -770,31 +665,7 @@ extension DatabasePool {
             """, arguments: [path])
             
             guard let r = row else { return nil }
-            return TrackViewModel(
-                id:               r["id"],
-                filePath:         r["filePath"],
-                title:            r["title"],
-                trackNumber:      r["trackNumber"],
-                duration:         r["duration"],
-                sampleRate:       r["sampleRate"],
-                bitDepth:         r["bitDepth"],
-                artistName:       r["artistName"],
-                albumTitle:       r["albumTitle"],
-                albumArtworkPath: r["artworkCachePath"],
-                lyrics:           r["lyrics"],
-                fileSize:         r["fileSize"],
-                bitrate:          r["bitrate"],
-                channels:         r["channels"],
-                playCount:        r["playCount"]
-            ,
-                    isFavorite: r["isFavorite"] ?? false,
-                    genre:            r["genre"],
-                    composer:         r["composer"],
-                    comment:          r["comment"],
-                    publisher:        r["publisher"],
-                    isrc:             r["isrc"],
-                    bpm:              r["bpm"]
-                )
+            return mapTrackRow(r)
         }
     }
     
@@ -812,6 +683,7 @@ extension DatabasePool {
                 filePath: track.filePath,
                 title: track.title,
                 trackNumber: track.trackNumber,
+                discNumber: track.discNumber,
                 duration: track.duration,
                 sampleRate: track.sampleRate,
                 bitDepth: track.bitDepth,
@@ -866,32 +738,7 @@ extension DatabasePool {
                 LIMIT ?
             """, arguments: [limit])
             
-            return rows.map { r in
-                TrackViewModel(
-                    id:               r["id"],
-                    filePath:         r["filePath"],
-                    title:            r["title"],
-                    trackNumber:      r["trackNumber"],
-                    duration:         r["duration"],
-                    sampleRate:       r["sampleRate"],
-                    bitDepth:         r["bitDepth"],
-                    artistName:       r["artistName"],
-                    albumTitle:       r["albumTitle"],
-                    albumArtworkPath: r["artworkCachePath"],
-                    lyrics:           r["lyrics"],
-                    fileSize:         r["fileSize"],
-                    bitrate:          r["bitrate"],
-                    channels:         r["channels"],
-                    playCount:        r["playCount"],
-                    isFavorite:       r["isFavorite"] ?? false,
-                    genre:            r["genre"],
-                    composer:         r["composer"],
-                    comment:          r["comment"],
-                    publisher:        r["publisher"],
-                    isrc:             r["isrc"],
-                    bpm:              r["bpm"]
-                )
-            }
+            return mapTrackRows(rows)
         }
     }
     
@@ -909,31 +756,7 @@ extension DatabasePool {
             """, arguments: ["\(folderPrefix)%"])
             
             guard let r = row else { return nil }
-            return TrackViewModel(
-                id:               r["id"],
-                filePath:         r["filePath"],
-                title:            r["title"],
-                trackNumber:      r["trackNumber"],
-                duration:         r["duration"],
-                sampleRate:       r["sampleRate"],
-                bitDepth:         r["bitDepth"],
-                artistName:       r["artistName"],
-                albumTitle:       r["albumTitle"],
-                albumArtworkPath: r["artworkCachePath"],
-                lyrics:           r["lyrics"],
-                fileSize:         r["fileSize"],
-                bitrate:          r["bitrate"],
-                channels:         r["channels"],
-                playCount:        r["playCount"]
-            ,
-                    isFavorite: r["isFavorite"] ?? false,
-                    genre:            r["genre"],
-                    composer:         r["composer"],
-                    comment:          r["comment"],
-                    publisher:        r["publisher"],
-                    isrc:             r["isrc"],
-                    bpm:              r["bpm"]
-                )
+            return mapTrackRow(r)
         }
     }
 
@@ -1084,33 +907,7 @@ extension DatabasePool {
                 ORDER BY playlist_tracks.orderIndex ASC
             """, arguments: [playlistId])
             
-            return rows.map { r in
-                TrackViewModel(
-                    id:               r["id"],
-                    filePath:         r["filePath"],
-                    title:            r["title"],
-                    trackNumber:      r["trackNumber"],
-                    duration:         r["duration"],
-                    sampleRate:       r["sampleRate"],
-                    bitDepth:         r["bitDepth"],
-                    artistName:       r["artistName"],
-                    albumTitle:       r["albumTitle"],
-                    albumArtworkPath: r["artworkCachePath"],
-                    lyrics:           r["lyrics"],
-                    fileSize:         r["fileSize"],
-                    bitrate:          r["bitrate"],
-                    channels:         r["channels"],
-                    playCount:        r["playCount"]
-                ,
-                    isFavorite: r["isFavorite"] ?? false,
-                    genre:            r["genre"],
-                    composer:         r["composer"],
-                    comment:          r["comment"],
-                    publisher:        r["publisher"],
-                    isrc:             r["isrc"],
-                    bpm:              r["bpm"]
-                )
-            }
+            return mapTrackRows(rows)
         }
     }
     
@@ -1198,32 +995,36 @@ extension DatabasePool {
         }
     }
     
+
+    private func mapTrackRow(_ r: Row) -> TrackViewModel {
+        return TrackViewModel(
+            id:               r["id"],
+            filePath:         r["filePath"],
+            title:            r["title"],
+            trackNumber:      r["trackNumber"],
+            discNumber:       r["discNumber"],
+            duration:         r["duration"],
+            sampleRate:       r["sampleRate"],
+            bitDepth:         r["bitDepth"],
+            artistName:       r["artistName"],
+            albumTitle:       r["albumTitle"],
+            albumArtworkPath: r["artworkCachePath"],
+            lyrics:           r["lyrics"],
+            fileSize:         r["fileSize"],
+            bitrate:          r["bitrate"],
+            channels:         r["channels"],
+            playCount:        r["playCount"] ?? 0,
+            isFavorite:       r["isFavorite"] ?? false,
+            genre:            r["genre"],
+            composer:         r["composer"],
+            comment:          r["comment"],
+            publisher:        r["publisher"],
+            isrc:             r["isrc"],
+            bpm:              r["bpm"]
+        )
+    }
+
     private func mapTrackRows(_ rows: [Row]) -> [TrackViewModel] {
-        return rows.map { r in
-            TrackViewModel(
-                id:               r["id"],
-                filePath:         r["filePath"],
-                title:            r["title"],
-                trackNumber:      r["trackNumber"],
-                duration:         r["duration"],
-                sampleRate:       r["sampleRate"],
-                bitDepth:         r["bitDepth"],
-                artistName:       r["artistName"],
-                albumTitle:       r["albumTitle"],
-                albumArtworkPath: r["artworkCachePath"],
-                lyrics:           r["lyrics"],
-                fileSize:         r["fileSize"],
-                bitrate:          r["bitrate"],
-                channels:         r["channels"],
-                playCount:        r["playCount"],
-                isFavorite:       r["isFavorite"] ?? false,
-                    genre:            r["genre"],
-                    composer:         r["composer"],
-                    comment:          r["comment"],
-                    publisher:        r["publisher"],
-                    isrc:             r["isrc"],
-                    bpm:              r["bpm"]
-            )
-        }
+        return rows.map(mapTrackRow)
     }
 }
