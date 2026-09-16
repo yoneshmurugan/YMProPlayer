@@ -99,3 +99,17 @@ This document tracks major features and architectural improvements that have bee
 **24. Mini-Player "Always on Top" Mode**
 * **Status:** Completed
 * **Details:** The existing mini-player window (launched from the bottom playback bar) now automatically sets its NSWindow level to .floating and joins all spaces on appear. This means it floats above every other app window and follows you across all Mission Control desktops and full-screen spaces.
+
+**25. Legacy Intel MacBook Support (Universal Binary)**
+* **Status:** Completed
+* **Details:** Configured the Xcode project to build as a Universal Binary (`arm64` + `x86_64`) and lowered the macOS deployment target to support older Intel-based Macs. Expands the user base to audiophiles who still use older Intel Macs as dedicated media servers or desktop setups.
+
+## Version 2.2
+
+**26. "Floating Island" Transport UI**
+* **Status:** Completed
+* **Details:** Modernized the Now Playing bar into a floating, ultra-thin glassmorphic pill detached from the window edges (inspired by macOS Golden Gate paradigms). Added tactile hover expansions to the playback scrubber.
+
+**27. High-Frequency SwiftUI Render Optimization**
+* **Status:** Completed
+* **Details:** Resolved a severe constraint loop crash and UI flickering (e.g., Settings tab bar flashing 4x/sec). Isolated the high-frequency `@ObservedObject playbackVM` timer ticks away from the main `ContentView` and `SettingsView` shell, pushing the subscriptions down to dedicated leaf components (`DetailContentView` and `AudioTabDSPControls`).

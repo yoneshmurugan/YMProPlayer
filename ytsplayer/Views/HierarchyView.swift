@@ -14,7 +14,7 @@ struct HierarchyItem: Identifiable {
 
 struct HierarchyView: View {
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     var onSearchTapped: (() -> Void)? = nil
     
     @State private var currentPath: URL?

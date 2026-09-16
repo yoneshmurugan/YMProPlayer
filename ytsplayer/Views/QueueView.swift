@@ -15,9 +15,10 @@ struct QueueView: View {
                     .foregroundColor(.secondary)
             }
             .padding()
-            .background(Color(nsColor: .windowBackgroundColor))
+            // Removed solid background to let the native popover glass shine through
             
             Divider()
+                .background(Color.white.opacity(0.1))
             
             if playbackVM.queue.isEmpty {
                 VStack(spacing: 12) {
@@ -64,6 +65,7 @@ struct QueueView: View {
             }
         }
         .frame(minWidth: 300, idealWidth: 400, minHeight: 400)
+        .background(.ultraThinMaterial)
     }
 }
 

@@ -6,8 +6,10 @@ import SwiftUI
 struct AlbumDetailView: View {
     let album: AlbumViewModel
     let tracks: [TrackViewModel]
-    @ObservedObject var playbackVM: PlaybackViewModel
-    @Environment(\.dismiss) private var dismiss
+    let playbackVM: PlaybackViewModel
+    var onClose: (() -> Void)? = nil
+    
+    @Environment(\.heroNamespace) private var heroNamespace
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,9 +20,13 @@ struct AlbumDetailView: View {
                     // Blurred artwork background
                     if let path = album.artworkCachePath,
                        let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-                        CachedAsyncImage(url: cacheDir.appendingPathComponent(path)) { Color.clear }
+                        GeometryReader { geo in
+                            CachedAsyncImage(url: cacheDir.appendingPathComponent(path)) { Color.clear }
+                                .scaledToFill()
+                                .frame(width: geo.size.width, height: geo.size.height)
+                                .clipped()
+                        }
                         .frame(height: 220)
-                        .clipped()
                         .blur(radius: 40)
                         .overlay(Color.primary.opacity(0.55))
                     } else {
@@ -59,12 +65,13 @@ struct AlbumDetailView: View {
 
                         VStack(alignment: .leading, spacing: 6) {
                             Text(album.title)
-                                .font(.system(size: 24, weight: .bold))
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
                                 .foregroundStyle(.primary)
                                 .lineLimit(2)
+                                .minimumScaleFactor(0.6)
                         if let artist = album.artistName {
                             Text(artist)
-                                .font(.system(size: 15))
+                                .font(.system(size: 15, design: .rounded))
                                 .foregroundStyle(.primary.opacity(0.75))
                         }
                         HStack(spacing: 10) {
@@ -97,12 +104,12 @@ struct AlbumDetailView: View {
                 }
                 
                 // Close button
-                Button(action: { dismiss() }) {
+                Button(action: { onClose?() }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 24))
-                        .foregroundStyle(.primary.opacity(0.6))
-                        .background(Circle().fill(Color.primary.opacity(0.4)))
+                        .foregroundStyle(.primary.opacity(0.8))
                 }
+                .background(Circle().fill(Color.primary.opacity(0.4)))
                 .buttonStyle(.plain)
                 .padding(20)
             }
@@ -125,12 +132,12 @@ struct AlbumDetailView: View {
                 )
                 .onTapGesture {
                     playbackVM.play(track: track, queue: tracks, startIndex: index, context: .album(albumId: album.id))
-                    dismiss()
+                    onClose?()
                 }
             }
             .listStyle(.plain)
         }
-        .frame(minWidth: 520, minHeight: 600)
+        .frame(minWidth: 300, minHeight: 400)
         .background(.background)
     }
 
@@ -163,7 +170,7 @@ struct AlbumDetailView: View {
     private func playAll() {
         guard !tracks.isEmpty else { return }
         playbackVM.play(track: tracks[0], queue: tracks, startIndex: 0)
-        dismiss()
+        onClose?()
     }
 }
 
@@ -172,7 +179,7 @@ struct AlbumDetailView: View {
 struct AlbumDetailContextMenu: View {
     let album: AlbumViewModel
     let tracks: [TrackViewModel]
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     
     @EnvironmentObject var playlistManager: PlaylistManager
     @Environment(\.openWindow) var openWindow
@@ -235,14 +242,14 @@ struct AlbumTrackRow: View {
                         .foregroundStyle(.purple)
                 } else {
                     Text(track.trackNumber.map { String($0) } ?? "–")
-                        .font(.system(size: 12, design: .monospaced))
+                        .font(.system(size: 12, design: .rounded))
                         .foregroundStyle(.tertiary)
                 }
             }
             .frame(width: 24, alignment: .center)
 
             Text(track.title)
-                .font(.system(size: 13))
+                .font(.system(size: 13, design: .rounded))
                 .foregroundStyle(isPlaying ? .purple : .primary)
                 .lineLimit(1)
 
@@ -292,7 +299,7 @@ struct AlbumTrackRow: View {
                 .frame(width: 24)
 
                 Text(formatDuration(track.duration))
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: 12, design: .rounded))
                     .foregroundStyle(.secondary)
                     .frame(width: 40, alignment: .trailing)
             }

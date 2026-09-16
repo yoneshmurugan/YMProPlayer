@@ -16,12 +16,11 @@ struct IntroVideoView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.black
 
             if let player = player {
                 // Use a wrapper around AVPlayerView to completely hide all controls.
                 SeamlessVideoPlayerView(player: player)
-                    .ignoresSafeArea()
             }
 
             // Invisible button over the whole screen to allow click-to-skip
@@ -52,7 +51,6 @@ struct IntroVideoView: View {
         .onAppear {
             setupAndPlay()
         }
-        .ignoresSafeArea()
     }
 
     private func setupAndPlay() {
@@ -121,6 +119,13 @@ struct SeamlessVideoPlayerView: NSViewRepresentable {
         view.videoGravity = .resizeAspectFill
         view.showsFullScreenToggleButton = false
         view.showsSharingServiceButton = false
+        
+        // CRITICAL FIX: Prevent AVPlayerView from arguing with SwiftUI's layout engine
+        view.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        view.setContentHuggingPriority(.defaultLow, for: .vertical)
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        view.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        
         return view
     }
 

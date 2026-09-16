@@ -5,7 +5,7 @@ import SwiftUI
 
 struct ArtistsView: View {
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     var onSearchTapped: (() -> Void)? = nil
     
     @State private var selectedArtist: ArtistViewModel?

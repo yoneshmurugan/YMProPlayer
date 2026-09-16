@@ -18,7 +18,9 @@ class PlaylistManager: ObservableObject {
             let fetched = await Task.detached(priority: .userInitiated) { [db] in
                 (try? db.fetchPlaylists()) ?? []
             }.value
-            self.playlists = fetched
+            DispatchQueue.main.async {
+                self.playlists = fetched
+            }
         }
     }
     

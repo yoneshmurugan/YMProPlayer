@@ -18,7 +18,7 @@ enum AppTab: Hashable {
 
 struct ContentView: View {
     @EnvironmentObject var playlistManager: PlaylistManager
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     @StateObject private var libraryVM:  LibraryViewModel
     @StateObject private var searchVM:   SearchViewModel
     @Environment(\.openWindow) var openWindow
@@ -30,7 +30,6 @@ struct ContentView: View {
     @State private var showFullScreenPlayer = false
     @State private var showSettings = false
     @State private var showFolderPicker = false
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @AppStorage("showNowPlayingInspector") private var showInspector = false
     @State private var isFullScreen: Bool = false
     @EnvironmentObject var themeManager: ThemeManager
@@ -45,239 +44,175 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
-            // ── Ambient Vibrant Background ──
-            LinearGradient(
-                colors: [
-                    Color(red: 0.1, green: 0.05, blue: 0.2),
-                    Color(red: 0.05, green: 0.08, blue: 0.2),
-                    Color(red: 0.02, green: 0.02, blue: 0.05)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+        NavigationSplitView {
+            // ── Sidebar ────────────────────────────────────────────────────
+            VStack(spacing: 0) {
+                List(selection: $selectedTab) {
+
+                    
+                    Section("Listen Now") {
+                        Label("Listen Now", systemImage: "play.circle").tag(AppTab.home)
+                        Label("Search", systemImage: "magnifyingglass").tag(AppTab.search)
+                    }
+                    
+                    Section("Library") {
+                        Label("Albums", systemImage: "rectangle.stack").tag(AppTab.albums)
+                        Label("Artists", systemImage: "music.mic").tag(AppTab.artists)
+                        Label("Tracks", systemImage: "music.note.list").tag(AppTab.tracks)
+                        Label("Hierarchy", systemImage: "folder").tag(AppTab.hierarchy)
+                        Button(action: { showSettings = true }) {
+                            Label("Settings", systemImage: "gearshape")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
+                    Section("Playlists") {
+                        Label("All Playlists", systemImage: "square.grid.2x2").tag(AppTab.playlists)
+                        
+                        ForEach(playlistManager.playlists) { pl in
+                            Label(pl.name, systemImage: "music.note.list")
+                                .dropDestination(for: TrackDropPayload.self) { payloads, _ in
+                                    let trackIds = payloads.flatMap { $0.trackIds }
+                                    if !trackIds.isEmpty {
+                                        playlistManager.addTracks(to: pl.id, trackIds: trackIds)
+                                        return true
+                                    }
+                                    return false
+                                }
+                                .contextMenu {
+                                    Button("Open in New Window") {
+                                        openWindow(id: "PlaylistEditor", value: pl.id)
+                                    }
+                                    Button("Delete Playlist", role: .destructive) {
+                                        playlistManager.deletePlaylist(id: pl.id)
+                                        if selectedTab == .playlist(pl.id) {
+                                            selectedTab = .playlists
+                                        }
+                                    }
+                                }
+                                .tag(AppTab.playlist(pl.id))
+                        }
+                    }
+                }
+                .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
+                .background(.clear)
+                .tint(.purple)
+                .symbolEffect(.bounce, value: selectedTab)
+                
+                Divider()
+                    .background(Color.primary.opacity(0.1))
+                
+                VStack(spacing: 12) {
+                    Button(action: {
+                        showFolderPicker = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "folder.badge.plus")
+                                .font(.system(size: 20))
+                                .foregroundStyle(.primary)
+                            
+                            Text("Add Folders")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.primary)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { hovering in
+                        if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                    }
+                    
+                    Text("YM Pro v2.1")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.bottom, 20)
+                .background(Color.clear)
+            }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
+
+        } detail: {
+            // ── Detail Pane ────────────────────────────────────────────────
+            // IMPORTANT: NowPlayingBar is broken out into its own view (DetailContentView)
+            // so that its @ObservedObject (playbackProgress ticking every second) does NOT
+            // cause ContentView to re-evaluate, which would thrash the inspector's
+            // _NSConstraintBasedLayoutHostingView and crash with constraint loop on macOS 27.
+            DetailContentView(
+                selectedTab: $selectedTab,
+                showFullScreenPlayer: $showFullScreenPlayer,
+                showSettings: $showSettings,
+                showInspector: $showInspector,
+                playbackVM: playbackVM,
+                libraryVM: libraryVM,
+                searchVM: searchVM,
+                db: db
             )
-            .ignoresSafeArea()
-            
-            GeometryReader { geo in
+        }
+        .navigationSplitViewStyle(.balanced)
+
+        .background(
+            ZStack {
+                // ── Ambient Vibrant Background ──
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.1, green: 0.05, blue: 0.2),
+                        Color(red: 0.05, green: 0.08, blue: 0.2),
+                        Color(red: 0.02, green: 0.02, blue: 0.05)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                
+                // Static positioned circles without GeometryReader to avoid layout loops
                 Circle()
                     .fill(Color.purple.opacity(0.3))
                     .blur(radius: 120)
                     .frame(width: 600, height: 600)
-                    .position(x: -100, y: -100)
+                    .offset(x: -100, y: -100)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 
                 Circle()
                     .fill(Color.cyan.opacity(0.15))
                     .blur(radius: 150)
                     .frame(width: 700, height: 700)
-                    .position(x: geo.size.width, y: geo.size.height)
-            }
-            .ignoresSafeArea()
-
-            NavigationSplitView(columnVisibility: $columnVisibility) {
-                // ── Sidebar ────────────────────────────────────────────────────
-                VStack(spacing: 0) {
-                    List(selection: $selectedTab) {
-
-                        
-                        Section("Listen Now") {
-                            Label("Listen Now", systemImage: "play.circle").tag(AppTab.home)
-                            Label("Search", systemImage: "magnifyingglass").tag(AppTab.search)
-                        }
-                        
-                        Section("Library") {
-                            Label("Albums", systemImage: "rectangle.stack").tag(AppTab.albums)
-                            Label("Artists", systemImage: "music.mic").tag(AppTab.artists)
-                            Label("Tracks", systemImage: "music.note.list").tag(AppTab.tracks)
-                            Label("Hierarchy", systemImage: "folder").tag(AppTab.hierarchy)
-                            Button(action: { showSettings = true }) {
-                                Label("Settings", systemImage: "gearshape")
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        
-                        Section("Playlists") {
-                            Label("All Playlists", systemImage: "square.grid.2x2").tag(AppTab.playlists)
-                            
-                            ForEach(playlistManager.playlists) { pl in
-                                Label(pl.name, systemImage: "music.note.list")
-                                    .dropDestination(for: TrackDropPayload.self) { payloads, _ in
-                                        let trackIds = payloads.flatMap { $0.trackIds }
-                                        if !trackIds.isEmpty {
-                                            playlistManager.addTracks(to: pl.id, trackIds: trackIds)
-                                            return true
-                                        }
-                                        return false
-                                    }
-                                    .contextMenu {
-                                        Button("Open in New Window") {
-                                            openWindow(id: "PlaylistEditor", value: pl.id)
-                                        }
-                                        Button("Delete Playlist", role: .destructive) {
-                                            playlistManager.deletePlaylist(id: pl.id)
-                                            if selectedTab == .playlist(pl.id) {
-                                                selectedTab = .playlists
-                                            }
-                                        }
-                                    }
-                                    .tag(AppTab.playlist(pl.id))
-                            }
-                        }
-                    }
-                    .listStyle(.sidebar)
-                    .scrollContentBackground(.hidden)
-                    .background(.clear)
-                    .tint(.purple)
-                    
-                    Divider()
-                        .background(Color.primary.opacity(0.1))
-                    
-                    VStack(spacing: 12) {
-                        Button(action: {
-                            showFolderPicker = true
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "folder.badge.plus")
-                                    .font(.system(size: 20))
-                                    .foregroundStyle(.primary)
-                                
-                                Text("Add Folders")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(.primary)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                            .clipShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .onHover { hovering in
-                            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-                        }
-                        
-                        Text("YM Pro v2.1")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.bottom, 20)
-                    .background(Color.clear)
-                }
-                .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
-
-            } detail: {
-                // ── Detail Pane ────────────────────────────────────────────────
-                ZStack(alignment: .bottom) {
-                    Group {
-                        switch selectedTab {
-                        case .home, nil:
-                            HomeView(
-                                libraryVM: libraryVM,
-                                playbackVM: playbackVM,
-                                onSearchTapped: { selectedTab = .search },
-                                onProfileTapped: { showSettings = true },
-                                onNavigateToTab: { tab in selectedTab = tab }
-                            )
-                        case .albums:
-                            LibraryView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search })
-                        case .artists:
-                            ArtistsView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search })
-                        case .tracks:
-                            TracksView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search })
-                        case .hierarchy:
-                            HierarchyView(libraryVM: libraryVM, playbackVM: playbackVM, onSearchTapped: { selectedTab = .search })
-                        case .playlists:
-                            PlaylistsView()
-                        case .playlist(let id):
-                            PlaylistEditorView(playlistId: id, db: db)
-                                .environmentObject(playbackVM)
-                                .id(id)
-                        case .search:
-                            SearchView(searchVM: searchVM, libraryVM: libraryVM, playbackVM: playbackVM)
-                        case .mock(let title):
-                            mockView(title)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(themeManager.glassIntensity.material)
-                    // Safe area equivalent so scrollviews can scroll past the floating bar
-                    .safeAreaInset(edge: .bottom) {
-                        Color.clear.frame(height: 120)
-                    }
-
-                    // ── Now Playing Bar (Floating in Detail Pane) ─────────────
-                    NowPlayingBar(
-                        vm: playbackVM,
-                        onArtworkTap: {
-                            if playbackVM.currentTrack != nil {
-                                showFullScreenPlayer = true
-                            }
-                        }
-                    )
-                }
-            }
-            .background(
-                GeometryReader { geo in
-                    Color.clear
-                        .onAppear {
-                            DispatchQueue.main.async {
-                                isFullScreen = NSApplication.shared.windows.first(where: { $0.isKeyWindow })?.styleMask.contains(.fullScreen) ?? false
-                            }
-                        }
-                }
-            )
-            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in
-                isFullScreen = true
-                if showInspector {
-                    columnVisibility = .all
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
-                isFullScreen = false
-                if showInspector {
-                    columnVisibility = .detailOnly
-                }
-            }
-            .onChange(of: showInspector) { _ in
-                if !isFullScreen && showInspector {
-                    columnVisibility = .detailOnly
-                }
-            }
-            .onChange(of: columnVisibility) { _ in
-                if !isFullScreen && columnVisibility != .detailOnly {
-                    showInspector = false
-                }
-            }
-            .inspector(isPresented: $showInspector) {
-                NowPlayingInspectorView(vm: playbackVM) {
-                    if playbackVM.currentTrack != nil {
-                        showFullScreenPlayer = true
-                    }
-                }
-                    .inspectorColumnWidth(min: 250, ideal: 300, max: 400)
-                    .toolbar {
-                        ToolbarItem(placement: .primaryAction) {
-                            Button(action: {
-                                withAnimation {
-                                    showInspector.toggle()
-                                }
-                            }) {
-                                Image(systemName: "sidebar.right")
-                                    .foregroundStyle(showInspector ? Color.accentColor : Color.primary)
-                            }
-                            .help("Toggle Now Playing Inspector")
+                    .offset(x: 100, y: 100)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                
+                Color.clear
+                    .onAppear {
+                        DispatchQueue.main.async {
+                            isFullScreen = NSApplication.shared.windows.first(where: { $0.isKeyWindow })?.styleMask.contains(.fullScreen) ?? false
                         }
                     }
             }
-
-            // ── Intro Video Loader (plays once on launch) ──
-            if !introFinished {
-                IntroVideoView(isFinished: $introFinished)
-                    .transition(.opacity)
-                    .zIndex(100)
+        )
+        .overlay(
+            Group {
+                // ── Intro Video Loader (plays once on launch) ──
+                if !introFinished {
+                    IntroVideoView(isFinished: $introFinished)
+                        .transition(.opacity)
+                        .zIndex(200)
+                }
+                
+                // ── Full-Screen Player Overlay (Liquid Glass) ──
+                if showFullScreenPlayer {
+                    FullScreenPlayerView(vm: playbackVM, database: db, isPresented: $showFullScreenPlayer)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(100)
+                }
             }
+        )
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in
+            isFullScreen = true
         }
-        .sheet(isPresented: $showFullScreenPlayer) {
-            FullScreenPlayerView(vm: playbackVM, database: db)
-                .frame(minWidth: 800, idealWidth: 900, idealHeight: 650)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
+            isFullScreen = false
         }
+
         .sheet(isPresented: $showSettings) {
             SettingsView(libraryVM: libraryVM, playbackVM: playbackVM, halEngine: halEngine)
                 .frame(width: 500, height: 400)
@@ -299,62 +234,7 @@ struct ContentView: View {
                 handleQueueEnded()
             }
         }
-        .touchBar {
-            // Premium Static Icon (Replaces buggy NSImage)
-            Image("Logo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 30, height: 30)
-            
-            // Static Track Info (Expanded width + Audiophile Stats)
-            if let track = playbackVM.currentTrack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(track.title)
-                        .font(.system(size: 14, weight: .bold))
-                        .lineLimit(1)
-                    
-                    let stats = "\(playbackVM.currentBitDepth)-bit / \(playbackVM.currentSampleRate / 1000)kHz"
-                    Text("\(track.artistName ?? "Unknown") • \(stats)")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: 300, alignment: .leading)
-                .clipped()
-            } else {
-                Text("YM Pro")
-                    .font(.system(size: 15, weight: .bold))
-            }
-            
-            // Format Badge, Hi-Res Logo
-            if let track = playbackVM.currentTrack {
-                if playbackVM.currentBitDepth >= 24, let nsImage = NSImage(named: "hires.png") {
-                    let _ = { nsImage.isTemplate = false }()
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .renderingMode(.original)
-                        .scaledToFit()
-                        .frame(height: 14)
-                }
-            }
-            
-            Spacer(minLength: 16)
-            
-            Text("\(playbackVM.currentTimeString) / \(playbackVM.totalTimeString)")
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundColor(.secondary)
-                .frame(width: 75)
-                .layoutPriority(1)
-            
-            // Volume Slider (Disabled if Bit-Perfect)
-            Slider(value: $playbackVM.volume, in: 0...1) {
-                Image(systemName: "speaker.wave.2.fill")
-            }
-            .frame(width: 150)
-            .tint(playbackVM.isBitPerfect ? .gray : .purple)
-            .grayscale(playbackVM.isBitPerfect ? 1.0 : 0.0)
-            .disabled(playbackVM.isBitPerfect)
-        }
+
         .fileImporter(
             isPresented: $showFolderPicker,
             allowedContentTypes: [.folder],
@@ -403,17 +283,5 @@ struct ContentView: View {
         default:
             break
         }
-    }
-    
-    private func mockView(_ title: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "hammer.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.purple)
-            Text("\(title) is coming soon")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

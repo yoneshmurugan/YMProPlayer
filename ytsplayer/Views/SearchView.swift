@@ -6,9 +6,9 @@ import SwiftUI
 struct SearchView: View {
     @ObservedObject var searchVM: SearchViewModel
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     
-    @State private var selectedAlbum: AlbumViewModel?
+    @EnvironmentObject var heroState: HeroState
     @State private var selectedArtist: ArtistViewModel?
 
     var body: some View {
@@ -109,7 +109,9 @@ struct SearchView: View {
                                 .padding(.vertical, 4)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
-                                    selectedAlbum = album
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                        heroState.selectedAlbum = album
+                                    }
                                 }
                             }
                         }
@@ -177,13 +179,6 @@ struct SearchView: View {
                 }
                 .listStyle(.plain)
             }
-        }
-        .sheet(item: $selectedAlbum) { album in
-            AlbumDetailView(
-                album: album,
-                tracks: libraryVM.fetchTracks(for: album),
-                playbackVM: playbackVM
-            )
         }
         .sheet(item: $selectedArtist) { artist in
             ArtistDetailView(

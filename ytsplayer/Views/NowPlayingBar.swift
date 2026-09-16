@@ -15,6 +15,7 @@ struct NowPlayingBar: View {
     @State private var isFavoriteLocal = false
     @State private var isQueuePresented = false
     @State private var isDSPPresented = false
+    @State private var isScrubberHovered = false
     @StateObject private var waveform = WaveformGenerator()
     var onArtworkTap: (() -> Void)? = nil
 
@@ -46,16 +47,34 @@ struct NowPlayingBar: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(vm.currentTrack?.title ?? "Nothing Playing")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     if let artist = vm.currentTrack?.artistName, !artist.isEmpty {
                         Text(artist)
-                            .font(.system(size: 12))
+                            .font(.system(size: 12, design: .rounded))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
+                    }
+                    
+                    // Badges (Moved from center to under artist)
+                    if vm.currentSampleRate > 0 {
+                        HStack(spacing: 4) {
+                            if vm.currentBitDepth >= 24 {
+                                badge(text: "Hi-Res", accent: Color(red: 0.9, green: 0.75, blue: 0.2))
+                            }
+                            let ext = (vm.currentTrack?.filePath as NSString?)?.pathExtension.uppercased() ?? ""
+                            if !ext.isEmpty { badge(text: ext) }
+                            let kHz = vm.currentSampleRate / 1000
+                            let rateStr = "\(kHz)kHz"
+                            badge(text: rateStr)
+                            if vm.currentBitDepth > 0 {
+                                badge(text: "\(vm.currentBitDepth)-bit")
+                            }
+                        }
+                        .padding(.top, 2)
                     }
                 }
                 .frame(minWidth: 60, alignment: .leading)
@@ -98,26 +117,44 @@ struct NowPlayingBar: View {
             // ── CENTER: Transport, Progress, Badges ─────────────────────────
             VStack(spacing: 8) {
                 // 1. Controls
-                HStack(spacing: 32) {
-                    transportButton(systemImage: "backward.fill", size: 20) { vm.skipPrevious() }
+                HStack(spacing: 24) {
+                    transportButton(systemImage: "backward.fill", size: 16) { vm.skipPrevious() }
                     playPauseButton
-                    transportButton(systemImage: "forward.fill", size: 20) { vm.skipNext() }
+                    transportButton(systemImage: "forward.fill", size: 16) { vm.skipNext() }
                 }
                 
-                // 2. Progress Scrubber
-                HStack(spacing: 8) {
+                // 2. Progress Scrubber OR Error Message
+                if let err = vm.errorMessage {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.primary)
+                        Text(err)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(Color.red.opacity(0.85))
+                    .clipShape(Capsule())
+                    .frame(height: 32)
+                } else {
+                    HStack(spacing: 8) {
                     Text(vm.currentTimeString)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
                         .frame(width: 36, alignment: .trailing)
 
                     GeometryReader { geo in
+                        let isExpanded = vm.isScrubbing || isScrubberHovered
                         Group {
                             if waveform.peaks.isEmpty {
                                 ZStack(alignment: .leading) {
                                     Capsule()
                                         .fill(Color.primary.opacity(0.1))
-                                        .frame(height: 4)
+                                        .frame(height: isExpanded ? 8 : 4)
                                     Capsule()
                                         .fill(
                                             LinearGradient(
@@ -127,12 +164,13 @@ struct NowPlayingBar: View {
                                         )
                                         .frame(
                                             width: geo.size.width * vm.playbackProgress,
-                                            height: 4
+                                            height: isExpanded ? 8 : 4
                                         )
-                                        .shadow(color: .purple.opacity(0.5), radius: 3, y: 0)
+                                        .shadow(color: .purple.opacity(isExpanded ? 0.8 : 0.5), radius: isExpanded ? 5 : 3, y: 0)
                                 }
+                                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isExpanded)
                             } else {
-                                WaveformView(peaks: waveform.peaks, progress: vm.playbackProgress)
+                                WaveformView(peaks: waveform.peaks, progress: vm.playbackProgress, isExpanded: isExpanded)
                             }
                         }
                         .gesture(
@@ -148,55 +186,21 @@ struct NowPlayingBar: View {
                                     vm.isScrubbing = false
                                 }
                         )
+                        .onHover { hovering in
+                            isScrubberHovered = hovering
+                        }
                         .contentShape(Rectangle())
-                        .frame(maxHeight: waveform.peaks.isEmpty ? 12 : 24)
+                        .frame(maxHeight: waveform.peaks.isEmpty ? (isExpanded ? 16 : 12) : (isExpanded ? 32 : 24))
                     }
-                    .frame(height: 24)
+                    .frame(height: 32)
                     .frame(maxWidth: 320)
 
                     Text("-" + vm.totalTimeString) // Mockup has negative remaining time usually, but we use total
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
                         .frame(width: 36, alignment: .leading)
                 }
-                
-                // 3. Badges — only show audio info, never device-change noise
-                if let err = vm.errorMessage {
-                    HStack(spacing: 6) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.primary)
-                        Text(err)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.red.opacity(0.85))
-                    .clipShape(Capsule())
-                    .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    HStack(spacing: 6) {
-                        if vm.currentSampleRate > 0 {
-                            if vm.currentBitDepth >= 24 {
-                                badge(text: "Hi-Res", accent: Color(red: 0.9, green: 0.75, blue: 0.2))
-                            }
-                            let ext = (vm.currentTrack?.filePath as NSString?)?.pathExtension.uppercased() ?? ""
-                            if !ext.isEmpty {
-                                badge(text: ext)
-                            }
-                            let kHz = vm.currentSampleRate / 1000
-                            let remainder = vm.currentSampleRate % 1000
-                            let rateStr = remainder == 0 ? "\(kHz)kHz" : "\(kHz).\(remainder / 100)kHz"
-                            badge(text: rateStr)
-                            if vm.currentBitDepth > 0 {
-                                badge(text: "\(vm.currentBitDepth)-bit")
-                            }
-                        }
-                    }
-                }
+                } // End of if-else for errorMessage
             }
 
             Spacer()
@@ -270,31 +274,13 @@ struct NowPlayingBar: View {
                 }
             }
             .frame(minWidth: 280, maxWidth: 360, alignment: .trailing)
-            .padding(.trailing, 20)
+            .padding(.trailing, 24)
         }
-        .frame(height: 120)
-        .background(
-            ZStack {
-                Rectangle()
-                    .fill(Material.ultraThin)
-                
-                LinearGradient(
-                    colors: [
-                        Color.primary.opacity(0.12),
-                        Color.clear,
-                        Color.primary.opacity(0.15)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-        )
-        .overlay(
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(Color.primary.opacity(0.1)),
-            alignment: .top
-        )
+        .frame(height: 88)
+        .liquidGlassPill(cornerRadius: 44)
+        .shadow(color: Color.black.opacity(0.2), radius: 30, x: 0, y: 12)
+        .padding(.horizontal, 32)
+        .padding(.bottom, 32)
     }
 
     // MARK: - Sub-views
@@ -333,9 +319,9 @@ struct NowPlayingBar: View {
     private var playPauseButton: some View {
         Button(action: { vm.togglePlayPause() }) {
             Image(systemName: vm.isPlaying ? "pause.fill" : "play.fill")
-                .font(.system(size: 24))
+                .font(.system(size: 18))
                 .foregroundStyle(.primary)
-                .frame(width: 44, height: 44)
+                .frame(width: 36, height: 36)
                 .background(
                     Circle().fill(Color.primary.opacity(0.12))
                 )
@@ -363,6 +349,8 @@ struct NowPlayingBar: View {
             .font(.system(size: 9, weight: .semibold, design: .rounded))
             .textCase(.uppercase)
             .tracking(0.5)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: true)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
             .foregroundStyle(accent.opacity(0.9))
@@ -376,26 +364,55 @@ struct NowPlayingBar: View {
 struct WaveformView: View {
     let peaks: [Float]
     let progress: Double
+    let isExpanded: Bool
     
     var body: some View {
         GeometryReader { geo in
-            let barWidth = geo.size.width / CGFloat(peaks.count)
-            let playedWidth = geo.size.width * progress
+            let shape = WaveformShape(peaks: peaks)
             
-            HStack(alignment: .center, spacing: 0) {
-                ForEach(0..<peaks.count, id: \.self) { i in
-                    let height = max(3.0, CGFloat(peaks[i]) * geo.size.height)
-                    let isPlayed = (CGFloat(i) * barWidth) < playedWidth
-                    
-                    RoundedRectangle(cornerRadius: barWidth / 2)
-                        .fill(isPlayed ? AnyShapeStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.primary.opacity(0.15)))
-                        .frame(width: max(1.0, barWidth - 1), height: height)
-                        .padding(.horizontal, 0.5)
-                        .shadow(color: isPlayed ? .purple.opacity(0.4) : .clear, radius: 2, y: 0)
-                }
-            }
-            .frame(maxHeight: .infinity, alignment: .center)
+            // Highly optimized rendering:
+            // Draw all bars as a single path, then overlay a single masked gradient.
+            // Eliminates 100x SwiftUI redraws on every progress tick.
+            shape
+                .fill(Color.primary.opacity(0.15))
+                .overlay(
+                    shape
+                        .fill(LinearGradient(colors: [.purple, .indigo], startPoint: .top, endPoint: .bottom))
+                        .mask(
+                            Rectangle()
+                                .frame(width: max(0, geo.size.width * progress))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        )
+                )
+                .shadow(color: .purple.opacity(isExpanded ? 0.4 : 0.0), radius: isExpanded ? 4 : 0, y: 0)
+                .scaleEffect(y: isExpanded ? 1.2 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isExpanded)
+                .frame(maxHeight: .infinity, alignment: .center)
         }
+    }
+}
+
+struct WaveformShape: Shape {
+    let peaks: [Float]
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard !peaks.isEmpty else { return path }
+        
+        let barWidth = rect.width / CGFloat(peaks.count)
+        let cornerRadius = barWidth / 2
+        let spacing: CGFloat = 0.5
+        let barActualWidth = max(1.0, barWidth - 1.0)
+        
+        for i in 0..<peaks.count {
+            let peakHeight = max(3.0, CGFloat(peaks[i]) * rect.height)
+            let yOffset = (rect.height - peakHeight) / 2
+            let xOffset = (CGFloat(i) * barWidth) + spacing
+            
+            let barRect = CGRect(x: xOffset, y: yOffset, width: barActualWidth, height: peakHeight)
+            path.addRoundedRect(in: barRect, cornerSize: CGSize(width: cornerRadius, height: cornerRadius))
+        }
+        return path
     }
 }
 
@@ -568,5 +585,25 @@ struct DSPSettingsView: View {
         }
         .padding()
         .frame(width: 380)
+    }
+}
+
+// MARK: - Liquid Glass helper
+// Uses Apple's native .glassEffect() API on macOS 26+ (Liquid Glass),
+// and falls back to Material.ultraThin on older deployment targets so the
+// Universal Binary still works on Intel Macs running macOS 13/14.
+private extension View {
+    @ViewBuilder
+    func liquidGlassPill(cornerRadius: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if #available(macOS 26.0, *) {
+            // Real Liquid Glass — physically accurate refractions + specular rim lighting.
+            // .interactive() adds a tactile specular highlight on user interaction.
+            self.glassEffect(.regular.interactive(), in: shape)
+        } else {
+            // Fallback for macOS < 26: approximate with ultraThin material.
+            self.background(shape.fill(Material.ultraThin))
+                .overlay(shape.strokeBorder(Color.white.opacity(0.15), lineWidth: 1))
+        }
     }
 }

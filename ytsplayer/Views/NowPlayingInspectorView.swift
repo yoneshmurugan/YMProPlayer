@@ -40,18 +40,18 @@ struct NowPlayingInspectorView: View {
                 // Track Info
                 VStack(spacing: 8) {
                     Text(track.title)
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
                     
                     Text(track.artistName ?? "Unknown Artist")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                     
                     if let album = track.albumTitle {
                         Text(album)
-                            .font(.system(size: 14, weight: .regular))
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(.tertiary)
                             .multilineTextAlignment(.center)
                     }
@@ -92,9 +92,10 @@ struct NowPlayingInspectorView: View {
                 // Up Next Queue
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Up Next")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal)
+                        .padding(.top, 24)
                     
                     if vm.queue.isEmpty {
                         Text("Queue is empty")
@@ -131,8 +132,6 @@ struct NowPlayingInspectorView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                Spacer(minLength: 0)
-                
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "music.note")
@@ -146,7 +145,7 @@ struct NowPlayingInspectorView: View {
             }
         }
         .padding(20)
-        .frame(minWidth: 260, maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
             ZStack {
                 if let url = artworkURL, vm.currentTrack != nil {
@@ -157,17 +156,15 @@ struct NowPlayingInspectorView: View {
                     .blur(radius: 80, opaque: true)
                     .saturation(1.5)
                     .opacity(0.8)
-                    .ignoresSafeArea()
                 } else {
                     fallbackArtwork
                         .blur(radius: 80, opaque: true)
-                        .ignoresSafeArea()
                 }
                 
                 Rectangle()
                     .fill(.ultraThinMaterial)
-                    .ignoresSafeArea()
             }
+            .clipped()
         )
     }
     
@@ -199,13 +196,13 @@ struct InspectorQueueRow: View {
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 
                 if let artist = track.artistName {
                     Text(artist)
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .rounded))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -214,7 +211,7 @@ struct InspectorQueueRow: View {
             Spacer()
             
             Text(formatTime(track.duration))
-                .font(.system(size: 11, design: .monospaced))
+                .font(.system(size: 11, design: .rounded))
                 .foregroundStyle(.secondary.opacity(0.7))
                 
             Image(systemName: "line.3.horizontal")

@@ -5,8 +5,8 @@ import SwiftUI
 
 struct LibraryView: View {
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
-    @State private var selectedAlbum: AlbumViewModel?
+    let playbackVM: PlaybackViewModel
+    @EnvironmentObject var heroState: HeroState
     @State private var showFolderPicker = false
     @AppStorage("albumsIsGridView") private var isGridView = true
     var onSearchTapped: (() -> Void)? = nil
@@ -122,12 +122,12 @@ struct LibraryView: View {
                             ForEach(libraryVM.albums) { album in
                                 AlbumCard(
                                     album: album,
-                                    isSelected: selectedAlbum?.id == album.id
+                                    isSelected: heroState.selectedAlbum?.id == album.id
                                 )
                                 .equatable()
                                 .onTapGesture {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        selectedAlbum = album
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                        heroState.selectedAlbum = album
                                     }
                                 }
                                 .contextMenu {
@@ -145,12 +145,12 @@ struct LibraryView: View {
                             ForEach(libraryVM.albums) { album in
                                 AlbumListRow(
                                     album: album,
-                                    isSelected: selectedAlbum?.id == album.id
+                                    isSelected: heroState.selectedAlbum?.id == album.id
                                 )
                                 .equatable()
                                 .onTapGesture {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        selectedAlbum = album
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                        heroState.selectedAlbum = album
                                     }
                                 }
                                 .contextMenu {
@@ -166,13 +166,6 @@ struct LibraryView: View {
                     }
                 }
             }
-        }
-        .sheet(item: $selectedAlbum) { album in
-            AlbumDetailView(
-                album: album,
-                tracks: libraryVM.fetchTracks(for: album),
-                playbackVM: playbackVM
-            )
         }
         .onChange(of: libraryVM.sortOrder) { _ in
             libraryVM.loadAlbums()
@@ -226,6 +219,7 @@ struct AlbumCard: View, Equatable {
         lhs.album.id == rhs.album.id && lhs.isSelected == rhs.isSelected
     }
     
+    @Environment(\.heroNamespace) private var heroNamespace
     @State private var isHovered = false
 
     var body: some View {
@@ -234,7 +228,7 @@ struct AlbumCard: View, Equatable {
             artworkImage
                 .frame(maxWidth: .infinity)
                 .aspectRatio(1, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(alignment: .topTrailing) {
                     if album.isHiRes {
                         if let nsImage = NSImage(named: "hires.png") {
@@ -247,15 +241,29 @@ struct AlbumCard: View, Equatable {
                         }
                     }
                 }
+                .overlay {
+                    if isHovered {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 48, height: 48)
+                            .overlay(
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white)
+                                    .padding(.leading, 3) // Center play icon visually
+                            )
+                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
+                }
                 .shadow(
-                    color: .black.opacity(isHovered ? 0.6 : 0.25),
-                    radius: isHovered ? 16 : 8,
-                    y: isHovered ? 8 : 4
+                    color: .black.opacity(isHovered ? 0.6 : 0.3),
+                    radius: isHovered ? 16 : 6,
+                    y: isHovered ? 8 : 3
                 )
-                .scaleEffect(isHovered ? 1.04 : 1.0)
+                .scaleEffect(isHovered ? 1.02 : 1.0)
                 .animation(.spring(response: 0.35, dampingFraction: 0.65), value: isHovered)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(
                             LinearGradient(
                                 colors: [.purple.opacity(isSelected ? 0.8 : 0), .blue.opacity(isSelected ? 0.8 : 0)],
@@ -268,18 +276,18 @@ struct AlbumCard: View, Equatable {
             // Text
             VStack(alignment: .leading, spacing: 3) {
                 Text(album.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 if let artist = album.artistName {
                     Text(artist)
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .rounded))
                         .foregroundStyle(.primary.opacity(0.7))
                         .lineLimit(1)
                 }
                 if let year = album.year {
                     Text(String(year))
-                        .font(.system(size: 10))
+                        .font(.system(size: 10, design: .rounded))
                         .foregroundStyle(.primary.opacity(0.5))
                 }
             }
@@ -328,7 +336,7 @@ struct AlbumCard: View, Equatable {
 struct AlbumContextMenu: View {
     let album: AlbumViewModel
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     
     @EnvironmentObject var playlistManager: PlaylistManager
     @Environment(\.openWindow) var openWindow
@@ -379,6 +387,8 @@ struct AlbumListRow: View, Equatable {
         lhs.album.id == rhs.album.id && lhs.isSelected == rhs.isSelected
     }
     
+    @Environment(\.heroNamespace) private var heroNamespace
+    @EnvironmentObject var heroState: HeroState
     @State private var isHovered = false
 
     var body: some View {
@@ -386,20 +396,36 @@ struct AlbumListRow: View, Equatable {
             // Artwork
             artworkImage
                 .frame(width: 60, height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay {
+                    if isHovered {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white)
+                                    .padding(.leading, 2)
+                            )
+                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
+                }
+                .shadow(color: .black.opacity(isHovered ? 0.5 : 0.3), radius: isHovered ? 6 : 4, y: isHovered ? 4 : 2)
+                .scaleEffect(isHovered ? 1.04 : 1.0)
+                .animation(.spring(response: 0.35, dampingFraction: 0.65), value: isHovered)
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(album.title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 
                 HStack(spacing: 8) {
                     if let artist = album.artistName {
                         Text(artist)
-                            .font(.system(size: 13))
+                            .font(.system(size: 13, design: .rounded))
                             .foregroundStyle(.primary.opacity(0.7))
                             .lineLimit(1)
                     }
@@ -407,7 +433,7 @@ struct AlbumListRow: View, Equatable {
                         Text("•")
                             .foregroundStyle(.primary.opacity(0.4))
                         Text(String(year))
-                            .font(.system(size: 13))
+                            .font(.system(size: 13, design: .rounded))
                             .foregroundStyle(.primary.opacity(0.5))
                     }
                 }

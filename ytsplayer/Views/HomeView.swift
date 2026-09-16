@@ -5,14 +5,14 @@ import SwiftUI
 
 struct HomeView: View {
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     
     var onSearchTapped: () -> Void
     var onProfileTapped: () -> Void
     var onNavigateToTab: ((AppTab) -> Void)? = nil
     
     // For navigating directly to album/artist from home
-    @State private var selectedAlbum: AlbumViewModel?
+    @EnvironmentObject var heroState: HeroState
     @State private var selectedArtist: ArtistViewModel?
     
     @EnvironmentObject var playlistManager: PlaylistManager
@@ -106,7 +106,7 @@ struct HomeView: View {
                                         AlbumCard(album: album, isSelected: false)
                                             .frame(width: 180)
                                             .onTapGesture {
-                                                selectedAlbum = album
+                                                heroState.selectedAlbum = album
                                             }
                                             .contextMenu {
                                                 AlbumContextMenuHome(
@@ -181,7 +181,7 @@ struct HomeView: View {
                                         AlbumCard(album: album, isSelected: false)
                                             .frame(width: 180)
                                             .onTapGesture {
-                                                selectedAlbum = album
+                                                heroState.selectedAlbum = album
                                             }
                                             .contextMenu {
                                                 AlbumContextMenuHome(
@@ -224,13 +224,6 @@ struct HomeView: View {
                 Spacer(minLength: 40)
             }
         }
-        .sheet(item: $selectedAlbum) { album in
-            AlbumDetailView(
-                album: album,
-                tracks: libraryVM.fetchTracks(for: album),
-                playbackVM: playbackVM
-            )
-        }
         .sheet(item: $selectedArtist) { artist in
             ArtistDetailView(
                 artist: artist,
@@ -268,7 +261,7 @@ struct HomeView: View {
 struct AlbumContextMenuHome: View {
     let album: AlbumViewModel
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     
     @EnvironmentObject var playlistManager: PlaylistManager
     @Environment(\.openWindow) var openWindow

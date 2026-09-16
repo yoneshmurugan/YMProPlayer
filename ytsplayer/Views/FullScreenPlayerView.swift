@@ -7,7 +7,7 @@ import GRDB
 struct FullScreenPlayerView: View {
     @ObservedObject var vm: PlaybackViewModel
     let database: DatabasePool
-    @Environment(\.dismiss) var dismiss
+    @Binding var isPresented: Bool
 
     var body: some View {
         FullScreenPlayerContent(
@@ -16,7 +16,11 @@ struct FullScreenPlayerView: View {
             bitDepth: vm.currentBitDepth,
             errorMessage: vm.errorMessage,
             database: database,
-            dismiss: dismiss,
+            onDismiss: {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    isPresented = false
+                }
+            },
             onLyricsFetched: { newLyrics in
                 if var updated = vm.currentTrack {
                     updated.lyrics = newLyrics
@@ -34,7 +38,7 @@ struct FullScreenPlayerContent: View {
     let bitDepth: Int
     let errorMessage: String?
     let database: DatabasePool
-    let dismiss: DismissAction
+    let onDismiss: () -> Void
     let onLyricsFetched: (String) -> Void
 
     var body: some View {
@@ -88,7 +92,7 @@ struct FullScreenPlayerContent: View {
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.primary)
                     Spacer()
-                    Button(action: { dismiss() }) {
+                    Button(action: { onDismiss() }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 28))
                             .foregroundColor(.primary.opacity(0.8))
@@ -107,31 +111,30 @@ struct FullScreenPlayerContent: View {
         }
         .padding(.horizontal, 40)
         .padding(.vertical, 30)
-        .frame(width: 850, height: 550)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(backgroundLayer)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        // No outer padding or clipShape so it fills the native window perfectly.
     }
 
     // MARK: - Subviews
 
     @ViewBuilder
     private var backgroundLayer: some View {
-        if let path = track?.albumArtworkPath,
-           let cacheDir = ImageDownsampler.artworkCacheDirectory() {
-            CachedAsyncImage(url: cacheDir.appendingPathComponent(path)) {
-                Color(red: 0.08, green: 0.05, blue: 0.18)
-            }
-            .scaledToFill()
-            .blur(radius: 80)
-            .overlay(.regularMaterial)
-            .ignoresSafeArea()
-        } else {
-            LinearGradient(
-                colors: [Color(red: 0.12, green: 0.05, blue: 0.25), Color(red: 0.04, green: 0.04, blue: 0.12)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
+        // Native Apple Liquid Glass effect
+        Rectangle()
+            .fill(.ultraThinMaterial)
+            .opacity(0.95)
+            // Add subtle lighting
+            .overlay(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.15),
+                        Color.clear,
+                        Color.black.opacity(0.2)
+                    ],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
             )
-            .ignoresSafeArea()
-        }
     }
 
     @ViewBuilder

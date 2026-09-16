@@ -20,7 +20,9 @@ This document outlines potential future enhancements for YM Pro to elevate it fr
 * **Description:** Add native macOS drag-and-drop support so users can drag folders or FLAC files directly from Finder onto the app window to add them to the library.
 * **Why it matters:** Standard Mac behavior that users expect; faster than using the folder picker.
 
-
+**4. Add Folders to Queue**
+* **Description:** Allow users to right-click an entire folder from a hierarchy view and add all contained tracks directly to the playing queue.
+* **Why it matters:** Crucial for users who prefer organizing and listening to music strictly by folder hierarchy rather than by ID3 tags like Albums/Artists.
 **5. DLNA & AirPlay 2 Casting**
 * **Description:** Built-in protocol support to cast the high-res audio stream directly to networked AV receivers, smart TVs, or HomePods.
 * **Why it matters:** Expanding playback beyond the Mac's physical audio jacks.
@@ -35,34 +37,40 @@ This document outlines potential future enhancements for YM Pro to elevate it fr
 
 
 
-**9. playlist export and import**
+**9. Playlist Export and Import**
+* **Description:** Allow users to export and import M3U or standard playlist formats.
+* **Why it matters:** Ensures playlist portability across different devices and players.
 
+**10. Predefined Headphone EQs**
+* **Description:** Ship with AutoEQ presets for popular audiophile headphones.
+* **Why it matters:** A massive quality of life upgrade for headphone listeners.
 
-**10. predifined headphone EQ's**
+**11. Audio Upsampling / Resampling**
+* **Description:** Add DSP options for high-quality upsampling (e.g., 44.1kHz to 192kHz) before sending to the DAC.
+* **Why it matters:** Highly requested by audiophiles wanting to feed their DACs with specific, consistent high-resolution streams.
 
 ## 🟢 Low Priority (Nice-to-Haves & Ecosystem)
 
-**9. Legacy Intel MacBook Support (Universal Binary)**
-* **Description:** Configure the Xcode project to build as a Universal Binary (`arm64` + `x86_64`) and evaluate lowering the macOS deployment target (e.g., to macOS 12) to support older Intel-based Macs.
-* **Why it matters:** Expands the user base to audiophiles who still use older Intel Macs as dedicated media servers or desktop setups.
-
-**10. Sleep Timer**
+**12. Sleep Timer**
 * **Description:** A quick menu option to fade out and pause playback after 15/30/60 minutes.
 * **Why it matters:** Perfect for bedtime listening.
 
-**11. Built-in Format Converter**
+**13. Built-in Format Converter**
 * **Description:** Right-click a FLAC album and export it as ALAC, MP3, or AAC to a target folder.
 * **Why it matters:** Useful for users syncing music to older iPods or devices with limited storage that don't support high-res FLAC.
 
-
-**13. Companion iOS Remote Control App**
-* **Description:** A lightweight companion iPhone app that connects to the Mac via local Wi-Fi to pause, play, and browse the queue.
+**14. Companion Mobile Remote Control App (iOS & Android)**
+* **Description:** A lightweight companion app that connects to the Mac via local Wi-Fi to pause, play, and browse the queue.
 * **Why it matters:** Allows users listening on living room stereo systems to control their Mac from the couch.
 
-**14. External Streaming Integrations (Tidal/Qobuz)**
-* **Description:** Add API connections for audiophile streaming services like Qobuz or Tidal alongside the local library.
+**15. External Streaming Integrations (Apple Music/Tidal/Qobuz)**
+* **Description:** Add API connections for audiophile streaming services like Qobuz, Tidal, or Apple Music (non-DRM) alongside the local library.
 * **Why it matters:** Merges the convenience of streaming with the uncompromising quality of the local FLAC engine.
 
-**15. Home Assistant & Music Assistant Integration**
+**16. Home Assistant & Music Assistant Integration**
 * **Description:** Build a plugin or local API endpoint that allows YM Pro to be controlled by Home Assistant or act as a provider for Music Assistant.
 * **Why it matters:** Huge value for smart-home power users who want to automate playback or cast to different zones using HA.
+
+**17. Windows / Cross-Platform Port**
+* **Description:** Evaluate open-sourcing the core logic for a Windows C++/C# build to meet high demand from Windows audiophiles.
+* **Why it matters:** Captures the massive Windows market currently relying on Foobar2000.

@@ -55,9 +55,12 @@ struct LyricsOverlayView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            Rectangle()
-                .fill(.regularMaterial)
-            
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.clear)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                )
             VStack {
                 Picker("", selection: $selectedTab) {
                     Text("Lyrics").tag(0)

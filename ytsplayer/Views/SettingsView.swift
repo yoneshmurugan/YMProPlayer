@@ -6,7 +6,11 @@ import CoreAudio
 
 struct SettingsView: View {
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
+    // NOTE: playbackVM is passed as a plain `let` here, NOT @ObservedObject.
+    // Using @ObservedObject caused SettingsView to re-render on every
+    // playback timer tick (~4x/sec), which made the Picker tab bar flicker.
+    // The DSP-dependent sub-expressions are isolated in AudioTabDSPControls.
+    let playbackVM: PlaybackViewModel
     let halEngine: CoreAudioHALEngine
 
     @State private var showFolderPicker = false
@@ -208,41 +212,16 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .font(.system(size: 11))
                 }
-                
-                Toggle(isOn: $hogModeEnabled) {
-                    HStack {
-                        Text("Hog Mode (Exclusive Access)")
-                        InfoButton(
-                            title: "Hog Mode (Exclusive Access)",
-                            description: "Grants the player exclusive access to the audio device hardware, preventing the macOS system mixer from intercepting or modifying the signal.\n\nWarning: When enabled, all other applications (YouTube, system alerts, etc.) will be muted and cannot use this audio device until Hog Mode is turned off. Some built-in devices (like MacBook speakers) may not support Hog Mode."
-                        )
-                    }
-                }
-                .disabled(playbackVM.eqEnabled || playbackVM.crossfeedEnabled)
-                .grayscale((playbackVM.eqEnabled || playbackVM.crossfeedEnabled) ? 1.0 : 0.0)
-                .opacity((playbackVM.eqEnabled || playbackVM.crossfeedEnabled) ? 0.5 : 1.0)
-                .onChange(of: hogModeEnabled) { enabled in
-                    _ = halEngine.setHogModeSafe(enabled)
-                    DispatchQueue.main.async {
-                        hogModeEnabled = halEngine.isHogMode // refresh toggle
-                    }
-                }
-                
-                Toggle(isOn: $isBitPerfect) {
-                    HStack {
-                        Text("Bit-Perfect Mode")
-                        InfoButton(
-                            title: "Bit-Perfect Mode",
-                            description: "Bit-Perfect mode bypasses the software volume control, delivering the audio stream exactly as it was decoded (1:1) to your DAC without any mathematical alterations.\n\nUse this to ensure the highest possible fidelity. (Requires you to control volume via your external amplifier or DAC)."
-                        )
-                    }
-                }
-                .disabled(playbackVM.eqEnabled || playbackVM.crossfeedEnabled)
-                .grayscale((playbackVM.eqEnabled || playbackVM.crossfeedEnabled) ? 1.0 : 0.0)
-                .opacity((playbackVM.eqEnabled || playbackVM.crossfeedEnabled) ? 0.5 : 1.0)
-                .onChange(of: isBitPerfect) { enabled in
-                    playbackVM.isBitPerfect = enabled
-                }
+
+                // ISOLATED: Hog Mode & Bit-Perfect toggles read playbackVM.eqEnabled/crossfeedEnabled.
+                // These live in AudioTabDSPControls (@ObservedObject) so only THEY re-render
+                // on playback ticks — the rest of audioTab (and the Picker tab bar) stays stable.
+                AudioTabDSPControls(
+                    playbackVM: playbackVM,
+                    halEngine: halEngine,
+                    hogModeEnabled: $hogModeEnabled,
+                    isBitPerfect: $isBitPerfect
+                )
 
                 Toggle(isOn: $isGaplessEnabled) {
                     HStack {
@@ -428,6 +407,56 @@ struct SettingsView: View {
 
 
 
+}
+
+// MARK: - DSP Controls (isolated @ObservedObject subscription)
+// Hog Mode and Bit-Perfect toggles read playbackVM.eqEnabled / crossfeedEnabled.
+// Wrapping them here means only this tiny view re-renders on every playback tick,
+// not the entire SettingsView (which would flicker the tab bar Picker).
+struct AudioTabDSPControls: View {
+    let playbackVM: PlaybackViewModel
+    let halEngine: CoreAudioHALEngine
+    @Binding var hogModeEnabled: Bool
+    @Binding var isBitPerfect: Bool
+
+    var body: some View {
+        let dspActive = playbackVM.eqEnabled || playbackVM.crossfeedEnabled
+
+        Toggle(isOn: $hogModeEnabled) {
+            HStack {
+                Text("Hog Mode (Exclusive Access)")
+                InfoButton(
+                    title: "Hog Mode (Exclusive Access)",
+                    description: "Grants the player exclusive access to the audio device hardware, preventing the macOS system mixer from intercepting or modifying the signal.\n\nWarning: When enabled, all other applications (YouTube, system alerts, etc.) will be muted and cannot use this audio device until Hog Mode is turned off. Some built-in devices (like MacBook speakers) may not support Hog Mode."
+                )
+            }
+        }
+        .disabled(dspActive)
+        .grayscale(dspActive ? 1.0 : 0.0)
+        .opacity(dspActive ? 0.5 : 1.0)
+        .onChange(of: hogModeEnabled) { enabled in
+            _ = halEngine.setHogModeSafe(enabled)
+            DispatchQueue.main.async {
+                hogModeEnabled = halEngine.isHogMode
+            }
+        }
+
+        Toggle(isOn: $isBitPerfect) {
+            HStack {
+                Text("Bit-Perfect Mode")
+                InfoButton(
+                    title: "Bit-Perfect Mode",
+                    description: "Bit-Perfect mode bypasses the software volume control, delivering the audio stream exactly as it was decoded (1:1) to your DAC without any mathematical alterations.\n\nUse this to ensure the highest possible fidelity. (Requires you to control volume via your external amplifier or DAC)."
+                )
+            }
+        }
+        .disabled(dspActive)
+        .grayscale(dspActive ? 1.0 : 0.0)
+        .opacity(dspActive ? 0.5 : 1.0)
+        .onChange(of: isBitPerfect) { enabled in
+            playbackVM.isBitPerfect = enabled
+        }
+    }
 }
 
 struct InfoButton: View {

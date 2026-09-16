@@ -6,7 +6,7 @@ import SwiftUI
 struct ArtistDetailView: View {
     let artist: ArtistViewModel
     @ObservedObject var libraryVM: LibraryViewModel
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     
     @State private var tracks: [TrackViewModel] = []
     @Environment(\.dismiss) var dismiss
@@ -106,7 +106,7 @@ struct ArtistDetailView: View {
 struct ArtistTrackRowWrapper: View {
     let tracks: [TrackViewModel]
     let index: Int
-    @ObservedObject var playbackVM: PlaybackViewModel
+    let playbackVM: PlaybackViewModel
     
     var isNewAlbum: Bool {
         if index == 0 { return true }

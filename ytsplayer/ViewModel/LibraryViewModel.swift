@@ -121,15 +121,17 @@ final class LibraryViewModel: ObservableObject {
                 return (loaded, artists, quickPicks, mostPlayedTracks, mostPlayedAlbums, mostPlayedArtists, recentAlbums, recentArtists)
             }.value
             
-            albums = result.albums
-            artists = result.artists
-            quickPicks = result.quickPicks
-            mostPlayedTracks = result.mostPlayedTracks
-            mostPlayedAlbums = result.mostPlayedAlbums
-            mostPlayedArtists = result.mostPlayedArtists
-            recentAlbums = result.recentAlbums
-            recentArtists = result.recentArtists
-            isLoading = false
+            DispatchQueue.main.async {
+                self.albums = result.albums
+                self.artists = result.artists
+                self.quickPicks = result.quickPicks
+                self.mostPlayedTracks = result.mostPlayedTracks
+                self.mostPlayedAlbums = result.mostPlayedAlbums
+                self.mostPlayedArtists = result.mostPlayedArtists
+                self.recentAlbums = result.recentAlbums
+                self.recentArtists = result.recentArtists
+                self.isLoading = false
+            }
         }
     }
     
@@ -142,9 +144,11 @@ final class LibraryViewModel: ObservableObject {
                 return (tracks, albums, artists)
             }.value
             
-            self.mostPlayedTracks = result.tracks
-            self.mostPlayedAlbums = result.albums
-            self.mostPlayedArtists = result.artists
+            DispatchQueue.main.async {
+                self.mostPlayedTracks = result.tracks
+                self.mostPlayedAlbums = result.albums
+                self.mostPlayedArtists = result.artists
+            }
         }
     }
     
@@ -153,7 +157,9 @@ final class LibraryViewModel: ObservableObject {
             let picks = await Task.detached(priority: .userInitiated) { [db] in
                 (try? db.fetchQuickPicks(limit: 15)) ?? []
             }.value
-            self.quickPicks = picks
+            DispatchQueue.main.async {
+                self.quickPicks = picks
+            }
         }
     }
 

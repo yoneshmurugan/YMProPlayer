@@ -387,19 +387,28 @@ final class PlaybackViewModel: ObservableObject {
             return
         }
 
-        isPlaying = enginePlaying
-
-        if totalFrames > 0 && !isScrubbing {
-            playbackProgress = min(1.0, Double(currentFrame) / Double(totalFrames))
+        if isPlaying != enginePlaying {
+            isPlaying = enginePlaying
         }
 
-        currentTimeString = formatTime(Double(currentFrame) / Double(sampleRate))
-        totalTimeString   = formatTime(Double(totalFrames)  / Double(sampleRate))
+        if totalFrames > 0 && !isScrubbing {
+            let newProgress = min(1.0, Double(currentFrame) / Double(totalFrames))
+            if playbackProgress != newProgress {
+                playbackProgress = newProgress
+            }
+        }
+
+        let newCurrent = formatTime(Double(currentFrame) / Double(sampleRate))
+        if currentTimeString != newCurrent { currentTimeString = newCurrent }
+
+        let newTotal = formatTime(Double(totalFrames)  / Double(sampleRate))
+        if totalTimeString != newTotal { totalTimeString = newTotal }
 
         // Buffering indicator
         let available = RingBuffer_AvailableToRead(halEngine.context.pointee.ringBuffer)
         let capacity  = halEngine.context.pointee.ringBuffer?.pointee.capacityFrames ?? 1
-        isBuffering   = enginePlaying && available < capacity / 10
+        let newBuffering = enginePlaying && available < capacity / 10
+        if isBuffering != newBuffering { isBuffering = newBuffering }
         
         // Gapless Playback Logic
         if enginePlaying && !isScrubbing && totalFrames > 0 {
@@ -587,6 +596,15 @@ final class PlaybackViewModel: ObservableObject {
     }
 
     private func updateWidget() {
+        let fileManager = FileManager.default
+        
+        // Check if the App Group is actually accessible before trying to write.
+        // This prevents noisy sandbox violation logs if the developer profile
+        // doesn't have the App Group entitlement fully configured.
+        guard let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yonesh.ympro.mac") else {
+            return
+        }
+        
         if let defaults = UserDefaults(suiteName: "group.com.yonesh.ympro.mac") {
             defaults.set(currentTrack?.title ?? "Nothing Playing", forKey: "widget_title")
             defaults.set(currentTrack?.artistName ?? "", forKey: "widget_artist")
@@ -594,23 +612,20 @@ final class PlaybackViewModel: ObservableObject {
             defaults.set(isPlaying, forKey: "widget_isPlaying")
         }
         
-        let fileManager = FileManager.default
-        if let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yonesh.ympro.mac") {
-            let widgetImageURL = groupURL.appendingPathComponent("widget_artwork.jpg")
-            
-            if let cachePath = currentTrack?.albumArtworkPath {
-                let cacheDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("ytsplayer/artwork")
-                let sourceURL = cacheDir.appendingPathComponent(cachePath)
-                if fileManager.fileExists(atPath: sourceURL.path) {
-                    if fileManager.fileExists(atPath: widgetImageURL.path) {
-                        try? fileManager.removeItem(at: widgetImageURL)
-                    }
-                    try? fileManager.copyItem(at: sourceURL, to: widgetImageURL)
-                }
-            } else {
+        let widgetImageURL = groupURL.appendingPathComponent("widget_artwork.jpg")
+        
+        if let cachePath = currentTrack?.albumArtworkPath {
+            let cacheDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("ytsplayer/artwork")
+            let sourceURL = cacheDir.appendingPathComponent(cachePath)
+            if fileManager.fileExists(atPath: sourceURL.path) {
                 if fileManager.fileExists(atPath: widgetImageURL.path) {
                     try? fileManager.removeItem(at: widgetImageURL)
                 }
+                try? fileManager.copyItem(at: sourceURL, to: widgetImageURL)
+            }
+        } else {
+            if fileManager.fileExists(atPath: widgetImageURL.path) {
+                try? fileManager.removeItem(at: widgetImageURL)
             }
         }
         
