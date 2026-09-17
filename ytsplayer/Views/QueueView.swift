@@ -65,7 +65,7 @@ struct QueueView: View {
             }
         }
         .frame(minWidth: 300, idealWidth: 400, minHeight: 400)
-        .background(.ultraThinMaterial)
+        .liquidGlassBackground(cornerRadius: 16)
     }
 }
 

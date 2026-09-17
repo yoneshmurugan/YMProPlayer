@@ -191,6 +191,13 @@
 			path = ytsplayerTests;
 			sourceTree = "<group>";
 		};
+		09BAFA236D31533DD2AE1BB6 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
 		0BA52B01CD07BBE503256065 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
@@ -325,6 +332,7 @@
 				859258C176BD4B6DD2EB95BA /* Database */,
 				A4F58E83AF1328822AE81BBE /* Dependencies */,
 				E5F8D4185195600FBFC2EB9D /* Engine */,
+				09BAFA236D31533DD2AE1BB6 /* Extensions */,
 				42B7A479FAD1C0056A2FBDC0 /* HAL */,
 				B78C9CDDB173171853CA2A91 /* Utilities */,
 				FF5EC188B227F24365D35844 /* Utils */,

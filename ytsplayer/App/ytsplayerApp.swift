@@ -83,6 +83,36 @@ struct ytsplayerApp: App {
                 .environmentObject(themeManager)
                 .preferredColorScheme(themeManager.themeMode.colorScheme)
                 .tint(themeManager.accentColor.color)
+                .onOpenURL { url in
+                    // Start accessing the secure URL provided by Finder
+                    _ = url.startAccessingSecurityScopedResource()
+                    
+                    // Fallback to basic metadata
+                    let filename = url.deletingPathExtension().lastPathComponent
+                    let track = TrackViewModel(
+                        id: Int64(abs(url.hashValue)),
+                        filePath: url.path,
+                        title: filename,
+                        trackNumber: nil,
+                        discNumber: nil,
+                        duration: 0.0,
+                        sampleRate: 44100, // CoreAudioHALEngine will read the real values on playback
+                        bitDepth: 16,
+                        artistName: "External File",
+                        albumTitle: "Finder",
+                        albumArtworkPath: nil,
+                        lyrics: nil,
+                        fileSize: nil,
+                        bitrate: nil,
+                        channels: 2,
+                        playCount: 0,
+                        isFavorite: false,
+                        genre: nil,
+                        composer: nil
+                    )
+                    
+                    env.playbackVM.play(track: track, queue: [track], startIndex: 0, context: .none)
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
@@ -94,7 +124,7 @@ struct ytsplayerApp: App {
                 Button("About YM Pro") {
                     NSApplication.shared.orderFrontStandardAboutPanel(options: [
                         .applicationName: "YM Pro",
-                        .applicationVersion: "1.0.0"
+                        .applicationVersion: "2.2"
                     ])
                 }
             }

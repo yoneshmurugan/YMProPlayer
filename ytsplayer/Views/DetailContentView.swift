@@ -24,11 +24,11 @@ class HeroState: ObservableObject {
 }
 
 struct HeroNamespaceKey: EnvironmentKey {
-    static var defaultValue: Namespace.ID = Namespace().wrappedValue
+    static var defaultValue: Namespace.ID? = nil
 }
 
 extension EnvironmentValues {
-    var heroNamespace: Namespace.ID {
+    var heroNamespace: Namespace.ID? {
         get { self[HeroNamespaceKey.self] }
         set { self[HeroNamespaceKey.self] = newValue }
     }

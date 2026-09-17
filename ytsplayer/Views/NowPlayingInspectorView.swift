@@ -15,7 +15,7 @@ struct NowPlayingInspectorView: View {
     }
     
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 16) {
             if let track = vm.currentTrack {
                 // Large Artwork
                 Button(action: { onArtworkTap?() }) {
@@ -43,17 +43,23 @@ struct NowPlayingInspectorView: View {
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(3)
                     
                     Text(track.artistName ?? "Unknown Artist")
                         .font(.system(size: 16, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(2)
                     
                     if let album = track.albumTitle {
                         Text(album)
                             .font(.system(size: 14, weight: .regular, design: .rounded))
                             .foregroundStyle(.tertiary)
                             .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(2)
                     }
                 }
                 .padding(.horizontal)
@@ -95,7 +101,7 @@ struct NowPlayingInspectorView: View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
                         .padding(.horizontal)
-                        .padding(.top, 24)
+                        .padding(.top, 8)
                     
                     if vm.queue.isEmpty {
                         Text("Queue is empty")
@@ -144,27 +150,33 @@ struct NowPlayingInspectorView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .padding(20)
+        .padding([.horizontal, .bottom], 20)
+        .padding(.top, 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
-            ZStack {
-                if let url = artworkURL, vm.currentTrack != nil {
-                    CachedAsyncImage(url: url) {
-                        Color.clear
-                    }
-                    .scaledToFill()
-                    .blur(radius: 80, opaque: true)
-                    .saturation(1.5)
-                    .opacity(0.8)
-                } else {
-                    fallbackArtwork
+            GeometryReader { geo in
+                ZStack {
+                    if let url = artworkURL, vm.currentTrack != nil {
+                        CachedAsyncImage(url: url) {
+                            Color.clear
+                        }
+                        .scaledToFill()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
                         .blur(radius: 80, opaque: true)
+                        .saturation(1.5)
+                        .opacity(0.8)
+                    } else {
+                        fallbackArtwork
+                            .blur(radius: 80, opaque: true)
+                    }
+                    
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
                 }
-                
-                Rectangle()
-                    .fill(.ultraThinMaterial)
+                .frame(width: geo.size.width, height: geo.size.height)
+                .clipShape(Rectangle())
             }
-            .clipped()
         )
     }
     

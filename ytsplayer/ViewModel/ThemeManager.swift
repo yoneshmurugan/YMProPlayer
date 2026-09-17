@@ -86,3 +86,17 @@ class ThemeManager: ObservableObject {
         self.glassIntensity = defaultGlass
     }
 }
+
+extension View {
+    /// Applies Apple's native liquid glass effect on macOS 26+ and falls back to ultraThin material.
+    @ViewBuilder
+    func liquidGlassBackground(cornerRadius: CGFloat = 16) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if #available(macOS 26.0, *) {
+            self.glassEffect(.regular.interactive(), in: shape)
+        } else {
+            self.background(shape.fill(Material.ultraThin))
+                .overlay(shape.strokeBorder(Color.white.opacity(0.15), lineWidth: 1))
+        }
+    }
+}

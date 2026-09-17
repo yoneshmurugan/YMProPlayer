@@ -104,7 +104,7 @@ This document tracks major features and architectural improvements that have bee
 * **Status:** Completed
 * **Details:** Configured the Xcode project to build as a Universal Binary (`arm64` + `x86_64`) and lowered the macOS deployment target to support older Intel-based Macs. Expands the user base to audiophiles who still use older Intel Macs as dedicated media servers or desktop setups.
 
-## Version 2.2
+## Version 2.2 (Golden Gate Update)
 
 **26. "Floating Island" Transport UI**
 * **Status:** Completed
@@ -113,3 +113,15 @@ This document tracks major features and architectural improvements that have bee
 **27. High-Frequency SwiftUI Render Optimization**
 * **Status:** Completed
 * **Details:** Resolved a severe constraint loop crash and UI flickering (e.g., Settings tab bar flashing 4x/sec). Isolated the high-frequency `@ObservedObject playbackVM` timer ticks away from the main `ContentView` and `SettingsView` shell, pushing the subscriptions down to dedicated leaf components (`DetailContentView` and `AudioTabDSPControls`).
+
+**28. Golden Gate UI (Native Liquid Glass)**
+* **Status:** Completed
+* **Details:** Complete visual overhaul of the application using native macOS `.glassEffect` (Liquid Glass). Replaced muddy `.ultraThinMaterial` backgrounds with a gorgeous, premium translucent layer across the Now Playing Bar, Queue Popover, Full-Screen Player (Lyrics), and Album Detail overlays.
+
+**29. Native Finder File Association**
+* **Status:** Completed
+* **Details:** Implemented `.onOpenURL` and `CFBundleDocumentTypes` to allow YM Pro to act as the default audio player on macOS. Double-clicking any supported audio file in Finder instantly launches the app and plays the track ephemerally (without permanently cluttering the user's curated library).
+
+**30. Direct Feedback & Support Hub**
+* **Status:** Completed
+* **Details:** Added a dedicated "Report Bug / Feedback" integration in the Settings menu that links directly to the project's GitHub Issues page, allowing users to quickly request features or report bugs without heavy analytics tracking.

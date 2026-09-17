@@ -121,8 +121,8 @@ struct FullScreenPlayerContent: View {
     @ViewBuilder
     private var backgroundLayer: some View {
         // Native Apple Liquid Glass effect
-        Rectangle()
-            .fill(.ultraThinMaterial)
+        Color.clear // Base layer to stretch
+            .liquidGlassBackground(cornerRadius: 0) // Full screen has no corners
             .opacity(0.95)
             // Add subtle lighting
             .overlay(

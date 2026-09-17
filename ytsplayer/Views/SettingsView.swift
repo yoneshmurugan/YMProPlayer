@@ -297,7 +297,7 @@ struct SettingsView: View {
                                     )
                                 )
                             
-                            Text("Version 2.1  ·  Build 11")
+                            Text("Version 2.2  ·  Build 11")
                                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 12)
@@ -366,22 +366,40 @@ struct SettingsView: View {
                     .padding(.horizontal, 24)
                     .padding(.vertical, 20)
                 
-                // ── App Store Feedback ────────────────────────────────────
-                Button(action: {
-                    if let url = URL(string: "macappstore://apps.apple.com/app/id6804453207?action=write-review") {
-                        NSWorkspace.shared.open(url)
+                // ── Feedback & Support ────────────────────────────────────
+                HStack(spacing: 16) {
+                    Button(action: {
+                        if let url = URL(string: "macappstore://apps.apple.com/app/id6804453207?action=write-review") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "star.bubble.fill")
+                            Text("Rate on the App Store")
+                        }
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 6)
                     }
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "star.bubble.fill")
-                        Text("Rate on the App Store")
+                    .buttonStyle(.borderedProminent)
+                    .tint(themeManager.accentColor.color)
+                    
+                    Button(action: {
+                        if let url = URL(string: "https://github.com/yoneshmurugan/YMProPlayer/issues/new") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "ladybug.fill")
+                            Text("Report Bug / Feedback")
+                        }
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 6)
                     }
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 6)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.secondary)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(themeManager.accentColor.color)
                 
                 Divider()
                     .padding(.horizontal, 24)

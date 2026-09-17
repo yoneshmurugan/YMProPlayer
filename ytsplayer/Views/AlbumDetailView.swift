@@ -67,8 +67,8 @@ struct AlbumDetailView: View {
                             Text(album.title)
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
                                 .foregroundStyle(.primary)
-                                .lineLimit(2)
-                                .minimumScaleFactor(0.6)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .minimumScaleFactor(0.8)
                         if let artist = album.artistName {
                             Text(artist)
                                 .font(.system(size: 15, design: .rounded))
@@ -138,7 +138,7 @@ struct AlbumDetailView: View {
             .listStyle(.plain)
         }
         .frame(minWidth: 300, minHeight: 400)
-        .background(.background)
+        .liquidGlassBackground(cornerRadius: 24)
     }
 
     @ViewBuilder
@@ -260,6 +260,8 @@ struct AlbumTrackRow: View {
                 if track.bitDepth >= 24 {
                     Text("Hi-Res")
                         .font(.system(size: 8, weight: .bold))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(Color.orange.opacity(0.15))
@@ -271,6 +273,8 @@ struct AlbumTrackRow: View {
                 let ext = (track.filePath as NSString).pathExtension.uppercased()
                 Text(ext.isEmpty ? "AUDIO" : ext)
                     .font(.system(size: 8, weight: .bold))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
                     .background(Color.gray.opacity(0.2))
@@ -280,6 +284,8 @@ struct AlbumTrackRow: View {
                 // Sample rate badge
                 Text("\(track.sampleRate / 1000)kHz·\(track.bitDepth)bit")
                     .font(.system(size: 9, weight: .medium))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
                     .background(badgeColor(for: track).opacity(0.15))
