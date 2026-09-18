@@ -61,8 +61,8 @@ final class CoreAudioHALEngine {
     private var decoderWorker: OpaquePointer?
     private var avDecoderWorker: OpaquePointer?
 
-    // Ring buffer: 131072 frames = power-of-two, ~3s at 44.1kHz
-    private let ringBufferCapacity: Int = 131_072
+    // Ring buffer: 4_194_304 frames = power-of-two, ~95s at 44.1kHz
+    private let ringBufferCapacity: Int = 4_194_304
 
     init() {
         context = AudioEngineContext_Create(ringBufferCapacity)
@@ -426,17 +426,23 @@ final class CoreAudioHALEngine {
         let ext = (filePath as NSString).pathExtension.lowercased()
         let isFLAC = (ext == "flac")
 
-        if isFLAC {
-            guard let worker = FLACDecoder_Create(filePath, context) else {
-                NSLog("[ytsplayer] FLACDecoder_Create failed for: \(filePath)")
-                return false
+        // Detach decoder creation to prevent main thread blocking on network drives
+        let workerResult = await Task.detached { () -> OpaquePointer? in
+            if isFLAC {
+                return FLACDecoder_Create(filePath, self.context)
+            } else {
+                return AVDecoder_Create(filePath, self.context)
             }
+        }.value
+        
+        guard let worker = workerResult else {
+            NSLog("[ytsplayer] Decoder creation failed for: \(filePath)")
+            return false
+        }
+        
+        if isFLAC {
             decoderWorker = worker
         } else {
-            guard let worker = AVDecoder_Create(filePath, context) else {
-                NSLog("[ytsplayer] AVDecoder_Create failed for: \(filePath)")
-                return false
-            }
             avDecoderWorker = worker
         }
 

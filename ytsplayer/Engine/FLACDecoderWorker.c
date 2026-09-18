@@ -98,10 +98,17 @@ static FLAC__StreamDecoderWriteStatus flac_write_callback(
     
     free(interleavedBuffer);
 
-    // Once ring buffer is half full, signal that playback may begin
-    if (!atomic_load_explicit(&worker->isReady, memory_order_relaxed)) {
-        size_t available = RingBuffer_AvailableToRead(ctx->ringBuffer);
-        size_t half      = ctx->ringBuffer->capacityFrames / 2;
+    size_t available = RingBuffer_AvailableToRead(ctx->ringBuffer);
+    size_t half      = ctx->ringBuffer->capacityFrames / 2;
+
+    if (atomic_load_explicit(&worker->isReady, memory_order_relaxed)) {
+        // We are currently playing. If the buffer gets dangerously low, underrun!
+        if (available < 8192) {
+            atomic_store_explicit(&worker->isReady, false, memory_order_release);
+            atomic_store_explicit(&ctx->isPlaying, false, memory_order_release);
+        }
+    } else {
+        // We are buffering (or rebuffering). Wait until half full before resuming.
         if (available >= half) {
             atomic_store_explicit(&worker->isReady, true, memory_order_release);
             atomic_store_explicit(&ctx->isPlaying,  true, memory_order_release);

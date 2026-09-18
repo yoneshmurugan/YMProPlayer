@@ -132,10 +132,17 @@ extern "C" void AVDecoder_Start(AVDecoderWorker *worker) {
                 }
             }
             free(outBuffer);
+            size_t available = RingBuffer_AvailableToRead(worker->ctx->ringBuffer);
+            size_t capacity = worker->ctx->ringBuffer->capacityFrames;
             
-            if (!atomic_load_explicit(&worker->isReady, memory_order_relaxed)) {
-                size_t available = RingBuffer_AvailableToRead(worker->ctx->ringBuffer);
-                size_t capacity = worker->ctx->ringBuffer->capacityFrames;
+            if (atomic_load_explicit(&worker->isReady, memory_order_relaxed)) {
+                // We are currently playing. If buffer gets dangerously low, underrun!
+                if (available < 8192) {
+                    atomic_store_explicit(&worker->isReady, false, memory_order_relaxed);
+                    atomic_store_explicit(&worker->ctx->isPlaying, false, memory_order_relaxed);
+                }
+            } else {
+                // Buffering (or rebuffering). Wait until half full.
                 if (available >= capacity * PREBUFFER_RATIO) {
                     atomic_store_explicit(&worker->isReady, true, memory_order_relaxed);
                     atomic_store_explicit(&worker->ctx->isPlaying, true, memory_order_relaxed);

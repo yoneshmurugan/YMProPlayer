@@ -142,7 +142,8 @@ struct TracksView: View {
     @State private var allTracks: [TrackViewModel] = []
     @State private var trackOffset: Int = 0
     @State private var hasMoreTracks: Bool = true
-    let pageSize = 5000
+    let pageSize = 2000
+    @State private var totalTracksCount: Int = 0
     @State private var isLoading = true
     @State private var selectedTracks: Set<Int64> = []
     @State private var isSelectionMode = false
@@ -228,7 +229,8 @@ struct TracksView: View {
                     
                 let totalDuration = allTracks.reduce(0) { $0 + $1.duration }
                 let totalSize = allTracks.reduce(0) { $0 + ($1.fileSize ?? 0) }
-                Text("\(allTracks.count) tracks • \(formatTotalDuration(totalDuration)) • \(formatSize(totalSize))")
+                let displayCount = totalTracksCount > 0 ? totalTracksCount : allTracks.count
+                Text("\(displayCount) tracks • \(formatTotalDuration(totalDuration)) • \(formatSize(totalSize))")
                     .font(.system(size: 12))
                         .foregroundStyle(.primary.opacity(0.4))
             }
@@ -692,6 +694,7 @@ struct TracksView: View {
             let filterPath = root?.path
             
             let fetched = libraryVM.fetchTracksPage(limit: pageSize, offset: trackOffset, sortBy: field, ascending: ascending, filterPath: filterPath)
+            let total = trackOffset == 0 ? libraryVM.countTotalTracks(filterPath: filterPath) : 0
             
             // Build folder tree efficiently using distinct paths if we are starting fresh
             let tree: [MenuFolderNode]?
@@ -713,6 +716,7 @@ struct TracksView: View {
                 
                 if trackOffset == 0 {
                     self.allTracks = fetched
+                    self.totalTracksCount = total
                 } else {
                     self.allTracks.append(contentsOf: fetched)
                 }

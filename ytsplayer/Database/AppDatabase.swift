@@ -275,6 +275,16 @@ enum AppDatabase {
 
 extension DatabasePool {
 
+    func countAllTracks(filterPath: String? = nil) throws -> Int {
+        try read { db in
+            if let filterPath = filterPath {
+                return try TrackRecord.filter(Column("filePath").like("\(filterPath)%")).fetchCount(db)
+            } else {
+                return try TrackRecord.fetchCount(db)
+            }
+        }
+    }
+
     // Fetch paginated tracks with their album and artist names
     func fetchTrackViewModelsPage(limit: Int, offset: Int, sortBy: String? = nil, ascending: Bool = true, filterPath: String? = nil) throws -> [TrackViewModel] {
         try read { db in

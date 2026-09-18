@@ -222,101 +222,89 @@ final class PlaybackViewModel: ObservableObject {
 
         // Let CoreAudioHALEngine re-assert Hog Mode internally after stream setup
 
-        // Check if the file exists (e.g. drive disconnected)
-        if !FileManager.default.fileExists(atPath: track.filePath) {
+        // CRITICAL: Perform synchronous file I/O and bookmark resolution on a background thread
+        // to prevent locking up the main thread (beachballing) on slow network/cloud drives.
+        let effectivePath = track.filePath
+        let resolutionResult = await Task.detached { () -> (Bool, URL?) in
+            let fm = FileManager.default
+            if !fm.fileExists(atPath: effectivePath) {
+                return (false, nil)
+            }
+            
+            var resolvedURL: URL? = nil
+            if let bookmarks = UserDefaults.standard.dictionary(forKey: "libraryBookmarks") as? [String: Data] {
+                for (_, bookmarkData) in bookmarks {
+                    var isStale = false
+                    if let url = try? URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale) {
+                        if effectivePath.hasPrefix(url.path) {
+                            if url.startAccessingSecurityScopedResource() {
+                                resolvedURL = url
+                                NSLog("[ytsplayer] Security scope granted via library bookmark: \(url.path)")
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Fallback: If not found in bookmarks, try accessing it directly
+            if resolvedURL == nil {
+                let fileURL = URL(fileURLWithPath: effectivePath)
+                if fileURL.startAccessingSecurityScopedResource() {
+                    resolvedURL = fileURL
+                    NSLog("[ytsplayer] Security scope granted directly on file URL")
+                }
+            }
+            return (true, resolvedURL)
+        }.value
+        
+        if !resolutionResult.0 {
             isBuffering = false
             isPlaying = false
             errorMessage = "File not found or drive disconnected."
             return
         }
         
-        var effectivePath = track.filePath
+        var securityScopedURL = resolutionResult.1
         
-        // CRITICAL: In a sandboxed app, C code (FLAC decoder via fopen) needs an active
-        // security-scoped resource access BEFORE it can open any file. We must resolve
-        // the stored library bookmarks and find the one that is a parent of this file.
-        var securityScopedURL: URL? = nil
-        let filePath = effectivePath
-        
-        if let bookmarks = UserDefaults.standard.dictionary(forKey: "libraryBookmarks") as? [String: Data] {
-            for (_, bookmarkData) in bookmarks {
-                var isStale = false
-                do {
-                    let resolvedURL = try URL(
-                        resolvingBookmarkData: bookmarkData,
-                        options: .withSecurityScope,
-                        relativeTo: nil,
-                        bookmarkDataIsStale: &isStale
-                    )
-                    // Check if this bookmark covers the file's location
-                    let resolvedPath = resolvedURL.path
-                    if filePath.hasPrefix(resolvedPath) {
-                        if resolvedURL.startAccessingSecurityScopedResource() {
-                            securityScopedURL = resolvedURL
-                            NSLog("[ytsplayer] Security scope granted via library bookmark: \(resolvedPath)")
-                            break
-                        }
-                    }
-                } catch {
-                    // Stale or invalid bookmark — skip it
-                }
-            }
-        }
-        
-        // Fallback: if file is NOT under any library bookmark (e.g. in a temp/cloud cache),
-        // try calling startAccessingSecurityScopedResource on the file URL itself.
         if securityScopedURL == nil {
-            let fileURL = URL(fileURLWithPath: filePath)
-            if fileURL.startAccessingSecurityScopedResource() {
-                securityScopedURL = fileURL
-                NSLog("[ytsplayer] Security scope granted directly on file URL")
-            } else {
-                NSLog("[ytsplayer] WARNING: File is outside all library folders. Requesting user access via open panel.")
-                // The file is outside all bookmarked library folders.
-                // Show NSOpenPanel so the user can grant sandbox access to its parent folder.
-                let granted = await withCheckedContinuation { (continuation: CheckedContinuation<URL?, Never>) in
-                    DispatchQueue.main.async {
-                        let panel = NSOpenPanel()
-                        panel.message = "YM Pro needs permission to access this file's folder.\nPlease click \"Grant Access\" to allow playback."
-                        panel.prompt = "Grant Access"
-                        panel.canChooseFiles = false
-                        panel.canChooseDirectories = true
-                        panel.canCreateDirectories = false
-                        panel.directoryURL = URL(fileURLWithPath: filePath).deletingLastPathComponent()
-                        panel.begin { response in
-                            if response == .OK, let url = panel.url {
-                                continuation.resume(returning: url)
-                            } else {
-                                continuation.resume(returning: nil)
-                            }
+            NSLog("[ytsplayer] WARNING: File is outside all library folders. Requesting user access via open panel.")
+            let granted = await withCheckedContinuation { (continuation: CheckedContinuation<URL?, Never>) in
+                // NSOpenPanel must run on the main thread
+                DispatchQueue.main.async {
+                    let panel = NSOpenPanel()
+                    panel.message = "YM Pro needs permission to access this file's folder.\nPlease click \"Grant Access\" to allow playback."
+                    panel.prompt = "Grant Access"
+                    panel.canChooseFiles = false
+                    panel.canChooseDirectories = true
+                    panel.canCreateDirectories = false
+                    panel.directoryURL = URL(fileURLWithPath: effectivePath).deletingLastPathComponent()
+                    panel.begin { response in
+                        if response == .OK, let url = panel.url {
+                            continuation.resume(returning: url)
+                        } else {
+                            continuation.resume(returning: nil)
                         }
                     }
                 }
-                if let grantedURL = granted {
-                    // Store a bookmark for future use
-                    if let data = try? grantedURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
-                        var bookmarks = (UserDefaults.standard.dictionary(forKey: "libraryBookmarks") as? [String: Data]) ?? [:]
-                        bookmarks[grantedURL.path] = data
-                        UserDefaults.standard.set(bookmarks, forKey: "libraryBookmarks")
-                    }
-                    if grantedURL.startAccessingSecurityScopedResource() {
-                        securityScopedURL = grantedURL
-                        NSLog("[ytsplayer] Security scope granted after user approval: \(grantedURL.path)")
-                    }
-                } else {
-                    NSLog("[ytsplayer] User denied access — cannot play: \(filePath)")
-                    isBuffering = false
-                    isPlaying = false
-                    errorMessage = "Access denied. Please grant permission to the folder containing this file."
-                    return
-                }
             }
-        }
-        
-        // Smart Cloud Pre-buffering
-        if effectivePath.contains("pCloud Drive") && track.sortSize > 50_000_000 { // > 50MB
-            if let cached = await bufferTrackToLocalCache(path: effectivePath) {
-                effectivePath = cached
+            
+            if let grantedURL = granted {
+                if let data = try? grantedURL.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
+                    var bookmarks = (UserDefaults.standard.dictionary(forKey: "libraryBookmarks") as? [String: Data]) ?? [:]
+                    bookmarks[grantedURL.path] = data
+                    UserDefaults.standard.set(bookmarks, forKey: "libraryBookmarks")
+                }
+                if grantedURL.startAccessingSecurityScopedResource() {
+                    securityScopedURL = grantedURL
+                    NSLog("[ytsplayer] Security scope granted after user approval: \(grantedURL.path)")
+                }
+            } else {
+                NSLog("[ytsplayer] User denied access — cannot play: \(effectivePath)")
+                isBuffering = false
+                isPlaying = false
+                errorMessage = "Access denied. Please grant permission to the folder containing this file."
+                return
             }
         }
         
@@ -324,10 +312,17 @@ final class PlaybackViewModel: ObservableObject {
         let rgMode = UserDefaults.standard.string(forKey: "replayGainMode") ?? "album"
         var gainScalar: Float = 1.0
         if rgMode != "off" {
-            var meta = ExtractedTrackMetadata()
-            if ExtractFLACMetadata((effectivePath as NSString).utf8String, &meta) {
-                let trackGain = meta.replayGainTrack
-                let albumGain = meta.replayGainAlbum
+            // Extract metadata on a background thread so disk I/O doesn't hang UI
+            let metaResult = await Task.detached { () -> (Bool, Double, Double) in
+                var meta = ExtractedTrackMetadata()
+                let success = ExtractFLACMetadata((effectivePath as NSString).utf8String, &meta)
+                defer { ExtractedMetadata_FreeArtwork(&meta) }
+                return (success, meta.replayGainTrack, meta.replayGainAlbum)
+            }.value
+            
+            if metaResult.0 {
+                let trackGain = metaResult.1
+                let albumGain = metaResult.2
                 
                 var targetGain = 0.0
                 if rgMode == "album" && albumGain != 0.0 {
@@ -340,7 +335,6 @@ final class PlaybackViewModel: ObservableObject {
                 if targetGain != 0.0 {
                     gainScalar = Float(pow(10.0, targetGain / 20.0))
                 }
-                ExtractedMetadata_FreeArtwork(&meta)
             }
         }
         AEC_SetTrackReplayGain(halEngine.context, gainScalar)
@@ -538,63 +532,6 @@ final class PlaybackViewModel: ObservableObject {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         updateWidget()
     }
-    
-    // MARK: - Smart Cloud Buffering
-    
-    private func bufferTrackToLocalCache(path: String) async -> String? {
-        let fm = FileManager.default
-        let cacheDir = fm.temporaryDirectory.appendingPathComponent("ytsplayer_cloud_cache")
-        
-        do {
-            if !fm.fileExists(atPath: cacheDir.path) {
-                try fm.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-            }
-            
-            // Cleanup old cache files to prevent disk bloat
-            cleanupOldCache(in: cacheDir)
-            
-            let originalURL = URL(fileURLWithPath: path)
-            let cachedURL = cacheDir.appendingPathComponent(originalURL.lastPathComponent)
-            
-            if fm.fileExists(atPath: cachedURL.path) {
-                // Already cached
-                return cachedURL.path
-            }
-            
-            // Asynchronously copy file
-            try await Task.detached(priority: .userInitiated) {
-                try fm.copyItem(at: originalURL, to: cachedURL)
-            }.value
-            
-            return cachedURL.path
-            
-        } catch {
-            print("Failed to buffer cloud track: \(error.localizedDescription)")
-            return nil
-        }
-    }
-    
-    private func cleanupOldCache(in cacheDir: URL) {
-        Task.detached(priority: .background) {
-            let fm = FileManager.default
-            guard let files = try? fm.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: [.creationDateKey]) else { return }
-            
-            // Keep only the most recent 5 tracks
-            let sortedFiles = files.sorted {
-                let date1 = (try? $0.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date.distantPast
-                let date2 = (try? $1.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date.distantPast
-                return date1 > date2
-            }
-            
-            if sortedFiles.count > 5 {
-                let toDelete = sortedFiles.dropFirst(5)
-                for file in toDelete {
-                    try? fm.removeItem(at: file)
-                }
-            }
-        }
-    }
-
     private func updateWidget() {
         let fileManager = FileManager.default
         

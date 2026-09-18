@@ -39,6 +39,12 @@ targets:
         NSMicrophoneUsageDescription: "YM Pro requires audio device access for bit-perfect playback."
         LSApplicationCategoryType: "public.app-category.music"
         ITSAppUsesNonExemptEncryption: false
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: "Audio File"
+            CFBundleTypeRole: "Viewer"
+            LSHandlerRank: "Default"
+            LSItemContentTypes:
+              - "public.audio"
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: "com.ytsplayer.track.id"
             UTTypeDescription: "Track ID"
@@ -65,8 +71,8 @@ targets:
         DEVELOPMENT_TEAM: 7C4RH6695J
         GCC_C_LANGUAGE_STANDARD: c11
         SWIFT_VERSION: "5"
-        MARKETING_VERSION: "2.1.0"
-        CURRENT_PROJECT_VERSION: "11"
+        MARKETING_VERSION: "2.2.2"
+        CURRENT_PROJECT_VERSION: "14"
         PRODUCT_BUNDLE_IDENTIFIER: com.yonesh.ympro.mac
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         LD_RUNPATH_SEARCH_PATHS:
@@ -131,8 +137,8 @@ targets:
     settings:
       base:
         ARCHS: "$(ARCHS_STANDARD)"
-        MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "2"
+        MARKETING_VERSION: "2.2.2"
+        CURRENT_PROJECT_VERSION: "14"
         PRODUCT_BUNDLE_IDENTIFIER: com.yonesh.ympro.mac.widget
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         SWIFT_VERSION: "5"

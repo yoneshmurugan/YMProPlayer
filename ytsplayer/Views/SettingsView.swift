@@ -297,7 +297,7 @@ struct SettingsView: View {
                                     )
                                 )
                             
-                            Text("Version 2.2  ·  Build 11")
+                            Text("Version 2.2.2  ·  Build 14")
                                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 12)

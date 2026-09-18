@@ -125,3 +125,17 @@ This document tracks major features and architectural improvements that have bee
 **30. Direct Feedback & Support Hub**
 * **Status:** Completed
 * **Details:** Added a dedicated "Report Bug / Feedback" integration in the Settings menu that links directly to the project's GitHub Issues page, allowing users to quickly request features or report bugs without heavy analytics tracking.
+
+## Version 2.2.2 (Network Playback Overhaul)
+
+**31. Network Drive Playback Stability**
+* **Status:** Completed
+* **Details:** Wrapped C++ decoder initialization in detached background tasks to prevent severe UI blocking (e.g., 15-minute beachballs) when loading heavy metadata over high-latency network drives.
+
+**32. Hysteresis Rebuffering Architecture**
+* **Status:** Completed
+* **Details:** Redesigned the Core Audio ring buffer worker to use Hysteresis Rebuffering. If the network stalls, the engine now cleanly pauses playback and stockpiles a 50% buffer (45 seconds of audio) before resuming, entirely eliminating rapid audio flickering and stuttering on slow internet.
+
+**33. Library Pagination & True Track Counts**
+* **Status:** Completed
+* **Details:** Fixed an issue where the library view truncated at 5,000 tracks. Restored lazy-loading pagination, and added a highly efficient database-level `COUNT()` query to instantly display the true total track count at the top of the Library view (e.g., "8,000 tracks") regardless of the current pagination offset.

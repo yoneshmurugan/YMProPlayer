@@ -235,6 +235,10 @@ final class LibraryViewModel: ObservableObject {
         return (try? db.fetchTrackViewModelsPage(limit: limit, offset: offset, sortBy: field, ascending: ascending, filterPath: filterPath)) ?? []
     }
     
+    func countTotalTracks(filterPath: String? = nil) -> Int {
+        return (try? db.countAllTracks(filterPath: filterPath)) ?? 0
+    }
+    
     func fetchDistinctFilePaths() -> [String] {
         return (try? db.fetchDistinctFilePaths()) ?? []
     }
